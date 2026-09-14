@@ -35,6 +35,13 @@ namespace ForgottenIsle.Core.Logging
         SceneLoadSlow = 6,
 
         /// <summary>A data catalog was requested before it had been populated, or is missing entirely.</summary>
-        CatalogMissing = 7
+        CatalogMissing = 7,
+
+        /// <summary>
+        /// A zone finished furnishing without one of the three things that make it playable: a
+        /// player rig, its character controller, or an enabled camera. The zone is loaded and the
+        /// player is in it, but some part of it cannot be seen or moved.
+        /// </summary>
+        FurnishIncomplete = 8
     }
 }

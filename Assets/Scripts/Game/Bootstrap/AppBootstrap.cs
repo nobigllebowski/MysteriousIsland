@@ -283,7 +283,13 @@ namespace ForgottenIsle.Game.Bootstrap
                 return;
             }
 
-            _furnisher.Furnish(scene);
+            // A null return means the zone came up without a player, a controller or a working
+            // camera. The furnisher has already said exactly which, loudly; this records that the
+            // zone the player is standing in is not the one the game thinks it furnished.
+            if (_furnisher.Furnish(scene) == null)
+            {
+                Context.Log.Warn(LogCode.FurnishIncomplete, sceneKey);
+            }
         }
 
         private void OnDestroy()

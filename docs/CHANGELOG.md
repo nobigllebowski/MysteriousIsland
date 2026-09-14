@@ -9,6 +9,41 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — first runtime failure: "Display 1 - No cameras rendering"
+
+The menu rendered and the game did not. Two separate facts, only one of them a bug.
+
+**The menu needs no camera and never did.** UI Toolkit panels with no `targetTexture` render in
+screen-space overlay, so `MainMenu.unity` — created as `NewSceneSetup.EmptyScene` — is correct as
+it stands. Unity's "No cameras rendering" is an accurate description of a menu that is working.
+
+**The gameplay camera was one early-return away from never existing.** `ZoneFurnisher.EnsureCamera`
+returned the moment `rig.CameraPivot != null`. **A pivot is not a camera.** Any path producing a
+pivot without one — an authored rig, a re-furnish after a camera was disabled or destroyed — left
+the zone with no camera and nothing anywhere saying so. The same method also adopted any camera it
+found in the scene without checking whether it was enabled or its object active, and never tagged
+the camera it built, so `Camera.main` was null even when rendering worked.
+
+Now: a pivot without a camera gets one; an adopted camera is activated, enabled and tagged; the
+tag is set *before* the component is added, because `Camera.main` is a cached tag lookup.
+
+**Nothing could fail quietly any more.** `Furnish` returns null unless the player, its
+`CharacterController` and an enabled tagged camera all exist, and logs one line naming every one of
+them; `PlayerRig.Initialize` refuses to bind silently without a usable camera; `AppBootstrap`
+records a zone that came up unplayable. Travel can no longer leave two cameras rendering — during a
+transition both zones are briefly resident, and every camera but the current zone's is now
+disabled, as is every `AudioListener` but its own.
+
+**Tests.** New `CameraLifecycleTests` (3 PlayMode cases): exactly one enabled camera after New
+Game with `Camera.main` resolving to it, still exactly one after travel, and a disabled camera
+repaired on re-entry. Deliberately separate from `GameplayLoopTests`, which asserted only that a
+*pivot* existed — the assertion that let this through.
+
+**Not verified.** None of this has been run. The `⚠ VERIFY` note in `Commission` stands: under URP
+a runtime-added `Camera` also needs `UniversalAdditionalCameraData`, which URP is documented to add
+on demand rather than this code referencing the URP assembly for one component.
+
+
 ### Fixed — sixth editor open: CS0234 `ForgottenIsle.UI.Components` in `HudScreen.cs`
 
 `using ForgottenIsle.UI.Components;` names a namespace that does not exist. The **folder**

@@ -171,6 +171,46 @@ namespace ForgottenIsle.Game.Player
         /// device.
         /// </param>
         /// <param name="log">Diagnostics sink. Null tolerated.</param>
+        /// <summary>
+        /// Refuses to bind quietly when the rig has no camera to look through.
+        /// </summary>
+        /// <remarks>
+        /// A rig with no camera still moves, still writes its pose and still reports success, so
+        /// every downstream check passes while the screen stays black — the failure that produced
+        /// Unity's "Display 1 — No cameras rendering" with nothing in the console to explain it.
+        /// The rig cannot fix this itself (the furnisher owns camera construction), so the one
+        /// useful thing it can do is say so where someone will read it.
+        /// <para>
+        /// The pivot alone is not enough to pass: a pivot without a camera under it is exactly the
+        /// state that used to satisfy the furnisher's early-out.
+        /// </para>
+        /// </remarks>
+        /// <param name="log">Diagnostics sink. Null tolerated.</param>
+        private void VerifyCamera(ICoreLog log)
+        {
+            var camera = _cameraPivot != null
+                ? _cameraPivot.GetComponentInChildren<Camera>(true)
+                : GetComponentInChildren<Camera>(true);
+
+            if (camera != null && camera.enabled && camera.gameObject.activeInHierarchy)
+            {
+                return;
+            }
+
+            var detail = _cameraPivot == null
+                ? "rig has no camera pivot"
+                : camera == null
+                    ? "camera pivot carries no Camera"
+                    : "camera exists but is disabled";
+
+            if (log != null)
+            {
+                log.Warn(LogCode.FurnishIncomplete, nameof(PlayerRig) + ": " + detail);
+            }
+
+            Debug.LogError("[Vardholm] PlayerRig bound with no usable camera — " + detail, this);
+        }
+
         private void Awake()
         {
             // May legitimately be absent: the furnisher adds one, but a hand-authored rig might not,
@@ -243,6 +283,8 @@ namespace ForgottenIsle.Game.Player
             {
                 _input.Interact += OnInteractPressed;
             }
+
+            VerifyCamera(log);
 
             if (session == null)
             {

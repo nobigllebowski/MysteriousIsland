@@ -176,6 +176,8 @@ namespace ForgottenIsle.Game.Diagnostics
                     return "A scene load exceeded its soft budget; the loading screen is visible longer than intended.";
                 case LogCode.CatalogMissing:
                     return "A data catalog was requested before it was populated; dependent content will be missing.";
+                case LogCode.FurnishIncomplete:
+                    return "A zone was entered without a complete playable rig: the player, its character controller or an enabled camera is missing.";
                 default:
                     return "Unrecognised log code " + ((ushort)code).ToString(CultureInfo.InvariantCulture) + ".";
             }

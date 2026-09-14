@@ -1,3 +1,4 @@
+using System.Globalization;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Player;
@@ -35,6 +36,12 @@ namespace ForgottenIsle.Game.Bootstrap
     {
         /// <summary>Name of the root every furnished object is parented to.</summary>
         public const string FurnishedRootName = "[Furnished — runtime placeholder]";
+
+        /// <summary>Unity's built-in tag that <c>Camera.main</c> resolves against.</summary>
+        private const string MainCameraTag = "MainCamera";
+
+        /// <summary>Console prefix for the per-zone furnish diagnostic.</summary>
+        private const string FurnishLogPrefix = "[Vardholm] furnish: ";
 
         private const float GroundSize = 60f;
         private const float AnchorHeight = 1f;
@@ -104,10 +111,142 @@ namespace ForgottenIsle.Game.Bootstrap
                 rig = CreateRig(scene, anchor);
             }
 
-            EnsureCamera(scene, rig);
+            var camera = EnsureCamera(scene, rig);
 
-            rig.Initialize(_session, _input, _interactions, _log);
+            // Exactly one camera may be enabled. During a zone transition two zones are briefly
+            // resident (ADR-0004's cap), and the outgoing zone's camera would otherwise still be
+            // rendering -- two overlapping views of two different islands.
+            SuppressForeignCameras(camera);
+
+            if (rig != null)
+            {
+                rig.Initialize(_session, _input, _interactions, _log);
+            }
+
+            // Reported AFTER Initialize, because Initialize is what places the rig: a diagnostic
+            // taken before it would print the spawn capsule's construction position rather than
+            // where the player actually is.
+            if (!VerifyPlayable(scene, rig, camera))
+            {
+                return null;
+            }
+
             return rig;
+        }
+
+        /// <summary>
+        /// Prints the state of everything a zone needs to be playable, and reports a gap as an error.
+        /// </summary>
+        /// <remarks>
+        /// WHY THIS EXISTS: "Display 1 - No cameras rendering" is what the player sees when this goes
+        /// wrong, and that message names no scene, no object and no cause. Every furnish now states
+        /// what it actually produced, so the next failure of this kind is one line in the console
+        /// rather than an afternoon of bisecting the bootstrap.
+        /// <para>
+        /// A missing piece is an <c>Error</c>, not a warning: the zone is loaded and the player is
+        /// standing in it, so nothing downstream will fail loudly on its own -- the game just does
+        /// not render or does not move, silently.
+        /// </para>
+        /// </remarks>
+        /// <param name="scene">The zone just furnished.</param>
+        /// <param name="rig">The rig serving it, if any.</param>
+        /// <param name="camera">The camera chosen to render it, if any.</param>
+        /// <returns>True when the player, the controller and an enabled camera all exist.</returns>
+        private bool VerifyPlayable(Scene scene, PlayerRig rig, Camera camera)
+        {
+            var controller = rig != null ? rig.GetComponent<CharacterController>() : null;
+            var cameraEnabled = camera != null && camera.enabled && camera.gameObject.activeInHierarchy;
+            var enabledCameras = CountEnabledCameras();
+
+            var report =
+                "zone '" + scene.name + "' furnished · " +
+                "active scene '" + SceneManager.GetActiveScene().name + "' · " +
+                "player " + Describe(rig != null) + " · " +
+                "controller " + Describe(controller != null) + " · " +
+                "camera " + Describe(camera != null) +
+                " (enabled " + Describe(cameraEnabled) + ") · " +
+                "tagged " + Describe(camera != null && camera.CompareTag(MainCameraTag)) + " · " +
+                "Camera.main " + Describe(Camera.main != null) + " · " +
+                "enabled cameras " + enabledCameras.ToString(CultureInfo.InvariantCulture);
+
+            // Camera.main is REPORTED but not required for the verdict: it is a cached tag lookup,
+            // and whether that cache has refreshed in the same frame the tag was set is not
+            // something to fail a zone over. The facts it depends on -- an enabled camera carrying
+            // the MainCamera tag -- are checked directly instead, so a real failure is still caught.
+            var tagged = camera != null && camera.CompareTag(MainCameraTag);
+            var complete = rig != null && controller != null && cameraEnabled && tagged;
+            if (complete && enabledCameras == 1)
+            {
+                Debug.Log(FurnishLogPrefix + report);
+                return true;
+            }
+
+            if (_log != null)
+            {
+                _log.Warn(LogCode.FurnishIncomplete, report);
+            }
+
+            // Debug.LogError as well as the structured warning: an unplayable zone is not a
+            // degradation to note in a counter, it is the run being over.
+            Debug.LogError(FurnishLogPrefix + "ZONE IS NOT PLAYABLE — " + report);
+            return false;
+        }
+
+        private static string Describe(bool present)
+        {
+            return present ? "yes" : "NO";
+        }
+
+        private static int CountEnabledCameras()
+        {
+            var cameras = Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude);
+            var count = 0;
+            for (var i = 0; i < cameras.Length; i++)
+            {
+                if (cameras[i].enabled && cameras[i].gameObject.activeInHierarchy)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Disables every camera and audio listener except the ones this zone just produced.
+        /// </summary>
+        /// <remarks>
+        /// Two things make duplicates possible: a zone transition leaves the outgoing zone resident
+        /// for a moment, and a scene opened directly in the editor may carry a camera of its own.
+        /// Disabling rather than destroying is deliberate -- a camera belonging to a scene that is
+        /// about to unload will go with it, and a camera belonging to authored content is not this
+        /// class's to delete.
+        /// </remarks>
+        /// <param name="keep">The camera that should remain enabled. Null disables nothing.</param>
+        private void SuppressForeignCameras(Camera keep)
+        {
+            if (keep == null)
+            {
+                return;
+            }
+
+            var cameras = Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude);
+            for (var i = 0; i < cameras.Length; i++)
+            {
+                if (cameras[i] != keep && cameras[i].enabled)
+                {
+                    cameras[i].enabled = false;
+                }
+            }
+
+            var keepListener = keep.GetComponent<AudioListener>();
+            var listeners = Object.FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude);
+            for (var i = 0; i < listeners.Length; i++)
+            {
+                // Two enabled listeners make Unity warn and pick one arbitrarily, which is how a
+                // zone ends up hearing itself from where the previous zone's camera stood.
+                listeners[i].enabled = listeners[i] == keepListener;
+            }
         }
 
         private static PlayerRig FindRigIn(Scene scene)
@@ -281,30 +420,73 @@ namespace ForgottenIsle.Game.Bootstrap
             return body.AddComponent<PlayerRig>();
         }
 
-        private void EnsureCamera(Scene scene, PlayerRig rig)
+        /// <summary>
+        /// Guarantees the zone has exactly one enabled, correctly tagged camera on the player's pivot.
+        /// </summary>
+        /// <remarks>
+        /// WHAT WENT WRONG BEFORE, and why this reads the way it does now: the previous version
+        /// returned early on <c>rig.CameraPivot != null</c>. A pivot is not a camera. Any path that
+        /// produced a pivot without one — an authored rig wired in the Inspector, a re-furnish of a
+        /// zone whose camera had been disabled or destroyed — left the zone with no camera at all,
+        /// and nothing anywhere said so. The symptom is Unity's "Display 1 — No cameras rendering",
+        /// which names neither the scene nor the cause.
+        /// <para>
+        /// It also adopted any camera it found in the scene without checking whether that camera was
+        /// enabled or its object active, so a disabled camera could silently become the zone's view.
+        /// </para>
+        /// <para>
+        /// The tag matters independently: an untagged camera renders perfectly well but leaves
+        /// <c>Camera.main</c> null, so anything that resolves the camera that way — Unity's own
+        /// helpers included — finds nothing.
+        /// </para>
+        /// </remarks>
+        /// <param name="scene">The zone being furnished.</param>
+        /// <param name="rig">The rig the camera must follow.</param>
+        /// <returns>The camera that will render this zone, or null when there is no rig to carry it.</returns>
+        private Camera EnsureCamera(Scene scene, PlayerRig rig)
         {
             if (rig == null)
             {
-                return;
+                return null;
             }
 
-            if (rig.CameraPivot != null)
+            // A pivot that already carries a camera is finished; one that does not still needs it.
+            var pivot = rig.CameraPivot;
+            if (pivot != null)
             {
-                return;
+                var onPivot = pivot.GetComponentInChildren<Camera>(true);
+                if (onPivot != null)
+                {
+                    return Commission(onPivot);
+                }
+
+                return Commission(BuildCamera(pivot));
             }
 
             var existing = FindCameraIn(scene);
             if (existing != null)
             {
                 rig.AttachCameraPivot(existing.transform);
-                return;
+                return Commission(existing);
             }
 
-            var pivot = new GameObject("Camera Pivot (furnished)");
-            pivot.transform.SetParent(rig.transform, false);
-            pivot.transform.localPosition = new Vector3(0f, EyeHeight - CapsuleHeight * 0.5f, 0f);
+            var created = new GameObject("Camera Pivot (furnished)");
+            created.transform.SetParent(rig.transform, false);
+            created.transform.localPosition = new Vector3(0f, EyeHeight - CapsuleHeight * 0.5f, 0f);
 
-            var camera = pivot.AddComponent<Camera>();
+            var camera = BuildCamera(created.transform);
+            rig.AttachCameraPivot(created.transform);
+            return Commission(camera);
+        }
+
+        private static Camera BuildCamera(Transform pivot)
+        {
+            // Tagged BEFORE the component is added, so the camera is registered already tagged.
+            // Camera.main is a cached tag lookup; tagging afterwards is correct but leaves the
+            // result of Camera.main within the same frame dependent on when that cache refreshes.
+            pivot.gameObject.tag = MainCameraTag;
+
+            var camera = pivot.gameObject.AddComponent<Camera>();
 
             // 62° vertical, locked, per the Mobile UX Plan's comfort commitment. Never animated.
             camera.fieldOfView = 62f;
@@ -312,9 +494,40 @@ namespace ForgottenIsle.Game.Bootstrap
             camera.farClipPlane = 500f;
             camera.backgroundColor = new Color(0.04f, 0.06f, 0.05f);
 
-            pivot.AddComponent<AudioListener>();
+            if (pivot.gameObject.GetComponent<AudioListener>() == null)
+            {
+                pivot.gameObject.AddComponent<AudioListener>();
+            }
 
-            rig.AttachCameraPivot(pivot.transform);
+            return camera;
+        }
+
+        /// <summary>Puts a camera into service: active, enabled, and resolvable as Camera.main.</summary>
+        /// <remarks>
+        /// ⚠ VERIFY: under URP a runtime-added Camera also needs its
+        /// <c>UniversalAdditionalCameraData</c>. URP is documented as adding that component on demand
+        /// when it renders the camera, so this does not add it explicitly — doing so would make
+        /// <c>ForgottenIsle.Game</c> reference the URP assembly for one component. If a furnished
+        /// zone renders black in the editor, this is the first thing to check.
+        /// </remarks>
+        private static Camera Commission(Camera camera)
+        {
+            if (camera == null)
+            {
+                return null;
+            }
+
+            if (!camera.gameObject.activeSelf)
+            {
+                camera.gameObject.SetActive(true);
+            }
+
+            camera.enabled = true;
+
+            // "MainCamera" is one of Unity's built-in tags, so this cannot fail on a fresh project
+            // the way a project-defined tag would.
+            camera.gameObject.tag = MainCameraTag;
+            return camera;
         }
 
         private static Camera FindCameraIn(Scene scene)
