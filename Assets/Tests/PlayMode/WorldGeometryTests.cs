@@ -307,6 +307,36 @@ namespace ForgottenIsle.Tests.PlayMode
                 + "so the player spawns with it behind them. It shipped at 128°.");
         }
 
+        /// <summary>The camera is above the ground, not inside the island looking out.</summary>
+        /// <remarks>
+        /// The ground is a single-sided mesh: from below it, every face is back-facing and culled,
+        /// so the view is black apart from the parts of rocks that <c>ScatterRocks</c> deliberately
+        /// buries. That is what a correct world looks like when the camera is under it, and no
+        /// structural check can tell it apart from an empty zone.
+        /// </remarks>
+        [UnityTest]
+        public IEnumerator TheCamera_IsAboveTheGroundNotInsideTheIsland()
+        {
+            var context = RequireContext();
+            yield return StartRun(context);
+
+            var camera = Camera.main;
+            Assert.That(camera, Is.Not.Null, "No main camera.");
+
+            Physics.SyncTransforms();
+            var eye = camera.transform.position;
+
+            RaycastHit hit;
+            var found = Physics.Raycast(
+                new Vector3(eye.x, eye.y + 250f, eye.z), Vector3.down, out hit, 500f);
+
+            Assert.That(found, Is.True, "Nothing solid under the camera at all.");
+            Assert.That(eye.y, Is.GreaterThan(hit.point.y),
+                "The camera is UNDER the terrain: eye y=" + eye.y.ToString("F2")
+                + ", ground y=" + hit.point.y.ToString("F2")
+                + ". From below, the single-sided ground is entirely culled and the screen is black.");
+        }
+
         // --- helpers ---------------------------------------------------------------------------
 
         private static Light FindDirectionalLight(Scene scene)

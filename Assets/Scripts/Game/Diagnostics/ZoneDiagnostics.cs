@@ -175,6 +175,31 @@ namespace ForgottenIsle.Game.Diagnostics
                  .Append('\n');
             }
 
+            // Above or below the ground is the difference between a view of an island and a view of
+            // the inside of it. From below, a single-sided terrain is entirely culled and the screen
+            // is black except for whatever pokes through from underneath.
+            if (camera != null)
+            {
+                Physics.SyncTransforms();
+                var eye = camera.transform.position;
+                RaycastHit hit;
+                if (Physics.Raycast(new Vector3(eye.x, eye.y + 250f, eye.z), Vector3.down, out hit, 500f))
+                {
+                    b.Append("  ground under the camera: y=")
+                     .Append(hit.point.y.ToString("F2", CultureInfo.InvariantCulture))
+                     .Append(" on '").Append(hit.collider.name).Append("' · eye y=")
+                     .Append(eye.y.ToString("F2", CultureInfo.InvariantCulture))
+                     .Append(eye.y < hit.point.y
+                         ? "  ← CAMERA IS UNDER THE TERRAIN. Everything above it is back-facing and culled."
+                         : "  (above ground)")
+                     .Append('\n');
+                }
+                else
+                {
+                    b.Append("  ground under the camera: NO COLLIDER HIT — nothing to stand on here.\n");
+                }
+            }
+
             if (playerBody != null)
             {
                 b.Append("  player at ").Append(playerBody.position.ToString("F2"))

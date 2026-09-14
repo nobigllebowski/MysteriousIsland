@@ -47,6 +47,12 @@ namespace ForgottenIsle.Game.Bootstrap
         /// <summary>Screen luminance below which a surface reads as black rather than as dark.</summary>
         private const float ReadableLuminance = 0.18f;
 
+        /// <summary>How far above the camera the ground probe starts, in metres.</summary>
+        private const float ProbeHeight = 250f;
+
+        /// <summary>Metres of headroom left between the eye and the surface after a lift.</summary>
+        private const float EyeClearance = 1.7f;
+
         private const float GroundSize = 60f;
         private const float AnchorHeight = 1f;
         private const float EyeHeight = 1.6f;
@@ -130,6 +136,7 @@ namespace ForgottenIsle.Game.Bootstrap
             // Reported AFTER Initialize, because Initialize is what places the rig: a diagnostic
             // taken before it would print the spawn capsule's construction position rather than
             // where the player actually is.
+            LiftAboveGround(rig, camera);
             RepairVisibility(scene, camera);
 
             var playable = VerifyPlayable(scene, rig, camera);
@@ -140,6 +147,66 @@ namespace ForgottenIsle.Game.Bootstrap
             ZoneDiagnostics.Dump(scene, camera, rig != null ? rig.transform : null);
 
             return playable ? rig : null;
+        }
+
+        /// <summary>
+        /// Puts the rig back on top of the terrain if it ended up underneath it.
+        /// </summary>
+        /// <remarks>
+        /// THE FAILURE THIS EXISTS FOR, and the evidence that identified it. The game view was black
+        /// except for two grey blobs while the scene view showed a complete, correctly lit island.
+        /// Those blobs are the giveaway: <c>ScatterRocks</c> sinks every rock a quarter of its scale
+        /// into the ground on purpose, so the only place in this world where a rock appears as a
+        /// detached grey lump against nothing is <b>from below the terrain</b> — the ground is a
+        /// single-sided mesh, its underside is back-facing and culled, and what remains is blackness
+        /// with the buried parts of rocks hanging in it.
+        /// <para>
+        /// The spawn is computed from the same height function the mesh is built from, so it is
+        /// correct on paper. What is not guaranteed is the first frame: the terrain's MeshCollider is
+        /// created in the same frame the CharacterController is, physics has not ticked, and a
+        /// controller that resolves against nothing falls straight through 2048 triangles of ground.
+        /// </para>
+        /// <para>
+        /// So the position is measured rather than trusted. A ray from high above the camera finds
+        /// the real surface, and the rig is lifted if it is under it. This is a correction with a
+        /// cause, not a nudge until the screenshot looks right: it fires only when the camera is
+        /// genuinely below the ground, and says so.
+        /// </para>
+        /// </remarks>
+        private void LiftAboveGround(PlayerRig rig, Camera camera)
+        {
+            if (rig == null || camera == null)
+            {
+                return;
+            }
+
+            // Colliders added this frame are not in the physics scene until transforms are pushed.
+            Physics.SyncTransforms();
+
+            var eye = camera.transform.position;
+            var from = new Vector3(eye.x, eye.y + ProbeHeight, eye.z);
+
+            RaycastHit hit;
+            if (!Physics.Raycast(from, Vector3.down, out hit, ProbeHeight * 2f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                return;
+            }
+
+            if (eye.y >= hit.point.y)
+            {
+                return;
+            }
+
+            var lift = hit.point.y - eye.y + EyeClearance;
+            rig.Teleport(rig.transform.position + new Vector3(0f, lift, 0f));
+
+            Debug.LogWarning(
+                "[Vardholm] the camera was BELOW the terrain: eye at y=" +
+                eye.y.ToString("F2", CultureInfo.InvariantCulture) + ", ground at y=" +
+                hit.point.y.ToString("F2", CultureInfo.InvariantCulture) + " on '" + hit.collider.name +
+                "'. From under a single-sided ground mesh every face is back-facing and culled, so the " +
+                "view is black with only the buried parts of rocks in it. Rig lifted by " +
+                lift.ToString("F2", CultureInfo.InvariantCulture) + " m.");
         }
 
         /// <summary>
