@@ -5,6 +5,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — Phase 1: Project Spine
+
+The first code in the project. Five assemblies, ~16,000 lines of C# across 79 files.
+
+- **`ForgottenIsle.Core`** — engine-free (`noEngineReferences: true`), so the rules of the game
+  are a library that can be tested without opening Unity. Primitives (`Vec3`, `LocKey`,
+  `ResultCode`), a seeded PCG random whose state serializes into the save, a signal bus, the
+  command pattern with a validate/execute split, game state, the versioned save envelope with a
+  real migration seam, engine-free JSON and CSV parsing, and localization.
+- **`ForgottenIsle.Game`** — bootstrap and composition root, the state machine, the single
+  `Update()` in the project, additive scene loading with a 20-second watchdog, the zone registry,
+  the session service, an atomic save store (flush-then-rename with `.bak` rotation), input,
+  a placeholder player rig and the dev overlay.
+- **`ForgottenIsle.UI`** — UI Toolkit framework ported from NATION: WORLD ORDER and rethemed,
+  plus the menu, pause and settings screens and their controllers.
+- **Tests** — 7 EditMode files, 1 PlayMode file.
+- **`ci/validate-structure.py`** — a static validator standing in for the compiler this
+  environment does not have: brace balance, namespace conformance, the engine-free Core rule,
+  asmdef validity, undeclared-type detection across files, LocKey coverage and duplicate types.
+- **`ci/check-layering.sh`** — the architecture gate. It has already caught a real violation.
+
+### Changed
+
+- Title is **VARDHOLM**; the prior working title is retired from all document titles.
+- ADR-0014 reverses the Phase 1 plan's uGUI decision in favour of UI Toolkit, because the team
+  already owns a working code-built UI Toolkit framework in the Nation project.
+- The Phase 1 plan's state-machine table was wrong: it had no edge into `MainMenu` from `InGame`
+  or `Paused`, which made QUIT TO MENU unreachable. Corrected to 10 edges, routing quit through
+  `Loading` so the curtain can cover scene unloading.
+
 ### Added — Phase 0: Design, Architecture, MVP, Story Foundation
 
 Initial design and architecture documentation. **No game code yet** — Phase 0 is design only,
