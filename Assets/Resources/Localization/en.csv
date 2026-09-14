@@ -1,0 +1,169 @@
+# =============================================================================
+# Vardholm — English string table (authoring copy).
+#
+# Format: key,value. One row per string. Whole-line "#" comments and blank lines
+# are ignored by ForgottenIsle.Core.Data.CsvTableParser. A value containing a
+# comma, a quote or a newline must be wrapped in double quotes, and a literal
+# quote inside a quoted value is doubled ("").
+#
+# THIS FILE IS THE AUTHORING COPY. The Editor reads it directly from
+# Assets/Localization/en.csv, but a PLAYER BUILD reads
+# Assets/Resources/Localization/en.csv — Unity only serves Resources.Load from a
+# folder literally named Resources. The two must stay identical. After editing
+# this file run, from the project root:
+#
+#     cp Assets/Localization/en.csv Assets/Resources/Localization/en.csv
+#
+# A key that is missing here renders in game as #the.key# — never as blank text.
+# That marker is the intended failure mode; do not "fix" it by hardcoding a
+# string in a screen. Add the row here instead.
+#
+# Key shape: <area>.<screen-or-subject>.<thing>. Areas in use:
+#   ui.*     player-facing chrome        zone.*   zone display names
+#   act.*    act display names           game.*   product-level strings
+#   err.*    failure messages surfaced from ResultCode
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Product
+# -----------------------------------------------------------------------------
+game.title,Vardholm
+game.subtitle,The Forgotten Isle
+game.studio,Vardholm Project
+
+# -----------------------------------------------------------------------------
+# Main menu — ForgottenIsle.UI.Screens.MainMenuScreen
+# -----------------------------------------------------------------------------
+ui.menu.title,Vardholm
+ui.menu.continue,Continue
+ui.menu.new_game,New Game
+ui.menu.load_game,Load Game
+ui.menu.settings,Settings
+ui.menu.credits,Credits
+ui.menu.quit,Quit
+ui.menu.no_save,No save found
+ui.menu.confirm_overwrite,"This slot already holds a run. Starting a new game will overwrite it."
+ui.menu.confirm_quit,Quit to desktop?
+
+# -----------------------------------------------------------------------------
+# Pause menu — ForgottenIsle.UI.Screens.PauseScreen
+# -----------------------------------------------------------------------------
+ui.pause.title,Paused
+ui.pause.resume,Resume
+ui.pause.save,Save
+ui.pause.load,Load
+ui.pause.settings,Settings
+ui.pause.quit_to_menu,Quit to Menu
+ui.pause.confirm_quit_to_menu,"Unsaved progress since your last save will be lost."
+ui.pause.playtime,Time played
+ui.pause.recorded,Recorded
+
+# -----------------------------------------------------------------------------
+# Settings — ForgottenIsle.UI.Screens.SettingsScreen
+# -----------------------------------------------------------------------------
+ui.settings.title,Settings
+ui.settings.language,Language
+ui.settings.audio,Audio
+ui.settings.audio_master,Master Volume
+ui.settings.audio_music,Music
+ui.settings.audio_sfx,Effects
+ui.settings.display,Display
+ui.settings.controls,Controls
+ui.settings.version,Version
+ui.settings.build,Build
+ui.settings.restore_defaults,Restore Defaults
+ui.settings.language_en,English
+
+# -----------------------------------------------------------------------------
+# Loading — ForgottenIsle.UI.Screens.LoadingScreen
+# -----------------------------------------------------------------------------
+ui.loading.title,Loading
+ui.loading.preparing,Preparing the shore
+ui.loading.streaming_zone,Streaming zone
+ui.loading.percent,{0}%
+ui.loading.failed_title,Could not load
+ui.loading.retry,Retry
+ui.loading.return_to_menu,Return to Menu
+
+# -----------------------------------------------------------------------------
+# Save slots — ForgottenIsle.UI.Screens.SaveSlotScreen / SaveSlotController
+# -----------------------------------------------------------------------------
+ui.save.title,Saves
+ui.save.slot,Slot {0}
+ui.save.slot_empty,Empty
+ui.save.corrupt,Damaged save
+ui.save.saved,Saved
+ui.save.saving,Saving
+ui.save.save_failed,Save failed
+ui.save.overwrite,Overwrite
+ui.save.delete,Delete
+ui.save.confirm_delete,Delete this save permanently?
+ui.save.playtime,"{0}h {1}m"
+ui.save.recorded_percent,"{0}% recorded"
+ui.save.saved_at,Saved {0}
+ui.save.version_too_new,Made by a newer version of the game
+
+# -----------------------------------------------------------------------------
+# Common controls — shared by every screen
+# -----------------------------------------------------------------------------
+ui.common.back,Back
+ui.common.cancel,Cancel
+ui.common.ok,OK
+ui.common.yes,Yes
+ui.common.no,No
+ui.common.confirm,Confirm
+ui.common.close,Close
+ui.common.continue,Continue
+ui.common.retry,Retry
+ui.common.loading,Loading
+ui.common.none,None
+ui.common.unknown,Unknown
+
+# -----------------------------------------------------------------------------
+# Heads-up display — ForgottenIsle.UI.Controllers.HudController
+# -----------------------------------------------------------------------------
+ui.hud.zone,Zone
+ui.hud.clock,"Day {0}, {1}"
+ui.hud.discovery_recorded,Recorded
+ui.hud.interact,Examine
+
+# -----------------------------------------------------------------------------
+# Toasts — ForgottenIsle.UI.Core.ToastLayer callers
+# -----------------------------------------------------------------------------
+ui.toast.game_saved,Game saved
+ui.toast.zone_entered,Entered {0}
+ui.toast.save_failed,Could not save
+
+# -----------------------------------------------------------------------------
+# Failure messages, one per ResultCode the player can actually provoke.
+# Keyed by the code name in snake_case so a handler can map mechanically.
+# -----------------------------------------------------------------------------
+err.unknown_command,That action is not available.
+err.illegal_state_transition,That is not possible right now.
+err.no_handler,That action is not available.
+err.invalid_argument,That request was not understood.
+err.not_found,Not found.
+err.save_write_failed,The save could not be written.
+err.save_corrupt,That save file is damaged and cannot be read.
+err.save_version_too_new,That save was made by a newer version of the game.
+err.scene_not_found,That place does not exist in this build.
+err.already_loading,Already loading.
+err.load_timed_out,Loading took too long and was stopped.
+err.slot_empty,That slot is empty.
+err.not_allowed_in_state,That is not possible right now.
+
+# -----------------------------------------------------------------------------
+# Zones. Keys are DERIVED by SceneKeys.ZoneDisplayKey — the scene ZoneRibcage
+# yields zone.ribcage.name. Adding a zone scene without adding its row here
+# ships a save-slot card reading #zone.<id>.name#.
+# -----------------------------------------------------------------------------
+zone.ribcage.name,The Ribcage
+zone.ribcage.subtitle,Wreck shelf
+zone.fernmaw.name,Fernmaw
+zone.fernmaw.subtitle,The fern gully
+
+# -----------------------------------------------------------------------------
+# Acts
+# -----------------------------------------------------------------------------
+act.one.name,Act One — Thirst
+act.one.subtitle,Thirty-six hours of fresh water
