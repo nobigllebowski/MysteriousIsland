@@ -2,6 +2,7 @@ using System;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.Primitives;
 using ForgottenIsle.Game.Input;
+using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Session;
 using UnityEngine;
 
@@ -12,13 +13,18 @@ namespace ForgottenIsle.Game.Player
     /// </summary>
     /// <remarks>
     /// <para>
-    /// WHY this is not a <c>CharacterController</c> and not a rigidbody: Phase 1's job is to prove the
-    /// architecture — that input reaches a view, that the view's pose reaches the session, and that
-    /// the session's pose survives a save. Real locomotion (slopes, steps, water, the sickness-safe
-    /// camera work ADR-0008 commits to) is Phase 2's problem and will be built against a movement
-    /// spec that does not exist yet. A capsule moved by <c>transform.position</c> proves everything
-    /// Phase 1 needs to prove and throws away cleanly, whereas a half-tuned character controller would
-    /// be argued with for months.
+    /// PHASE 2: this now drives a <c>CharacterController</c>. Phase 1 moved the transform directly,
+    /// which was right while the only thing being proved was that input reaches a view and a pose
+    /// reaches the session — but it walks through hills, and the zones now have hills. The controller
+    /// buys ground following, slope handling and step-over for the cost of one component.
+    /// <para>
+    /// Feel is deliberately asymmetric: acceleration is slower than deceleration, so starting has
+    /// weight and stopping is crisp. Yaw turns the body; pitch moves only the camera pivot, clamped,
+    /// because pitching the body would tilt the direction the player walks.
+    /// </para>
+    /// <para>
+    /// The transform-move path is kept as a fallback for a rig with no controller — a hand-authored
+    /// one, or an EditMode test — so movement degrades rather than failing.
     /// </para>
     /// <para>
     /// WHY the router is polled rather than subscribed to: <see cref="InputRouter"/> reads its actions
@@ -68,6 +74,31 @@ namespace ForgottenIsle.Game.Player
         [SerializeField, Tooltip("Seconds between writes of this rig's pose into the session.")]
         private float _poseWriteIntervalSeconds = DefaultPoseWriteIntervalSeconds;
 
+        /// <summary>Metres per second squared while the stick is pushed.</summary>
+        public const float DefaultAcceleration = 18f;
+
+        /// <summary>Metres per second squared while it is not. Higher, so stopping feels crisp.</summary>
+        public const float DefaultDeceleration = 26f;
+
+        /// <summary>Downward acceleration. Earth gravity reads as floaty at this scale.</summary>
+        public const float DefaultGravity = -22f;
+
+        /// <summary>How far the player may look up or down, in degrees.</summary>
+        public const float DefaultPitchLimit = 78f;
+
+        [Header("Movement feel")]
+        [SerializeField, Tooltip("Metres per second squared while accelerating.")]
+        private float _acceleration = DefaultAcceleration;
+
+        [SerializeField, Tooltip("Metres per second squared while stopping.")]
+        private float _deceleration = DefaultDeceleration;
+
+        [SerializeField, Tooltip("Downward acceleration in metres per second squared.")]
+        private float _gravity = DefaultGravity;
+
+        [SerializeField, Tooltip("Maximum look pitch above and below the horizon, in degrees.")]
+        private float _pitchLimit = DefaultPitchLimit;
+
         [Header("References")]
         [SerializeField, Tooltip("Transform yawed by look input. Usually the camera's parent pivot.")]
         private Transform _cameraPivot;
@@ -112,6 +143,11 @@ namespace ForgottenIsle.Game.Player
         private Vector2 _lookInput;
         private float _yawDegrees;
         private float _sinceLastPoseWrite;
+        private CharacterController _controller;
+        private Vector3 _horizontalVelocity;
+        private float _verticalVelocity;
+        private float _pitchDegrees;
+        private InteractionSystem _interactions;
 
         /// <summary>True once the rig has been given a session to report its pose to.</summary>
         public bool IsBound => _session != null;
@@ -135,10 +171,78 @@ namespace ForgottenIsle.Game.Player
         /// device.
         /// </param>
         /// <param name="log">Diagnostics sink. Null tolerated.</param>
+        private void Awake()
+        {
+            // May legitimately be absent: the furnisher adds one, but a hand-authored rig might not,
+            // and ApplyMove falls back to a transform move in that case.
+            _controller = GetComponent<CharacterController>();
+        }
+
+        /// <summary>
+        /// Moves the rig without the controller fighting the write.
+        /// </summary>
+        /// <remarks>
+        /// A <c>CharacterController</c> caches its own position and will snap back if the transform
+        /// is written underneath it. Disabling it across the write is the documented way to teleport,
+        /// and every spawn, anchor placement and restored pose goes through here for that reason.
+        /// </remarks>
+        /// <param name="position">Where to put the rig.</param>
+        public void Teleport(Vector3 position)
+        {
+            if (_controller != null)
+            {
+                _controller.enabled = false;
+                transform.position = position;
+                _controller.enabled = true;
+            }
+            else
+            {
+                transform.position = position;
+            }
+
+            // Velocity from before the teleport is meaningless at the destination, and carrying it
+            // over launches the player sideways out of a fresh zone.
+            _horizontalVelocity = Vector3.zero;
+            _verticalVelocity = 0f;
+        }
+
         public void Initialize(SessionService session, InputRouter input, ICoreLog log)
         {
+            Initialize(session, input, null, log);
+        }
+
+        /// <summary>
+        /// Binds the rig, including the interaction system it drives.
+        /// </summary>
+        /// <remarks>
+        /// The rig owns the interaction tick because it is the one component that already runs every
+        /// frame with the player's final position in hand, and the project's rule is one central
+        /// per-frame loop rather than an Update per system. A proximity scan wants exactly what
+        /// LateUpdate has just finished computing.
+        /// </remarks>
+        /// <param name="session">Run state the pose is written into.</param>
+        /// <param name="input">Input source. Null leaves the rig inert.</param>
+        /// <param name="interactions">Interaction system to drive. Null disables interaction.</param>
+        /// <param name="log">Diagnostics sink. Null tolerated.</param>
+        public void Initialize(
+            SessionService session, InputRouter input, InteractionSystem interactions, ICoreLog log)
+        {
             _session = session;
+
+            if (_input != null)
+            {
+                // Rebinding happens on every zone entry; without this the previous zone's rig stays
+                // subscribed and a single button press fires two interactions.
+                _input.Interact -= OnInteractPressed;
+            }
+
             _input = input;
+            _interactions = interactions;
+
+            if (_input != null)
+            {
+                _input.Interact += OnInteractPressed;
+            }
 
             if (session == null)
             {
@@ -154,7 +258,7 @@ namespace ForgottenIsle.Game.Player
             {
                 // A genuine continue: the run was already standing in this zone, so put it back exactly
                 // where it stood rather than wherever the scene author left the prefab.
-                transform.position = session.PlayerPosition.ToVector3();
+                Teleport(session.PlayerPosition.ToVector3());
                 SetYaw(session.PlayerYawDegrees);
             }
             else
@@ -228,7 +332,7 @@ namespace ForgottenIsle.Game.Player
                 return;
             }
 
-            transform.position = anchor.Position;
+            Teleport(anchor.Position);
             SetYaw(anchor.YawDegrees);
         }
 
@@ -302,30 +406,57 @@ namespace ForgottenIsle.Game.Player
             ApplyLook(delta);
             ApplyMove(delta);
             AdvancePoseCadence(delta);
+
+            if (_interactions != null)
+            {
+                _interactions.Tick(transform.position);
+            }
         }
 
         private void ApplyLook(float delta)
         {
-            if (Mathf.Abs(_lookInput.x) < InputDeadzone)
+            // Yaw turns the whole body, because movement is relative to facing. Pitch moves only the
+            // camera pivot -- pitching the body would tilt the direction the player walks, which is
+            // the classic "I look down and sink into the floor" bug.
+            if (Mathf.Abs(_lookInput.x) >= InputDeadzone)
+            {
+                SetYaw(_yawDegrees + _lookInput.x * _yawDegreesPerSecond * delta);
+            }
+
+            if (Mathf.Abs(_lookInput.y) >= InputDeadzone)
+            {
+                // Inverted deliberately: dragging down on a touchscreen looks down, matching how
+                // every other phone camera control behaves.
+                _pitchDegrees = Mathf.Clamp(
+                    _pitchDegrees - _lookInput.y * _yawDegreesPerSecond * delta,
+                    -_pitchLimit,
+                    _pitchLimit);
+
+                ApplyPitch();
+            }
+        }
+
+        private void ApplyPitch()
+        {
+            if (_cameraPivot == null)
             {
                 return;
             }
 
-            SetYaw(_yawDegrees + _lookInput.x * _yawDegreesPerSecond * delta);
+            _cameraPivot.localRotation = Quaternion.Euler(_pitchDegrees, 0f, 0f);
         }
 
         private void ApplyMove(float delta)
         {
-            if (_moveInput.sqrMagnitude < InputDeadzone * InputDeadzone)
-            {
-                return;
-            }
-
-            // Clamp rather than normalise: a stick pushed half way should walk at half speed, and only
-            // a diagonal at full deflection needs bringing back under one.
             var input = _moveInput;
-            if (input.sqrMagnitude > 1f)
+            if (input.sqrMagnitude < InputDeadzone * InputDeadzone)
             {
+                input = Vector2.zero;
+            }
+            else if (input.sqrMagnitude > 1f)
+            {
+                // Clamp rather than normalise: a stick pushed half way walks at half speed, and only
+                // a diagonal at full deflection needs bringing back under one.
                 input = input.normalized;
             }
 
@@ -333,11 +464,39 @@ namespace ForgottenIsle.Game.Player
             var sin = Mathf.Sin(yawRadians);
             var cos = Mathf.Cos(yawRadians);
 
-            // Rotate the stick into the rig's facing, so "forward" means where the camera is pointed.
-            var worldX = input.x * cos + input.y * sin;
-            var worldZ = input.y * cos - input.x * sin;
+            // Rotate the stick into the rig's facing, so "forward" means where the camera points.
+            var desired = new Vector3(
+                input.x * cos + input.y * sin,
+                0f,
+                input.y * cos - input.x * sin) * _moveSpeed;
 
-            transform.position += new Vector3(worldX, 0f, worldZ) * (_moveSpeed * delta);
+            // Accelerating and decelerating at different rates is most of what separates "a capsule
+            // teleporting around" from "a person walking". Stopping is faster than starting.
+            var rate = desired.sqrMagnitude > 0.0001f ? _acceleration : _deceleration;
+            _horizontalVelocity = Vector3.MoveTowards(_horizontalVelocity, desired, rate * delta);
+
+            if (_controller == null)
+            {
+                // No controller (a hand-authored rig without one, or a test): fall back to the
+                // transform move that Phase 1 used. Movement still works; ground following does not.
+                transform.position += _horizontalVelocity * delta;
+                return;
+            }
+
+            if (_controller.isGrounded && _verticalVelocity < 0f)
+            {
+                // A small downward bias rather than zero: exactly zero makes isGrounded flicker on
+                // slopes, which makes the character stutter and stick.
+                _verticalVelocity = -2f;
+            }
+            else
+            {
+                _verticalVelocity += _gravity * delta;
+            }
+
+            var motion = _horizontalVelocity;
+            motion.y = _verticalVelocity;
+            _controller.Move(motion * delta);
         }
 
         private void AdvancePoseCadence(float delta)
@@ -368,6 +527,22 @@ namespace ForgottenIsle.Game.Player
             if (_cameraPivot != null)
             {
                 _cameraPivot.rotation = rotation;
+            }
+        }
+
+        private void OnInteractPressed()
+        {
+            if (_interactions != null)
+            {
+                _interactions.Activate();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_input != null)
+            {
+                _input.Interact -= OnInteractPressed;
             }
         }
 

@@ -157,6 +157,13 @@ UNITY_TYPES = {
     "HideFlags", "LogType", "ILogger", "ILogHandler", "Application",
     "RuntimePlatform", "DeviceType", "SystemLanguage", "ScreenOrientation",
     "FindObjectsInactive", "FindObjectsSortMode", "SceneUtility",
+    # Rendering and physics types used by runtime zone construction (Phase 2).
+    "Mesh", "MeshFilter", "MeshRenderer", "MeshCollider", "Renderer", "Material",
+    "Shader", "RenderSettings", "FogMode", "LightShadows", "AmbientMode",
+    "CharacterController", "CollisionFlags", "PhysicsMaterial", "PhysicMaterial",
+    "Collider", "BoxCollider", "SphereCollider", "CapsuleCollider", "Rigidbody",
+    "AudioClip", "AudioSource", "AudioListener", "AudioRolloffMode",
+    "Texture2D", "Sprite", "Gradient", "AnimationCurve", "LayerMask", "Ray", "RaycastHit",
     # Math and geometry
     "Vector2", "Vector3", "Vector4", "Vector2Int", "Vector3Int", "Quaternion",
     "Matrix4x4", "Color", "Color32", "Rect", "RectInt", "RectOffset", "Bounds",

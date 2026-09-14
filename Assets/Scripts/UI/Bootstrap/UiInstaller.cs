@@ -13,6 +13,7 @@ using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
 using ForgottenIsle.UI.Controllers;
 using ForgottenIsle.UI.Core;
+using ForgottenIsle.UI.Hud;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -67,6 +68,8 @@ namespace ForgottenIsle.UI.Bootstrap
         private MainMenuController _menu;
         private PauseController _pause;
         private IdleScreen _idleScreen;
+        private HudController _hud;
+        private IVisualElementScheduledItem _inputPump;
         private LoadFailedScreen _loadFailedScreen;
         private IDisposable _stateSubscription;
 
@@ -142,6 +145,15 @@ namespace ForgottenIsle.UI.Bootstrap
             _slots = context.Slots;
 
             _idleScreen = new IdleScreen(_ui.Context);
+
+            // The HUD replaces Phase 1's inert idle screen as what occupies the stack in-world. It
+            // is a screen rather than a separate overlay so it participates in the same transitions
+            // and z-order as everything else.
+            _hud = new HudController(
+                new HudScreen(_ui.Context, OnPauseRequested),
+                context.Signals,
+                context.Localization,
+                context.Log);
             _loadFailedScreen = new LoadFailedScreen(_ui.Context, OnReturnToMenu);
 
             _menu = new MainMenuController(_ui, context.Commands, _slots, context.Log, Application.version);
@@ -256,6 +268,38 @@ namespace ForgottenIsle.UI.Bootstrap
         /// "pause" — transition, snapshot, panel, and a toast if the mode machine refuses — stays in one
         /// place and is the same whether the request came from a button or from this key.
         /// </remarks>
+        /// <summary>
+        /// Pumps the on-screen thumb controls into the input router, once per frame.
+        /// </summary>
+        /// <remarks>
+        /// Scheduled on the panel rather than run from a <c>MonoBehaviour.Update</c>. The project
+        /// keeps exactly one Update (the Ticker), and UI Toolkit's scheduler is the UI layer's own
+        /// per-frame hook — so this costs no new engine loop and dies with the panel automatically.
+        /// <para>
+        /// Move is a held state and is written every frame, including zero. Look is a delta and is
+        /// consumed, so a finger held still stops turning the camera.
+        /// </para>
+        /// </remarks>
+        private void StartInputPump()
+        {
+            if (_inputPump != null)
+            {
+                return;
+            }
+
+            _inputPump = _hud.Screen.Root.schedule.Execute(() =>
+            {
+                var touch = _hud.Screen.Touch;
+                if (touch == null || _context == null)
+                {
+                    return;
+                }
+
+                _context.Input.SetVirtualMove(touch.Move);
+                _context.Input.AddVirtualLook(touch.ConsumeLook());
+            }).Every(0);
+        }
+
         private void OnPauseRequested()
         {
             _pause.Open();
@@ -306,12 +350,14 @@ namespace ForgottenIsle.UI.Bootstrap
             switch (state)
             {
                 case GameStateId.MainMenu:
+                    _hud.SetGameplayActive(false);
                     _pause.Hide();
                     _ui.Curtain.Hide();
                     _menu.Show();
                     break;
 
                 case GameStateId.Loading:
+                    _hud.SetGameplayActive(false);
                     // Bound to the loader's own progress, so the bar is determinate and a wedged load looks
                     // different from a slow one.
                     _ui.Curtain.Show(LoadingCaptionKey, _context.SceneLoader);
@@ -321,14 +367,19 @@ namespace ForgottenIsle.UI.Bootstrap
                     _pause.Hide();
                     _ui.Curtain.Hide();
 
-                    // Clears the stack: the menu (or the failure panel) leaves it, and what remains is one
-                    // inert screen. In Phase 1 the world is drawn by the scene, not by a screen, so there
-                    // is nothing to put in its place — and ScreenStack refuses to be left empty, since an
-                    // empty stack in the general case is a black rectangle nobody can leave.
-                    _ui.Screens.ReplaceAll(_idleScreen);
+                    // Phase 2 replaces Phase 1's inert idle screen with the real HUD. The stack is
+                    // still cleared first -- the menu or the failure panel has to leave -- and the
+                    // HUD is what remains, because ScreenStack refuses to be left empty.
+                    _ui.Screens.ReplaceAll(_hud.Screen);
+                    _hud.PrimeObjective(_context.Progress.ObjectiveKey);
+                    _hud.SetGameplayActive(true);
+                    StartInputPump();
                     break;
 
                 case GameStateId.Paused:
+                    // Controls down before the panel goes up: a stick still deflected behind a pause
+                    // menu keeps the player walking into scenery they cannot see.
+                    _hud.SetGameplayActive(false);
                     _pause.Show();
                     break;
 
@@ -384,6 +435,8 @@ namespace ForgottenIsle.UI.Bootstrap
             if (_context != null)
             {
                 _context.Input.Pause -= OnPauseRequested;
+                _inputPump?.Pause();
+                _hud?.Dispose();
                 _context.Input.Resume -= OnResumeRequested;
             }
         }

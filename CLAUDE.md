@@ -4,7 +4,8 @@ Operating rules for this repository. Read `docs/PROJECT_HANDOFF.md` at the start
 
 **Game:** VARDHOLM — premium portrait mobile mystery-adventure. Unity 6 (`6000.6.0f1`), C#, URP.
 **Branch:** `claude/keen-darwin-frw656` (the repository's only branch, and its default).
-**Phase:** 1.5 (Unity integration) complete and pushed. Phase 2 NOT started.
+**Phase:** 2 (playable vertical slice) implemented and pushed — but never compiled or run.
+Phase 3 NOT started. See `docs/PHASE_2_REPORT.md`.
 **Setup:** after cloning, run `Vardholm → Setup Project` in Unity. Never create scenes by hand.
 
 ---
@@ -14,7 +15,7 @@ Operating rules for this repository. Read `docs/PROJECT_HANDOFF.md` at the start
 `docs/` is authoritative. Where documents disagree, this order wins:
 
 1. **Shipped code** — for anything already implemented.
-2. **`docs/DECISIONS.md`** — the decision ledger, including all 14 ADRs.
+2. **`docs/DECISIONS.md`** — the decision ledger, including all 18 ADRs.
 3. **`docs/architecture/00-decisions.md`** — the ADRs in full.
 4. Everything else in `docs/`.
 

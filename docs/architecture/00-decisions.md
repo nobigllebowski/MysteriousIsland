@@ -294,6 +294,97 @@ prevent. Vardholm passes dependencies through constructors.
 
 ---
 
+## ADR-0015 — Objectives are derived, never stored
+
+**Decision.** The current objective is a pure function of progression and the player's zone —
+`Objectives.Current(WorldProgress, zoneId)` in engine-free Core. No objective is written to the
+save, advanced by a handler, or held as state anywhere.
+
+**Why.** A stored objective is a second copy of the truth, and the two copies drift the moment a
+player does something out of order. The Phase 2 chain is short enough to skip a beat in: take the
+brass tag before reading the standing stone and a stored "read the stone" instruction survives
+into a state where it is already satisfied. Derivation cannot drift, because there is nothing to
+drift from — any state, reached in any order, yields the line its state implies.
+
+**Consequence.**
+- Adding a beat means adding a branch to one function, not a migration.
+- The objective needs no save section, and a restored run shows the right line with no extra step.
+- The HUD must be able to *pull* the current objective as well as receive the change signal
+  (`HudController.PrimeObjective`), because it is built after a restore has already published.
+- The cost is real: the function is a chain of conditions, and it will get long. When it does, the
+  answer is a table of (predicate → key) rows, not a stored field.
+
+---
+
+## ADR-0016 — Zones are furnished at runtime from a recipe, not authored as assets
+
+**Decision.** Zone scene assets stay empty. `ZoneBuilder` holds one `Recipe` per zone — seed,
+terrain amplitude, fog, rock and flora counts, landmark, and its interactables — and constructs
+everything on entry via `ZoneMeshes`. `ZoneFurnisher` skips a zone that already has authored
+content, so hand-built content can replace a recipe later without a code change.
+
+**Why.** Unity scene files are editor-serialized YAML with GUID cross-references. This project is
+developed in an environment with no Unity, so an authored scene could only be written blind, and a
+corrupt scene asset is worse than a missing one. Beyond that constraint, a recipe is reviewable in
+a diff and a scene is not: "Fernmaw has 46 flora and a fog density of 0.045" is a line someone can
+disagree with.
+
+**Consequence.**
+- `SCENE_CONTRACT.md` holds: the scene is the contract, the builder is the content.
+- Zones are cheap to add — a second `Recipe`, not a day in the editor.
+- Persistence-by-rebuild follows necessarily: a zone destroyed and rebuilt on each entry must
+  re-apply collected state, which is what `Interactable.ApplyRestoredState` exists for.
+- **The look is unverified.** `CreateMaterial` walks a shader fallback chain (URP Lit → Standard →
+  Unlit/Color → Sprites/Default) and which one resolves decides whether the island looks lit or
+  flat. Tagged `⚠ VERIFY` in the source.
+- This is a scaffold for a vertical slice, not a terrain pipeline. It should be replaced by
+  authored art before the MVP boundary, and the empty-scene check is the seam that allows it.
+
+---
+
+## ADR-0017 — Interaction is a registry scan, not physics
+
+**Decision.** `InteractionSystem` keeps a list of registered `Interactable`s and picks the nearest
+eligible one by squared distance each `LateUpdate`. No `OverlapSphere`, no trigger colliders, no
+`OnTriggerEnter`.
+
+**Why.** A physics query answers "what is near me" — but the question is "what may I act on now",
+and eligibility is a progression rule (`CanInteract(IInteractionServices)`), not a geometric one. A
+trigger-based design ends up asking physics a question and then re-filtering the answer, which is
+two mechanisms where one will do. A registry is also testable without a physics tick, and a zone
+that is rebuilt on every entry registers its contents anyway.
+
+**Consequence.**
+- The scan is O(n) over one zone's interactables — tens of objects, not thousands. If a zone ever
+  holds enough to matter, the fix is a spatial bucket, not colliders.
+- Nothing interacts by being touched, so an interactable needs no collider at all.
+- `Interactable` is an abstract `MonoBehaviour` rather than an interface, deliberately: registration
+  and lifetime belong to the base, and every implementation is a component anyway.
+- The prompt is published as a signal, so the HUD learns of a target without gameplay knowing a
+  HUD exists.
+
+---
+
+## ADR-0018 — No placeholder audio binaries, ever
+
+**Decision.** `AudioDirector` is fully wired and the project ships **zero** audio files. Every
+clip lookup may return null; every play call is then a no-op.
+
+**Why.** The alternative — generating placeholder `.wav` files so the audio path has something to
+play — puts unreviewable binary bytes in git and, far worse, makes "the audio works" look true when
+nothing has been authored. A silent game that is honestly silent is a smaller problem than a noisy
+one that has hidden the fact that its content does not exist.
+
+**Consequence.**
+- Clips resolve by convention (`Audio/ambient_<zone>`, `Audio/sfx_<verb>`) through `Resources`, the
+  same mechanism the localization tables use, so adding sound is a file drop, not an Inspector pass.
+- Misses are cached, so an absent effect is not looked up on every interaction.
+- The director warns **once** that it is running silent, so the state is visible in the log without
+  drowning it.
+- This generalizes: no fabricated asset of any kind stands in for content that has not been made.
+
+---
+
 ## Open items — tracked, not resolved
 
 | # | Item | Owner | Due |

@@ -13,6 +13,8 @@ using ForgottenIsle.Core.Save;
 using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Core.Time;
 using ForgottenIsle.Game.Input;
+using ForgottenIsle.Game.Interaction;
+using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
 using ForgottenIsle.Game.Session;
@@ -59,6 +61,8 @@ namespace ForgottenIsle.Game.Bootstrap
             ZoneRegistry zones,
             SaveSlotService slots,
             InputRouter input,
+            ProgressService progress,
+            InteractionSystem interactions,
             IReadOnlyList<ISaveParticipant> saveParticipants)
         {
             if (log == null)
@@ -126,6 +130,8 @@ namespace ForgottenIsle.Game.Bootstrap
             SceneLoader = sceneLoader;
             Zones = zones;
             Slots = slots ?? throw new ArgumentNullException(nameof(slots));
+            Progress = progress ?? throw new ArgumentNullException(nameof(progress));
+            Interactions = interactions ?? throw new ArgumentNullException(nameof(interactions));
             Input = input;
 
             // Copied defensively. The participant list is what a save iterates; handing out the
@@ -174,6 +180,12 @@ namespace ForgottenIsle.Game.Bootstrap
         /// command, because only a command handler may mutate.
         /// </remarks>
         public SaveSlotService Slots { get; }
+
+        /// <summary>Progression: what the player has inspected, collected and unlocked.</summary>
+        public ProgressService Progress { get; }
+
+        /// <summary>Proximity interaction: what the player can act on right now.</summary>
+        public InteractionSystem Interactions { get; }
 
         /// <summary>
         /// Player input, already gated on the state machine so it reads as centred outside

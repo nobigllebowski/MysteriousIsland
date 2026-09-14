@@ -180,3 +180,42 @@ zone.fernmaw.subtitle,The fern gully
 # -----------------------------------------------------------------------------
 act.one.name,Act One — Thirst
 act.one.subtitle,Thirty-six hours of fresh water
+
+# --- Phase 2: objectives -----------------------------------------------------
+# One line, present tense, no exclamation marks. The objective tells the player where to point
+# themselves, never what to feel about it.
+objective.explore_ribcage,Explore the shore.
+objective.inspect_rib_stone,Read the standing stone.
+objective.find_the_tag,Something here was tagged. Find it.
+objective.enter_fernmaw,Follow the gully inland.
+objective.explore_fernmaw,Explore the channel.
+objective.recover_the_reel,Recover the reel.
+objective.return_to_shore,Return to the shore.
+objective.act_complete,The record is current.
+
+# --- Phase 2: interaction verbs ---------------------------------------------
+interact.inspect,INSPECT
+interact.take,TAKE
+interact.travel,TRAVEL
+interact.examine,EXAMINE
+
+# --- Phase 2: interactable names --------------------------------------------
+interactable.rib_stone,Standing Stone
+interactable.brass_tag,Brass Tag
+interactable.gully_mouth,The Gully Mouth
+interactable.aqueduct_cut,Cut Channel Wall
+interactable.waterlogged_reel,Waterlogged Reel
+interactable.channel_mouth,The Channel Mouth
+
+# --- Phase 2: narration ------------------------------------------------------
+# Nadia's voice: observation first, then the caveat. Never explains the mystery; only records it.
+narration.marker.rib_stone,"The stone is warm. Not sun-warm — it has no sun on this side. Warm from underneath."
+narration.discovery.brass_tag,"A brass tag, wired to the net drum. Stamped 11.04.97 and two initials. Someone serviced this."
+narration.marker.aqueduct_cut,"The wall is cut. Not weathered into shape — cut, at a constant fall, by someone counting."
+narration.discovery.waterlogged_reel,"Quarter-inch tape, waterlogged. Something recorded down here, and meant to keep it."
+narration.gate.ribcage_to_fernmaw,"The gully runs inland. The vines across it were cut — recently, and not by weather."
+narration.gate.fernmaw_to_ribcage,"The channel falls back toward the shore."
+
+# --- Phase 2: HUD ------------------------------------------------------------
+ui.hud.pause,Pause
+ui.hud.objective_label,OBJECTIVE

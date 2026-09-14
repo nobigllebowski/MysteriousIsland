@@ -86,4 +86,96 @@ namespace ForgottenIsle.Core.Signals
             SimHours = simHours;
         }
     }
+
+    /// <summary>Progress changed: something was inspected, collected, or a zone opened.</summary>
+    /// <remarks>
+    /// Carries no payload beyond what changed, because every listener re-reads the authoritative
+    /// <c>WorldProgress</c> anyway. Putting the whole progress object in the signal would hand
+    /// listeners a mutable reference to state only one service is allowed to change.
+    /// </remarks>
+    public readonly struct ProgressChangedSignal : ISignal
+    {
+        /// <summary>The content id that changed.</summary>
+        public string ContentId { get; }
+
+        /// <summary>What kind of change it was.</summary>
+        public ProgressChangeKind Kind { get; }
+
+        /// <param name="contentId">The content id that changed.</param>
+        /// <param name="kind">What kind of change it was.</param>
+        public ProgressChangedSignal(string contentId, ProgressChangeKind kind)
+        {
+            ContentId = contentId;
+            Kind = kind;
+        }
+    }
+
+    /// <summary>What a <see cref="ProgressChangedSignal"/> describes.</summary>
+    public enum ProgressChangeKind : byte
+    {
+        /// <summary>A marker was read for the first time.</summary>
+        Inspected = 0,
+
+        /// <summary>A discovery was taken.</summary>
+        Collected = 1,
+
+        /// <summary>A zone became travellable.</summary>
+        ZoneUnlocked = 2,
+
+        /// <summary>Progress was wiped or replaced wholesale (new game, or a save was loaded).</summary>
+        Replaced = 3
+    }
+
+    /// <summary>The objective line changed.</summary>
+    public readonly struct ObjectiveChangedSignal : ISignal
+    {
+        /// <summary>Localization key of the new objective. Empty means "show nothing".</summary>
+        public string ObjectiveKey { get; }
+
+        /// <param name="objectiveKey">Localization key of the new objective.</param>
+        public ObjectiveChangedSignal(string objectiveKey)
+        {
+            ObjectiveKey = objectiveKey;
+        }
+    }
+
+    /// <summary>What the player is currently close enough to interact with.</summary>
+    /// <remarks>
+    /// This is how gameplay tells the HUD to show a prompt without touching a VisualElement. The
+    /// interaction system publishes it; the HUD controller listens. Neither knows the other exists.
+    /// </remarks>
+    public readonly struct InteractionTargetChangedSignal : ISignal
+    {
+        /// <summary>Localization key naming the object. Empty when nothing is in range.</summary>
+        public string NameKey { get; }
+
+        /// <summary>Localization key of the verb -- INSPECT, TAKE, TRAVEL. Empty when none.</summary>
+        public string PromptKey { get; }
+
+        /// <summary>False when the player has walked out of range of everything.</summary>
+        public bool HasTarget { get; }
+
+        /// <param name="nameKey">Localization key naming the object.</param>
+        /// <param name="promptKey">Localization key of the verb.</param>
+        /// <param name="hasTarget">Whether anything is in range.</param>
+        public InteractionTargetChangedSignal(string nameKey, string promptKey, bool hasTarget)
+        {
+            NameKey = nameKey;
+            PromptKey = promptKey;
+            HasTarget = hasTarget;
+        }
+    }
+
+    /// <summary>A line of atmospheric text to show the player, from an inspection or a pickup.</summary>
+    public readonly struct NarrationSignal : ISignal
+    {
+        /// <summary>Localization key of the line.</summary>
+        public string LineKey { get; }
+
+        /// <param name="lineKey">Localization key of the line.</param>
+        public NarrationSignal(string lineKey)
+        {
+            LineKey = lineKey;
+        }
+    }
 }

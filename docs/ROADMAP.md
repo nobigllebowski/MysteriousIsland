@@ -1,6 +1,6 @@
 # ROADMAP
 
-**Position: Phase 1 complete. Phase 2 is next and has not started.**
+**Position: Phase 2 implemented, never compiled or run. Phase 3 has not started.**
 
 Full per-phase detail — deliverables, exit criteria, playable state, dependencies —
 in [`production/02-mvp-scope-and-roadmap.md`](production/02-mvp-scope-and-roadmap.md) Part 2.
@@ -41,23 +41,27 @@ Three changes to the original brief, argued and accepted (see `DECISIONS.md` §D
 - **Business model became a Phase 0 exit gate.** It decides whether the prologue must stand alone.
   Settled as D-3.
 
-## Phase 2 — the next phase
+## Phase 2 — implemented, unverified
 
 **Goal:** a player who can walk around the Ribcage in first person and interact with things.
 
-Deliverables: real first-person controller replacing the placeholder capsule; camera with the
-locked 62° vertical FOV and comfort defaults ON; floating joystick + swipe-look per ADR-0008;
-`InteractionSystem` with candidate arbitration and hysteresis; the contextual interaction prompt;
-the Ribcage greybox; `ZoneEntryAnchor` in a real scene.
+**Delivered:** `CharacterController`-driven first-person rig with gravity and ground following;
+floating joystick + look pad per ADR-0008; `InteractionSystem` with proximity arbitration and a
+contextual prompt; two runtime-built zones (Ribcage and Fernmaw) instead of one greybox;
+progression, derived objectives, and a HUD; progress as the third save participant.
+Full account in `PHASE_2_REPORT.md`.
 
-**Blocked on scenes existing.** Nothing in Phase 2 can be tested until the four `.unity` scenes
-are authored per `Assets/Scenes/README.md`.
+**No longer blocked on scenes.** `Vardholm → Setup Project` creates all four, and `ZoneBuilder`
+furnishes them at runtime.
 
-**Also in Phase 2, from the open items:** O-8 (route UI navigation through commands) and O-9
-(wire the menu backdrop, or delete it from the docs). Plus the VContainer go/no-go (ADR-0012).
+**Still outstanding from the open items:** O-8 (route UI navigation through commands), O-9 (wire
+the menu backdrop, or delete it from the docs), and the VContainer go/no-go (ADR-0012). None
+blocks the exit criterion.
 
-**Exit criterion:** a player walks the Ribcage, approaches an object, sees a contextual prompt,
-and interacts — on a physical device, at 60 fps, with survival and inventory still absent.
+**Exit criterion — NOT yet met:** a player walks the Ribcage, approaches an object, sees a
+contextual prompt, and interacts — on a physical device, at 60 fps. Everything needed for that is
+written; none of it has been compiled, executed or played. That verification is the next task,
+ahead of any Phase 3 work.
 
 ## MVP boundary — end of Phase 6
 

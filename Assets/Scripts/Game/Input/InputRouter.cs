@@ -56,6 +56,8 @@ namespace ForgottenIsle.Game.Input
         private readonly bool _ownsControls;
 
         private bool _suppressed;
+        private Vector2 _virtualMove;
+        private Vector2 _virtualLook;
         private bool _disposed;
 
         /// <summary>
@@ -120,10 +122,65 @@ namespace ForgottenIsle.Game.Input
         /// <c>FixedUpdate</c> and a caller running in <c>Update</c> both see the value the Input System has
         /// right now instead of one that is a frame stale in one of them.
         /// </remarks>
-        public Vector2 Move => IsBlocked ? Vector2.zero : _controls.Move.ReadValue<Vector2>();
+        public Vector2 Move
+        {
+            get
+            {
+                if (IsBlocked)
+                {
+                    return Vector2.zero;
+                }
+
+                // Touch wins when a thumb is actually on the stick, and hardware input is read
+                // otherwise. Summing them instead would make a resting stick cancel a keyboard key,
+                // and clamping the sum would make a full-deflection stick feel weaker with a
+                // keyboard plugged in.
+                var virtualMove = _virtualMove;
+                return virtualMove.sqrMagnitude > 0.0001f
+                    ? virtualMove
+                    : _controls.Move.ReadValue<Vector2>();
+            }
+        }
 
         /// <summary>Camera aim contribution this frame, or <see cref="Vector2.zero"/> while gated.</summary>
-        public Vector2 Look => IsBlocked ? Vector2.zero : _controls.Look.ReadValue<Vector2>();
+        public Vector2 Look
+        {
+            get
+            {
+                if (IsBlocked)
+                {
+                    return Vector2.zero;
+                }
+
+                // Look is a per-frame delta rather than a held state, so touch is consumed here and
+                // added to the hardware value. A flick and a mouse move in the same frame should
+                // both count.
+                var consumed = _virtualLook;
+                _virtualLook = Vector2.zero;
+                return consumed + _controls.Look.ReadValue<Vector2>();
+            }
+        }
+
+        /// <summary>
+        /// Supplies movement from an on-screen stick.
+        /// </summary>
+        /// <remarks>
+        /// The bridge between UI Toolkit touch controls and the rig. It lives here rather than in
+        /// the rig so that the gate — paused, loading, in a menu — applies to a thumb exactly as it
+        /// applies to a key, in one place, with no second code path to forget.
+        /// </remarks>
+        /// <param name="move">Normalised movement, -1..1 per axis.</param>
+        public void SetVirtualMove(Vector2 move)
+        {
+            _virtualMove = move;
+        }
+
+        /// <summary>Adds look delta from an on-screen drag. Consumed on the next <see cref="Look"/> read.</summary>
+        /// <param name="look">Look delta for this frame.</param>
+        public void AddVirtualLook(Vector2 look)
+        {
+            _virtualLook += look;
+        }
 
         /// <summary>
         /// True when world input is being withheld — because the game is not in

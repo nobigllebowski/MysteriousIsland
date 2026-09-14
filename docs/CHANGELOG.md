@@ -9,6 +9,69 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — Phase 2: the playable vertical slice
+
+The technical prototype became a game you can walk around in. Full account, including everything
+that is written but unverified, in [`PHASE_2_REPORT.md`](PHASE_2_REPORT.md).
+
+**Progression.** `WorldProgress` (Core, engine-free) holds inspected markers, collected
+discoveries and unlocked zones as ordinal string sets with idempotent mutators.
+`ProgressService` (Game) owns it and is the **third `ISaveParticipant`**, per the rule that every
+new system saves in the PR that adds it. Objectives are **derived, never stored** —
+`Objectives.Current(progress, zoneId)` is a pure function, so a player who finds the tag before
+reading the stone still gets an objective line that is true.
+
+**Interaction.** An `Interactable` base plus a registry-based proximity scan. The nearest eligible
+target each `LateUpdate` becomes a prompt signal; pressing interact builds an `ICommand` and
+dispatches it. Three kinds ship: `AncientMarker` (re-readable), `DiscoveryPickup` (once, then
+gone), `ZoneGate` (travels, or narrates why it will not). Two new commands, `Inspect` and
+`Collect`, with handlers. `TravelToZone` now refuses a locked zone with `NotAllowedInState` —
+the lock is a rule at the command layer, not a hidden button in the view.
+
+**Two zones, built at runtime.** `ZoneMeshes` generates ground (33 × 33, two Perlin octaves, the
+spawn apron faded flat, vertex colours), rocks and ribs; `ZoneBuilder` holds one recipe per zone —
+the Ribcage with its six-rib arch, Fernmaw with its cut aqueduct wall. The scene assets stay
+empty, exactly as `SCENE_CONTRACT.md` says: the scene is the contract, the builder is the content.
+
+**A player that walks.** `PlayerRig` now drives a real `CharacterController` with acceleration,
+gravity and ground following, and pitches the camera pivot alone so the body never tips. Touch
+controls arrived as a floating joystick and a look pad in UI Toolkit, with look consumed on read
+and the stick released whenever the controls hide — a pause can no longer leave the player
+walking.
+
+**HUD.** Objective, interaction prompt and narration, every string through `LocKey`; 28 new rows
+in `en.csv`. `HudController` is the only place that knows both a signal and a `VisualElement`.
+
+**Audio, wired and silent.** `AudioDirector` resolves clips by convention through `Resources`.
+**No audio files were fabricated.** Every lookup may return null and every play is then a no-op,
+so the day a `.wav` lands in `Resources/Audio` it plays with no code change — and until then
+nothing pretends the audio works.
+
+**Dev shortcuts.** F5 travels to the other zone, F6 takes the brass tag, F7 resets progression.
+Each goes through the same command the game itself uses, so a shortcut that works is evidence the
+real path works rather than a back door around it, and all of it compiles out of release.
+
+**Tests.** 28 new cases — 14 progression, 9 interaction, 5 PlayMode loop tests covering furnishing,
+the unlock chain, persistence-by-rebuild, and save/quit/continue. **None has been executed.** The
+PlayMode suite self-skips with `Assert.Ignore` when the scenes are absent, so a green run means
+nothing until you check it was not simply ignored.
+
+### Changed
+
+- `SaveSections` gained `Progress`, and `ProgressService` now takes its section id from there.
+  The file's own docstring says these ids live as constants rather than as literals scattered
+  through the participants; the new participant was the one exception, and no longer is.
+- `ZoneFurnisher` calls `ZoneBuilder` and adds the `CharacterController`.
+- `DevOverlay` reports position, discoveries found, registered interactables and the objective.
+- `ci/validate-structure.py` whitelist extended for the Unity types Phase 2 introduced.
+
+### Verified, and not
+
+`validate-structure.py` exit 0 · `check-layering.sh` exit 0 · namespace, symbol-existence, asmdef,
+duplicate-type, save-participant, localization, scene-key and entry-point audits all clean.
+**Still never compiled, never executed, never played.**
+
+
 ### Fixed — the last two compile errors
 
 - **`InputActionSetupExtensions.AddAction` has no `expectedControlType` parameter** (CS1739, 2

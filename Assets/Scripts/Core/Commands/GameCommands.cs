@@ -88,5 +88,37 @@ namespace ForgottenIsle.Core.Commands
         {
             ZoneId = zoneId;
         }
+    
+    /// <summary>Read an ancient marker. Records it and shows its line of text.</summary>
+    /// <remarks>
+    /// Separate from <see cref="CollectCommand"/> because the two have different rules: a marker
+    /// can be re-read forever and never leaves the world, while a discovery is taken exactly once
+    /// and then gone. Collapsing them into one "interact" command would push that difference into
+    /// a branch inside the handler, where it is invisible to the validator.
+    /// </remarks>
+    public readonly struct InspectCommand : ICommand
+    {
+        /// <summary>A <c>ContentIds</c> marker id.</summary>
+        public readonly string MarkerId;
+
+        /// <param name="markerId">A <c>ContentIds</c> marker id.</param>
+        public InspectCommand(string markerId)
+        {
+            MarkerId = markerId;
+        }
     }
+
+    /// <summary>Take a discovery. Removes it from the world and records it permanently.</summary>
+    public readonly struct CollectCommand : ICommand
+    {
+        /// <summary>A <c>ContentIds</c> discovery id.</summary>
+        public readonly string DiscoveryId;
+
+        /// <param name="discoveryId">A <c>ContentIds</c> discovery id.</param>
+        public CollectCommand(string discoveryId)
+        {
+            DiscoveryId = discoveryId;
+        }
+    }
+}
 }

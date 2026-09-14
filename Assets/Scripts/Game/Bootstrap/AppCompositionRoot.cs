@@ -8,6 +8,8 @@ using ForgottenIsle.Core.Time;
 using ForgottenIsle.Game.Diagnostics;
 using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Localization;
+using ForgottenIsle.Game.Interaction;
+using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
 using ForgottenIsle.Game.Session;
@@ -57,12 +59,16 @@ namespace ForgottenIsle.Game.Bootstrap
             var sceneLoader = new SceneLoader(host, log);
             var zones = new ZoneRegistry(sceneLoader, log, ZoneRegistry.DefaultMaxResident);
             var dispatcher = new CommandDispatcher(log);
+            var progress = new ProgressService(signals, log);
+            var interactions = new InteractionSystem(progress, dispatcher, signals, log);
 
-            // ADR-0011: two participants in Phase 1, and every later phase adds its own in the same pull
+            // ADR-0011: every phase adds its participant in the same pull
             // request that adds its system. Registration order is capture and restore order, and the
             // session must precede the player: the player section is meaningless without the run that
             // gives its coordinates a zone to be in.
-            var participants = new List<ISaveParticipant>(2) { session, session.PlayerParticipant };
+            // Phase 2 adds the third: progression. It is registered after the player because a
+            // restored discovery only means anything once the run and its position exist.
+            var participants = new List<ISaveParticipant>(3) { session, session.PlayerParticipant, progress };
             for (var i = 0; i < participants.Count; i++)
             {
                 slots.RegisterParticipant(participants[i]);
@@ -72,13 +78,15 @@ namespace ForgottenIsle.Game.Bootstrap
             // rather than cosmetic: ResumeSavedRunHandler restores a run by calling SaveSlotService.Load,
             // which walks the participant register. A handler wired before the register was filled would
             // resume into an empty world and report success.
-            dispatcher.Register<StartNewGameCommand>(new StartNewGameHandler(states, session, zones, log));
+            dispatcher.Register<StartNewGameCommand>(new StartNewGameHandler(states, session, zones, progress, log));
+            dispatcher.Register<InspectCommand>(new InspectHandler(states, progress, signals));
+            dispatcher.Register<CollectCommand>(new CollectHandler(states, progress, signals));
             dispatcher.Register<ResumeSavedRunCommand>(new ResumeSavedRunHandler(states, slots, session, zones, log));
             dispatcher.Register<SaveGameCommand>(new SaveGameHandler(slots, session, states, signals, log));
             dispatcher.Register<QuitToMenuCommand>(new QuitToMenuHandler(states, zones, session, log));
-            dispatcher.Register<TravelToZoneCommand>(new TravelToZoneHandler(states, zones, session, sceneLoader, log));
+            dispatcher.Register<TravelToZoneCommand>(new TravelToZoneHandler(states, zones, session, sceneLoader, progress, log));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, participants);
         }
 
         /// <summary>

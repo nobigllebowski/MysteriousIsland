@@ -7,6 +7,7 @@
 using System;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.State;
+using ForgottenIsle.Game.Audio;
 using ForgottenIsle.Game.Diagnostics;
 using ForgottenIsle.Game.Player;
 using ForgottenIsle.Game.Scenes;
@@ -56,6 +57,7 @@ namespace ForgottenIsle.Game.Bootstrap
 
         /// <summary>Fills in whatever an empty zone scene does not provide.</summary>
         private ZoneFurnisher _furnisher;
+        private AudioDirector _audio;
 
         /// <summary>
         /// Raised once per boot, as soon as the object graph exists and before the first state
@@ -140,12 +142,17 @@ namespace ForgottenIsle.Game.Bootstrap
             Application.targetFrameRate = TargetFrameRate;
 
             Context = AppCompositionRoot.Build(this);
-            _furnisher = new ZoneFurnisher(Context.Session, Context.Input, Context.Log);
+            _furnisher = new ZoneFurnisher(Context.Session, Context.Input, Context.Interactions, Context.Log);
 
             // Announced here, before the transitions below, so that a listener is already wired when
             // MainMenu (and, on the self-heal path, Loading and InGame) is published and does not have to
             // reconstruct the mode it missed.
             RaiseBooted();
+
+            // Audio lives on the persistent host so an ambient bed survives a zone change instead
+            // of being cut and restarted by the load. Silent until clips exist; see AudioDirector.
+            _audio = new AudioDirector(Context.Log);
+            _audio.Attach(gameObject, Context.Signals);
 
             Ticker = gameObject.AddComponent<Ticker>();
             Ticker.Initialize(Context.Session, Context.States, Context.Signals, Context.Log);

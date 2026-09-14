@@ -5,6 +5,8 @@ using ForgottenIsle.Core.Primitives;
 using ForgottenIsle.Core.Save;
 using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Core.State;
+using ForgottenIsle.Core.Progress;
+using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
 using ForgottenIsle.Game.Session;
@@ -40,11 +42,15 @@ namespace ForgottenIsle.Game.Bootstrap
         /// Supplies the world seed. Null falls back to <see cref="Environment.TickCount"/>. Injected so
         /// a determinism test can pin the seed without the handler knowing it is under test.
         /// </param>
-        public StartNewGameHandler(GameStateMachine states, SessionService session, ZoneRegistry zones, ICoreLog log, Func<int> seedSource = null)
+        private readonly ProgressService _progress;
+
+        /// <param name="progress">Progression, wiped so a new run starts with nothing found.</param>
+        public StartNewGameHandler(GameStateMachine states, SessionService session, ZoneRegistry zones, ProgressService progress, ICoreLog log, Func<int> seedSource = null)
         {
             _states = states ?? throw new ArgumentNullException(nameof(states));
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _zones = zones ?? throw new ArgumentNullException(nameof(zones));
+            _progress = progress;
             _log = log;
             _seedSource = seedSource;
         }
@@ -83,6 +89,13 @@ namespace ForgottenIsle.Game.Bootstrap
         {
             var slot = command.Slot;
             _states.TryTransition(GameStateId.Loading);
+            // A new run means nothing found. Wiped here rather than by the caller, so there is no
+            // path that starts a run and leaves the previous run's discoveries standing.
+            if (_progress != null)
+            {
+                _progress.ResetForNewRun();
+            }
+            
             _session.BeginNewRun(slot, SessionService.DefaultActId, StartZone, _seedSource != null ? _seedSource() : Environment.TickCount);
 
             _zones.EnterZone(StartZone, code =>
@@ -464,11 +477,15 @@ namespace ForgottenIsle.Game.Bootstrap
         /// <param name="session">The run whose zone is being changed.</param>
         /// <param name="loader">Consulted only to reject travel while another load is in flight.</param>
         /// <param name="log">Diagnostics sink. Null tolerated.</param>
-        public TravelToZoneHandler(GameStateMachine states, ZoneRegistry zones, SessionService session, SceneLoader loader, ICoreLog log)
+        private readonly ProgressService _progress;
+
+        /// <param name="progress">Progression, consulted to decide whether the destination is open.</param>
+        public TravelToZoneHandler(GameStateMachine states, ZoneRegistry zones, SessionService session, SceneLoader loader, ProgressService progress, ICoreLog log)
         {
             _states = states ?? throw new ArgumentNullException(nameof(states));
             _zones = zones ?? throw new ArgumentNullException(nameof(zones));
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _progress = progress;
             _loader = loader ?? throw new ArgumentNullException(nameof(loader));
             _log = log;
         }
@@ -489,6 +506,14 @@ namespace ForgottenIsle.Game.Bootstrap
             }
 
             if (!_session.HasRun)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            // Progression, not presentation, decides reachability. The gate object also hides its
+            // TRAVEL verb while locked, but that is a courtesy -- this is the rule, and it holds for
+            // a dev-overlay teleport or any future fast-travel just as much as for a gate.
+            if (_progress != null && !_progress.IsZoneUnlocked(command.ZoneId))
             {
                 return ResultCode.NotAllowedInState;
             }
@@ -524,7 +549,10 @@ namespace ForgottenIsle.Game.Bootstrap
             {
                 if (code == ResultCode.Ok)
                 {
+                    // SetZone publishes ZoneChangedSignal, which ProgressService is subscribed to,
+                    // so the objective follows the player without a second call here.
                     _session.SetZone(destination);
+
                     _states.TryTransition(GameStateId.InGame);
                     return;
                 }
@@ -541,6 +569,120 @@ namespace ForgottenIsle.Game.Bootstrap
                 _session.EndRun();
                 _states.TryTransition(GameStateId.LoadFailed);
             });
+        }
+    }
+
+    /// <summary>
+    /// Records a marker as read and narrates its line.
+    /// </summary>
+    /// <remarks>
+    /// The narration key is derived from the content id (<c>narration.</c> + id) rather than looked
+    /// up in a table. One naming rule means adding a marker is one id and one CSV row, with no third
+    /// place to forget to update -- and the localization gate already fails the build on a key that
+    /// has no row.
+    /// <para>
+    /// A marker can be read repeatedly. Only the first reading changes progression, but every
+    /// reading shows the text, because a story beat the player missed while walking away should not
+    /// be lost forever.
+    /// </para>
+    /// </remarks>
+    public sealed class InspectHandler : ICommandHandler<InspectCommand>
+    {
+        /// <summary>Prefix that turns a content id into its narration localization key.</summary>
+        public const string NarrationPrefix = "narration.";
+
+        private readonly GameStateMachine _states;
+        private readonly ProgressService _progress;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine; inspection is an in-world act only.</param>
+        /// <param name="progress">Progression that records the reading.</param>
+        /// <param name="signals">Bus the narration line is published on. Null tolerated.</param>
+        public InspectHandler(GameStateMachine states, ProgressService progress, SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _progress = progress ?? throw new ArgumentNullException(nameof(progress));
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in InspectCommand command)
+        {
+            if (string.IsNullOrEmpty(command.MarkerId))
+            {
+                return ResultCode.InvalidArgument;
+            }
+
+            return _states.Current == GameStateId.InGame
+                ? ResultCode.Ok
+                : ResultCode.NotAllowedInState;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in InspectCommand command)
+        {
+            _progress.Inspect(command.MarkerId);
+
+            if (_signals != null)
+            {
+                _signals.Publish(new NarrationSignal(NarrationPrefix + command.MarkerId));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Takes a discovery: records it, narrates it, and applies whatever it unlocks.
+    /// </summary>
+    /// <remarks>
+    /// Validation refuses an already-collected id rather than letting Execute no-op, so a double
+    /// tap on the same pickup returns a reason instead of silently doing nothing -- and the
+    /// interaction system logs that reason.
+    /// </remarks>
+    public sealed class CollectHandler : ICommandHandler<CollectCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly ProgressService _progress;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine; collecting is an in-world act only.</param>
+        /// <param name="progress">Progression that records the pickup and its unlock.</param>
+        /// <param name="signals">Bus the narration line is published on. Null tolerated.</param>
+        public CollectHandler(GameStateMachine states, ProgressService progress, SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _progress = progress ?? throw new ArgumentNullException(nameof(progress));
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in CollectCommand command)
+        {
+            if (string.IsNullOrEmpty(command.DiscoveryId))
+            {
+                return ResultCode.InvalidArgument;
+            }
+
+            if (_states.Current != GameStateId.InGame)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            // Taking the same thing twice is the bug this guard exists to make impossible at the
+            // command layer, not merely unlikely at the view layer.
+            return _progress.HasCollected(command.DiscoveryId)
+                ? ResultCode.NotAllowedInState
+                : ResultCode.Ok;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in CollectCommand command)
+        {
+            _progress.Collect(command.DiscoveryId);
+
+            if (_signals != null)
+            {
+                _signals.Publish(new NarrationSignal(InspectHandler.NarrationPrefix + command.DiscoveryId));
+            }
         }
     }
 }

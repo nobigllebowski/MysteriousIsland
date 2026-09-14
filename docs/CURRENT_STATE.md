@@ -1,7 +1,8 @@
 # CURRENT STATE
 
 **Updated:** 2026-09-14 · **Branch:** `claude/keen-darwin-frw656`
-**Phase 1.5 (Unity integration) complete.** Phase 2 not started.
+**Phase 2 (playable vertical slice) implemented.** Phase 3 not started.
+Full account: [`PHASE_2_REPORT.md`](PHASE_2_REPORT.md).
 
 This file records what is *actually true right now*, verified against the repository — not what
 was planned. When it disagrees with a design document, this file and the shipped code win.
@@ -12,12 +13,12 @@ was planned. When it disagrees with a design document, this file and the shipped
 
 | | Files | Lines | State |
 |---|---:|---:|---|
-| `ForgottenIsle.Core` (engine-free) | 36 | 4,113 | Written, never compiled |
-| `ForgottenIsle.Game` | 21 | 6,527 | Written, never compiled |
-| `ForgottenIsle.UI` (UI Toolkit) | 16 | 3,814 | Written, never compiled |
-| Tests (207 EditMode cases, 4 PlayMode) | 8 | 4,004 | Written, **never executed** |
-| `ForgottenIsle.Editor` (new) | 3 | ~550 | Written, never compiled |
-| Documentation | 19 | — | 9 predate the ADRs, unreconciled |
+| `ForgottenIsle.Core` (engine-free) | 39 | 4,525 | Written, never compiled |
+| `ForgottenIsle.Game` | 32 | 9,613 | Written, never compiled |
+| `ForgottenIsle.UI` (UI Toolkit) | 19 | 4,507 | Written, never compiled |
+| Tests (229 EditMode cases, 14 PlayMode) | 13 | 5,105 | Written, **never executed** |
+| `ForgottenIsle.Editor` | 2 | 443 | Written, never compiled |
+| Documentation | 20 | — | 9 predate the ADRs, unreconciled |
 
 **Implemented in Phase 1:** five assemblies; bootstrap and composition root; a 10-edge game state
 machine; the single `Ticker`; additive scene loading with a 20 s watchdog; zone registry capped at
@@ -26,10 +27,10 @@ write (flush→rename) and `.bak` rotation; 3 save slots + autosave; engine-free
 localization with `#key#` fallback; New Input System routing; placeholder capsule player rig;
 dev overlay; UI Toolkit framework, theme, and menu/pause/settings screens.
 
-**Commands registered (5):** `StartNewGame`, `ResumeSavedRun`, `SaveGame`, `QuitToMenu`,
-`TravelToZone`.
-**Save participants registered (2):** session, player. ADR-0009 targets 14 at completion; each
-later phase adds its own.
+**Commands registered (7):** `StartNewGame`, `ResumeSavedRun`, `SaveGame`, `QuitToMenu`,
+`TravelToZone`, `Inspect`, `Collect`.
+**Save participants registered (3):** session, player, progress. ADR-0009 targets 14 at
+completion; each later phase adds its own.
 
 **Added in Phase 1.5:** the `ForgottenIsle.Editor` assembly (ADR-0001's fifth, previously missing);
 `Vardholm → Setup Project` / `Validate Project` / `Open Bootstrap Scene` menu commands; a first-run
@@ -41,15 +42,24 @@ dependency in the project.
 **Scene assets still do not exist in the repository**, but they are no longer created by hand —
 one menu command creates all four. See `SCENE_CONTRACT.md`.
 
-**Not implemented — no gameplay exists yet.** No inventory, items, combination, crafting,
-discovery, survival, camp, puzzles, story, quests, weather, audio. The player rig is a greybox
-capsule moved by transform, not a real character controller.
+**Added in Phase 2 — the vertical slice.** Progression (`WorldProgress` + `ProgressService`,
+the third save participant); derived objectives; a proximity interaction system with three
+interactable kinds (marker, discovery, gate); two runtime-built zones (`ZoneBuilder` +
+`ZoneMeshes`); a `CharacterController`-driven player with gravity and ground following; touch
+controls (floating joystick + look pad); a HUD with objective, prompt and narration; an
+`AudioDirector` that is wired and silent because no clips exist; F5–F7 dev shortcuts. The
+playable chain is: read the Standing Stone → take the Brass Tag → Fernmaw unlocks → cross the
+Gully Mouth → read the Cut Channel Wall → take the Waterlogged Reel → return. Travel to a locked
+zone is refused at the command layer.
+
+**Still not implemented.** Inventory, item combination, crafting, survival meters, camp, puzzles,
+weather, dialogue, story beyond six narration lines, and any audio content.
 
 ## 2. Verification status — read this before trusting anything
 
 | Check | Result |
 |---|---|
-| `ci/validate-structure.py` | **exit 0** — 88 files, 106 public types, 0 errors, 47 warnings |
+| `ci/validate-structure.py` | **exit 0** — 105 files, 134 public types, 0 errors, 47 warnings |
 | `ci/check-layering.sh` | **exit 0** — all 5 invariants hold |
 | Core references `UnityEngine` | **0 occurrences** outside comments |
 | `Update()` methods | **exactly 1** (`Ticker.cs`) |
@@ -58,7 +68,7 @@ capsule moved by transform, not a real character controller.
 | **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
 | **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
 | **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
-| **Tests** | **UNCONFIRMED — 211 tests written, 0 executed.** |
+| **Tests** | **UNCONFIRMED — 243 tests written (229 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
 
 `ci/validate-structure.py` is a deliberate compiler substitute: brace balance, namespace
 conformance, engine-free Core, asmdef validity, cross-file undeclared-type detection, LocKey
@@ -89,7 +99,7 @@ re-authoring that beat, not a find-and-replace.
 ## 4. UNCONFIRMED — believed but not verified
 
 - **The project compiles.** Nothing here has been through a C# compiler.
-- **The 211 tests pass.**
+- **The 243 tests pass.**
 - **Every Unity 6 API claim** tagged `⚠ VERIFY` in `architecture/01-technical-architecture.md` §0:
   Render Graph, GPU Resident Drawer, Adaptive Probe Volumes, `Awaitable` allocation profile,
   `ProfilerRecorder` counter names, `AsyncOperation.progress` semantics with

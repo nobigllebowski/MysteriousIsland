@@ -17,5 +17,8 @@ namespace ForgottenIsle.Core.Save
 
         /// <summary>Section owned by the player service: position, facing, equipped tool.</summary>
         public const string Player = "player";
+
+        /// <summary>Section owned by the progress service: markers read, discoveries taken, zones open.</summary>
+        public const string Progress = "progress";
     }
 }

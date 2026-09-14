@@ -1,7 +1,10 @@
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Player;
+using ForgottenIsle.Game.Scenes;
+using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Session;
+using ForgottenIsle.Game.World;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -40,15 +43,22 @@ namespace ForgottenIsle.Game.Bootstrap
 
         private readonly SessionService _session;
         private readonly InputRouter _input;
+        private readonly InteractionSystem _interactions;
         private readonly ICoreLog _log;
 
         /// <param name="session">Run state the rig reads and writes its pose through.</param>
         /// <param name="input">Input source handed to the rig.</param>
         /// <param name="log">Diagnostics sink. Null tolerated.</param>
-        public ZoneFurnisher(SessionService session, InputRouter input, ICoreLog log)
+        /// <param name="interactions">
+        /// Interaction system the zone's markers, pickups and gates register with. Null tolerated,
+        /// which yields a zone that can be walked but not acted on.
+        /// </param>
+        public ZoneFurnisher(
+            SessionService session, InputRouter input, InteractionSystem interactions, ICoreLog log)
         {
             _session = session;
             _input = input;
+            _interactions = interactions;
             _log = log;
         }
 
@@ -66,12 +76,25 @@ namespace ForgottenIsle.Game.Bootstrap
                 return null;
             }
 
+            // A zone rebuilt from scratch on every entry means the previous visit's interactables are
+            // gone with it. Clearing first is what stops the registry accumulating destroyed
+            // components across a round trip.
+            if (_interactions != null)
+            {
+                _interactions.Clear();
+            }
+
+            var spawn = BuildZoneContent(scene);
+
             var anchor = ZoneEntryAnchor.FindInScene(scene);
             if (anchor == null)
             {
-                anchor = CreateAnchor(scene);
+                anchor = CreateAnchor(scene, spawn);
             }
 
+            // Ground and light are only furnished when the zone built nothing of its own -- an
+            // authored scene, or an unrecognised zone key. ZoneBuilder supplies both for the two
+            // real zones, and these would otherwise stack a second sun on top of its lighting.
             EnsureGround(scene, anchor);
             EnsureLight(scene);
 
@@ -83,7 +106,7 @@ namespace ForgottenIsle.Game.Bootstrap
 
             EnsureCamera(scene, rig);
 
-            rig.Initialize(_session, _input, _log);
+            rig.Initialize(_session, _input, _interactions, _log);
             return rig;
         }
 
@@ -118,12 +141,45 @@ namespace ForgottenIsle.Game.Bootstrap
             return root;
         }
 
-        private ZoneEntryAnchor CreateAnchor(Scene scene)
+        private ZoneEntryAnchor CreateAnchor(Scene scene, Vector3 spawn)
         {
             var go = new GameObject("PlayerSpawn (furnished)");
             go.transform.SetParent(FurnishedRoot(scene).transform, false);
-            go.transform.position = new Vector3(0f, AnchorHeight, 0f);
+            go.transform.position = spawn;
             return go.AddComponent<ZoneEntryAnchor>();
+        }
+
+        /// <summary>
+        /// Builds the zone's terrain, landmark, props and interactables.
+        /// </summary>
+        /// <remarks>
+        /// Skipped entirely when the scene already has content, so hand-authored zone art displaces
+        /// the procedural build with no code change -- the same "authored content wins" rule the
+        /// rest of this class follows.
+        /// </remarks>
+        /// <param name="scene">The zone being furnished.</param>
+        /// <returns>Where the player should stand.</returns>
+        private Vector3 BuildZoneContent(Scene scene)
+        {
+            var fallback = new Vector3(0f, AnchorHeight, 0f);
+
+            if (!SceneKeys.IsZone(scene.name))
+            {
+                return fallback;
+            }
+
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                if (roots[i].name != FurnishedRootName)
+                {
+                    // Authored content present. Leave it alone entirely.
+                    return fallback;
+                }
+            }
+
+            var root = FurnishedRoot(scene).transform;
+            return ZoneBuilder.Build(scene.name, root, _interactions);
         }
 
         private void EnsureGround(Scene scene, ZoneEntryAnchor anchor)
@@ -206,8 +262,21 @@ namespace ForgottenIsle.Game.Bootstrap
             var collider = body.GetComponent<Collider>();
             if (collider != null)
             {
+                // The primitive's capsule collider is replaced by the CharacterController's own,
+                // which would otherwise fight it and trap the rig on its own geometry.
                 Object.Destroy(collider);
             }
+
+            var controller = body.AddComponent<CharacterController>();
+            controller.height = CapsuleHeight;
+            controller.radius = 0.34f;
+            controller.center = new Vector3(0f, 0f, 0f);
+
+            // Generous step and slope limits: this is a rocky island built from noise, and a
+            // controller that catches on every 20 cm lip reads as broken rather than as terrain.
+            controller.stepOffset = 0.45f;
+            controller.slopeLimit = 52f;
+            controller.skinWidth = 0.04f;
 
             return body.AddComponent<PlayerRig>();
         }

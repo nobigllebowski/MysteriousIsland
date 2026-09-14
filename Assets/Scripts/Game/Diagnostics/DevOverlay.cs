@@ -8,6 +8,9 @@
 #if DEBUG || UNITY_EDITOR
 
 using System.Text;
+using ForgottenIsle.Core.Commands;
+using ForgottenIsle.Core.Progress;
+using ForgottenIsle.Core.State;
 using ForgottenIsle.Game.Bootstrap;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -45,8 +48,8 @@ namespace ForgottenIsle.Game.Diagnostics
         /// <summary>Panel width, in points. Wide enough for the longest line at font size 12.</summary>
         private const float PanelWidth = 340f;
 
-        /// <summary>Panel height, in points.</summary>
-        private const float PanelHeight = 92f;
+        /// <summary>Panel height, in points. Six lines at font size 12 plus the padding.</summary>
+        private const float PanelHeight = 108f;
 
         private readonly StringBuilder _builder = new StringBuilder(256);
 
@@ -103,9 +106,14 @@ namespace ForgottenIsle.Game.Diagnostics
         private void LateUpdate()
         {
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.f3Key.wasPressedThisFrame)
+            if (keyboard != null)
             {
-                Toggle();
+                if (keyboard.f3Key.wasPressedThisFrame)
+                {
+                    Toggle();
+                }
+
+                ReadDevelopmentKeys(keyboard);
             }
 
             var dt = UnityEngine.Time.unscaledDeltaTime;
@@ -134,6 +142,61 @@ namespace ForgottenIsle.Game.Diagnostics
             RebuildPanelText();
         }
 
+        /// <summary>
+        /// Development shortcuts: jump between zones, open everything, wipe progress.
+        /// </summary>
+        /// <remarks>
+        /// WHY these three: the Phase 2 slice is a chain — read a marker, take a tag, cross into the
+        /// second zone — and testing the far end of it by playing the near end every time is how a
+        /// bug at the far end stops getting looked at. Each shortcut goes through the same command or
+        /// service the game itself uses, so a key that works here is evidence the real path works,
+        /// not a back door around it. They live inside the same <c>#if</c> as the rest of the file and
+        /// exist in no release build.
+        /// <para>
+        /// F5 travels to the other zone · F6 takes the brass tag (opening Fernmaw) · F7 resets progression in place.
+        /// </para>
+        /// </remarks>
+        private void ReadDevelopmentKeys(Keyboard keyboard)
+        {
+            if (!_initialized || _context.States.Current != GameStateId.InGame)
+            {
+                return;
+            }
+
+            if (keyboard.f5Key.wasPressedThisFrame)
+            {
+                var here = _context.Session.ZoneId;
+                var there = here == ContentIds.ZoneFernmaw
+                    ? ContentIds.ZoneRibcage
+                    : ContentIds.ZoneFernmaw;
+
+                var result = _context.Commands.Dispatch(new TravelToZoneCommand(there));
+                if (!result.Success)
+                {
+                    // Most often the zone is still locked. Reported rather than silently ignored, so
+                    // the key never looks broken when it is in fact enforcing the rule.
+                    Debug.LogWarning("[dev] travel to " + there + " refused: " + result.Code);
+                }
+            }
+
+            if (keyboard.f6Key.wasPressedThisFrame)
+            {
+                // Through the same command the pickup issues, not by poking WorldProgress directly:
+                // a direct unlock would skip the signals, leaving the HUD showing an objective the
+                // state no longer implies — a dev shortcut that manufactures a bug is worse than none.
+                var result = _context.Commands.Dispatch(new CollectCommand(ContentIds.DiscoveryBrassTag));
+                Debug.Log("[dev] brass tag: " + (result.Success ? "taken, Fernmaw open" : result.Code.ToString()));
+            }
+
+            if (keyboard.f7Key.wasPressedThisFrame)
+            {
+                _context.Progress.ResetForNewRun();
+                Debug.Log("[dev] progression reset (re-enter the zone to rebuild its content)");
+            }
+
+            RebuildPanelText();
+        }
+
         private void RebuildPanelText()
         {
             if (!_initialized)
@@ -155,6 +218,22 @@ namespace ForgottenIsle.Game.Diagnostics
                     .Append(AverageFrameMs.ToString("F1")).Append(" ms avg  ·  ")
                     .Append(WorstFrameMs.ToString("F1")).Append(" ms worst")
                     .Append('\n');
+
+            // Phase 2 line: where the player is standing, what they are being asked to do, and how
+            // much they have found. These are the three questions a gameplay bug starts with.
+            var pos = session.PlayerPosition;
+            _builder.Append("xyz ")
+                    .Append(pos.X.ToString("F1")).Append(' ')
+                    .Append(pos.Y.ToString("F1")).Append(' ')
+                    .Append(pos.Z.ToString("F1"))
+                    .Append("  ·  found ").Append(_context.Progress.Progress.CollectedCount)
+                    .Append("  ·  near ").Append(_context.Interactions.RegisteredCount)
+                    .AppendLine();
+
+            var objective = _context.Progress.ObjectiveKey;
+            _builder.Append("obj ")
+                    .Append(string.IsNullOrEmpty(objective) ? "-" : objective)
+                    .AppendLine();
 
             _builder.Append(_context.Clock.ToDisplayString())
                     .Append("  ·  ticks ").Append(_ticker != null ? _ticker.TickCount : 0L)

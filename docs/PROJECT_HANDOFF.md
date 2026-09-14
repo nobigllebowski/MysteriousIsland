@@ -15,8 +15,10 @@ a Bronze Age machine built to keep the ocean quiet — and the woman who has bee
 for thirty-one years. **The mystery is a maintenance problem.** No combat, no creatures, no
 weapons; the signature tool is a microphone.
 
-**Phase 1 is complete.** The project spine exists — five assemblies, ~18,500 lines — and has
-**never been compiled**, because the environment it was written in has no Unity and no .NET SDK.
+**Phase 1, 1.5 and 2 are implemented.** The project spine exists — five assemblies — and Phase 2
+added a playable vertical slice on top of it: two zones, a walking player, interaction,
+progression, objectives, a HUD and save. All of it has **never been compiled**, because the
+environment it was written in has no Unity and no .NET SDK. See `PHASE_2_REPORT.md`.
 
 ## 2. Read in this order
 
@@ -31,6 +33,7 @@ weapons; the signature tool is a microphone.
 | 7 | `SCENE_CONTRACT.md` | The dependency graph and what each scene must contain (nothing). |
 | 8 | `UNITY_RISK_AUDIT.md` | What is likely to compile, what needs the editor, what is high risk. |
 | 9 | `design/01-story-bible.md` | **The naming authority.** Consult before inventing any noun. |
+| 10 | `PHASE_2_REPORT.md` | What the vertical slice contains, and exactly what about it is unverified. |
 
 Deep detail sits under `design/`, `architecture/` and `production/`. **Nine of those documents
 predate the ADRs and were never reconciled with them** — Phase 1 Task 0 was specified and never
@@ -39,7 +42,8 @@ run. Always check `CURRENT_STATE.md` §Conflicts before trusting an older docume
 ## 3. The five things most likely to trip you up
 
 1. **Nothing has been compiled.** No Unity, no .NET SDK, no Mono in the dev container, and the
-   proxy blocks Microsoft's SDK downloads. 211 tests are written and 0 have run. Never claim
+   proxy blocks Microsoft's SDK downloads. 243 tests are written and 0 have run — and the
+   PlayMode ones self-skip without the scenes, so *ignored* is not *passed*. Never claim
    otherwise — say what was verified and what needs the editor.
 2. **The scenes are generated, not committed.** Run **`Vardholm → Setup Project`** once after
    cloning; it creates all four and writes Build Settings. Never author them by hand. The scene
@@ -87,7 +91,17 @@ Console. Tests: **Window → General → Test Runner**.
 
 ## 8. The exact next task
 
-**Reconcile the documentation (Phase 1 Task 0), then begin Phase 2.**
+**Open the editor and find out whether Phase 2 runs.** Do not start Phase 3.
+
+Everything in the vertical slice is written and statically checked and none of it has been
+executed. In order: open the project, run `Vardholm → Setup Project`, run both test suites
+(confirming the PlayMode ones ran rather than were ignored), then press Play and walk the chain in
+`PHASE_2_REPORT.md` §4. `PHASE_2_REPORT.md` §9 lists what to look at and §10 what is most likely
+to be wrong.
+
+Still outstanding behind that, unchanged by Phase 2:
+
+**Reconcile the documentation (Phase 1 Task 0).**
 
 Task 0 was specified in the Phase 1 plan and never executed, which is why six conflicts are live.
 It is a documentation-only change with no code risk:
@@ -105,4 +119,4 @@ It is a documentation-only change with no code risk:
 5. **Ask the owner to settle the world clock: 30× or 60×** (CONFLICT-6). Then make code and docs
    agree and pin it with a test.
 
-Only then start Phase 2 — see `ROADMAP.md`.
+See `ROADMAP.md` for what comes after.

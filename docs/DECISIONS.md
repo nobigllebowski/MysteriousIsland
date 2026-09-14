@@ -37,12 +37,16 @@ Full text and rationale in [`architecture/00-decisions.md`](architecture/00-deci
 | 0006 | `SurvivalStat` = `{Health, Energy, Hydration, Satiation, CoreTemp}` | Decided — **CONFLICT-2**, data doc still stale |
 | 0007 | One inventory model: items, not resources. `ResourceDefinition` deleted | Decided — **CONFLICT-3**, data doc still stale |
 | 0008 | Locomotion is a floating joystick; tap-to-move is accessibility-only | **Implemented** — **CONFLICT-4**, prologue/roadmap still stale |
-| 0009 | 14 save participants at completion; `GameState` must cover all owned state | Partial — 2 registered in Phase 1, by design |
+| 0009 | 14 save participants at completion; `GameState` must cover all owned state | Partial — 3 registered (session, player, progress), by design |
 | 0010 | Two anti-softlock holes closed: diesel renewable; Ash Throat valve order gets an Act-3-reachable second hint | Design-level, not yet built |
 | 0011 | Save spine in Phase 1 (= D-2) | **Implemented** |
-| 0012 | Hand-wired composition; no service locator. VContainer is a Phase 2 go/no-go | **Implemented** |
+| 0012 | Hand-wired composition; no service locator. VContainer is a Phase 2 go/no-go | **Implemented** — go/no-go still not taken |
 | 0013 | Save codec: Newtonsoft if `Core` can reference it, else hand-rolled | **Implemented** (hand-rolled `JsonWriter`/`JsonParser`) |
 | 0014 | **UI Toolkit, not uGUI** — reverses Phase 1 Plan §4 | **Implemented** — **CONFLICT-5**, plan §4 still stale |
+| 0015 | Objectives are derived from progression, never stored | **Implemented** (Phase 2) |
+| 0016 | Zones are furnished at runtime from a recipe; scene assets stay empty | **Implemented** (Phase 2) — the look is unverified |
+| 0017 | Interaction is a registry proximity scan, not physics triggers | **Implemented** (Phase 2) |
+| 0018 | No placeholder audio binaries; the game is honestly silent | **Implemented** (Phase 2) |
 
 **Why 0014 reversed:** the uGUI choice assumed a greenfield start. It was not one — the team's
 NATION: WORLD ORDER project already contained a working, code-built UI Toolkit mobile framework at
