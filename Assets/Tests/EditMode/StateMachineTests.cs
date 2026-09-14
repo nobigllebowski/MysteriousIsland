@@ -32,13 +32,14 @@ namespace ForgottenIsle.Tests.EditMode
         }
 
         /// <summary>
-        /// Every edge in the machine's legal table, spelled out here independently of the production
+        /// All ten edges in the machine's legal table, spelled out here independently of the production
         /// array. A test that iterated the machine's own table would agree with any table, including a
         /// wrong one; this list is the specification, restated so the two can disagree.
         /// </summary>
         [TestCase(GameStateId.Boot, GameStateId.MainMenu)]
         [TestCase(GameStateId.MainMenu, GameStateId.Loading)]
         [TestCase(GameStateId.Loading, GameStateId.InGame)]
+        [TestCase(GameStateId.Loading, GameStateId.MainMenu)]
         [TestCase(GameStateId.Loading, GameStateId.LoadFailed)]
         [TestCase(GameStateId.LoadFailed, GameStateId.MainMenu)]
         [TestCase(GameStateId.InGame, GameStateId.Paused)]
@@ -64,7 +65,10 @@ namespace ForgottenIsle.Tests.EditMode
         /// Representative illegal edges. Self-transitions and the edges back to
         /// <see cref="GameStateId.Boot"/> are included because their absence from the table looks like
         /// an oversight and is not: re-entering the current state is a caller bug, and boot happens
-        /// once per process.
+        /// once per process. <c>InGame -&gt; MainMenu</c> and <c>Paused -&gt; MainMenu</c> are here for
+        /// the same reason and are the sharper case — they look like the obvious way to implement quit
+        /// to menu, and they are wrong, because quit must pass through
+        /// <see cref="GameStateId.Loading"/> so the curtain covers the scene unload.
         /// </summary>
         [TestCase(GameStateId.Boot, GameStateId.Loading)]
         [TestCase(GameStateId.Boot, GameStateId.InGame)]
@@ -73,8 +77,9 @@ namespace ForgottenIsle.Tests.EditMode
         [TestCase(GameStateId.MainMenu, GameStateId.Paused)]
         [TestCase(GameStateId.MainMenu, GameStateId.MainMenu)]
         [TestCase(GameStateId.MainMenu, GameStateId.Boot)]
-        [TestCase(GameStateId.Loading, GameStateId.MainMenu)]
+        [TestCase(GameStateId.Loading, GameStateId.Loading)]
         [TestCase(GameStateId.Loading, GameStateId.Paused)]
+        [TestCase(GameStateId.Loading, GameStateId.Boot)]
         [TestCase(GameStateId.InGame, GameStateId.MainMenu)]
         [TestCase(GameStateId.InGame, GameStateId.InGame)]
         [TestCase(GameStateId.InGame, GameStateId.LoadFailed)]
@@ -124,6 +129,110 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.IsTrue(machine.TryTransition(GameStateId.Loading).Success);
             Assert.IsTrue(machine.TryTransition(GameStateId.InGame).Success);
             Assert.AreEqual(GameStateId.InGame, machine.Current);
+        }
+
+        /// <summary>
+        /// The counterpart to the test above, and the edge this table was corrected to get right: you
+        /// cannot walk from play straight back to the menu either.
+        /// </summary>
+        /// <remarks>
+        /// A direct <c>InGame -&gt; MainMenu</c> would put the machine in menu mode while the run's zone
+        /// scenes were still resident and still unloading — the menu would draw over a world visibly
+        /// coming apart, and whatever was left alive in those scenes would be ticking against a session
+        /// that had already ended. The route is <c>InGame -&gt; Loading -&gt; MainMenu</c>, and the
+        /// unload happens under the Loading curtain. Both halves are asserted here so a future
+        /// "shortcut" that re-adds the direct edge fails loudly rather than quietly.
+        /// </remarks>
+        [Test]
+        public void Machine_InGameToMainMenu_IsRejectedBecauseQuitMustRouteThroughLoading()
+        {
+            var machine = MachineAt(GameStateId.InGame);
+            _log.Clear();
+
+            Assert.IsFalse(
+                machine.CanTransition(GameStateId.MainMenu),
+                "InGame->MainMenu is legal; quit to menu must route through Loading so the curtain can cover the unload.");
+
+            var result = machine.TryTransition(GameStateId.MainMenu);
+
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual(ResultCode.IllegalStateTransition, result.Code);
+            Assert.AreEqual(GameStateId.InGame, machine.Current, "A rejected quit moved the machine.");
+
+            // The two-step route is available from the very same state, so the rejection above is about
+            // the shortcut and not about quit being unreachable — which was the original defect.
+            Assert.IsTrue(machine.TryTransition(GameStateId.Loading).Success);
+            Assert.IsTrue(machine.TryTransition(GameStateId.MainMenu).Success);
+            Assert.AreEqual(GameStateId.MainMenu, machine.Current);
+        }
+
+        /// <summary>
+        /// The same route from <see cref="GameStateId.Paused"/>, which is where the quit button actually
+        /// lives. Pausing must not be a way around the curtain.
+        /// </summary>
+        [Test]
+        public void Machine_PausedToMainMenu_IsRejectedButTheLoadingRouteSucceeds()
+        {
+            var machine = MachineAt(GameStateId.Paused);
+            _log.Clear();
+
+            Assert.IsFalse(machine.CanTransition(GameStateId.MainMenu));
+            Assert.IsFalse(machine.TryTransition(GameStateId.MainMenu).Success);
+            Assert.AreEqual(GameStateId.Paused, machine.Current);
+
+            Assert.IsTrue(machine.TryTransition(GameStateId.Loading).Success);
+            Assert.IsTrue(machine.TryTransition(GameStateId.MainMenu).Success);
+            Assert.AreEqual(GameStateId.MainMenu, machine.Current);
+        }
+
+        /// <summary>
+        /// <see cref="GameStateId.Loading"/> is the one state with three exits, and all three are
+        /// needed: InGame when the load lands, MainMenu when the player was on their way out, and
+        /// LoadFailed when it did not land. Pinning all three together stops a future edit from
+        /// removing the MainMenu exit as "unused" — it is the quit route's second step, and without it
+        /// quit to menu becomes unreachable again.
+        /// </summary>
+        [Test]
+        public void Machine_Loading_HasExactlyThreeExits()
+        {
+            var machine = MachineAt(GameStateId.Loading);
+
+            Assert.IsTrue(machine.CanTransition(GameStateId.InGame));
+            Assert.IsTrue(machine.CanTransition(GameStateId.MainMenu));
+            Assert.IsTrue(machine.CanTransition(GameStateId.LoadFailed));
+            Assert.IsFalse(machine.CanTransition(GameStateId.Paused));
+            Assert.IsFalse(machine.CanTransition(GameStateId.Boot));
+            Assert.IsFalse(machine.CanTransition(GameStateId.Loading));
+        }
+
+        /// <summary>
+        /// The quit route walked end to end from a live run, as a sequence, because the defect this
+        /// replaced was not a wrong edge but a missing one: every individual transition looked fine and
+        /// the journey was impossible.
+        /// </summary>
+        [Test]
+        public void Machine_QuitRoute_WalksPausedToLoadingToMainMenu()
+        {
+            var machine = MachineAt(GameStateId.InGame);
+            _log.Clear();
+
+            var transitions = new List<string>();
+            machine.Changed += (from, to) => transitions.Add(from + "->" + to);
+
+            Assert.IsTrue(machine.TryTransition(GameStateId.Paused).Success);
+            Assert.IsTrue(machine.TryTransition(GameStateId.Loading).Success);
+            Assert.IsTrue(machine.TryTransition(GameStateId.MainMenu).Success);
+
+            Assert.AreEqual(3, transitions.Count);
+            Assert.AreEqual("InGame->Paused", transitions[0]);
+            Assert.AreEqual("Paused->Loading", transitions[1]);
+            Assert.AreEqual("Loading->MainMenu", transitions[2]);
+            Assert.AreEqual(GameStateId.MainMenu, machine.Current);
+            Assert.AreEqual(0, _log.CountOf(LogCode.IllegalTransition), "The quit route warned about an illegal step.");
+
+            // And from the menu the player can start again, so quitting leaves the machine usable
+            // rather than merely somewhere else.
+            Assert.IsTrue(machine.CanTransition(GameStateId.Loading));
         }
 
         [Test]

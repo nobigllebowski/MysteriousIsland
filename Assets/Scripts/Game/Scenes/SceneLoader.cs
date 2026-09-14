@@ -72,7 +72,37 @@ namespace ForgottenIsle.Game.Scenes
         private readonly ICoreLog _log;
         private readonly List<string> _resident;
 
-        private Coroutine _running;
+        /// <summary>
+        /// True from the instant an operation is committed to until <see cref="Finish"/> clears it.
+        /// </summary>
+        /// <remarks>
+        /// ⚠ ORDERING RULE, AND WHY IT IS A FLAG RATHER THAN THE <c>Coroutine</c> HANDLE. This used to
+        /// hold the value <c>StartCoroutine</c> returned, which meant the caller assigned the busy state
+        /// AFTER the routine had already run. A routine that settles before its first <c>yield</c> — the
+        /// synchronous <c>LoadSceneAsync</c>-returned-null path — reaches <see cref="Finish"/> inside
+        /// <c>StartCoroutine</c>, clears the field, and then the caller's assignment writes a handle for
+        /// an already-dead coroutine back into it: <see cref="IsLoading"/> latches true forever, every
+        /// later request is refused with <see cref="ResultCode.AlreadyLoading"/>, and the curtain never
+        /// lifts. The same shape bites when a completion callback starts the next operation (the registry
+        /// unloads then loads) — the outer frame's assignment would clobber the inner operation's
+        /// bookkeeping.
+        /// <para>
+        /// So the rule is: this field is set to true BEFORE <c>StartCoroutine</c>, and NOTHING touches
+        /// loader state after that call returns. The routine owns its own bookkeeping from that point on,
+        /// and there is no assignment left for it to race.
+        /// </para>
+        /// </remarks>
+        private bool _busy;
+
+        /// <summary>
+        /// Counts committed operations, so a rollback can tell whether it is still the newest one.
+        /// </summary>
+        /// <remarks>
+        /// Only <see cref="AbortStart"/> reads it, and only to refuse to clear a busy state that some
+        /// nested operation may have established in the meantime.
+        /// </remarks>
+        private int _generation;
+
         private float _progress;
         private string _pendingKey;
 
@@ -100,7 +130,7 @@ namespace ForgottenIsle.Game.Scenes
         }
 
         /// <summary>True while a load or unload is in flight.</summary>
-        public bool IsLoading => _running != null;
+        public bool IsLoading => _busy;
 
         /// <summary>
         /// Normalised progress of the operation in flight, 0..1. Reads 0 when nothing is loading and 1
@@ -196,9 +226,17 @@ namespace ForgottenIsle.Game.Scenes
                 return;
             }
 
+            // Committed. The busy state is established BEFORE the routine can run, and nothing below
+            // touches loader state afterwards — see the remarks on _busy.
             _pendingKey = sceneKey;
             _progress = 0f;
-            _running = _host.StartCoroutine(LoadRoutine(sceneKey, onComplete));
+            _busy = true;
+            var generation = NextGeneration();
+
+            if (!TryStartCoroutine(LoadRoutine(sceneKey, onComplete)))
+            {
+                AbortStart(generation, sceneKey, ResultCode.LoadTimedOut, onComplete);
+            }
         }
 
         /// <summary>
@@ -236,7 +274,13 @@ namespace ForgottenIsle.Game.Scenes
 
             _pendingKey = sceneKey;
             _progress = 0f;
-            _running = _host.StartCoroutine(UnloadRoutine(sceneKey, onComplete));
+            _busy = true;
+            var generation = NextGeneration();
+
+            if (!TryStartCoroutine(UnloadRoutine(sceneKey, onComplete)))
+            {
+                AbortStart(generation, sceneKey, ResultCode.LoadTimedOut, onComplete);
+            }
         }
 
         private IEnumerator LoadRoutine(string sceneKey, Action<ResultCode> onComplete)
@@ -283,7 +327,7 @@ namespace ForgottenIsle.Game.Scenes
                     // and hand us a real scene, which we then unload — abandoning it without activating
                     // would leak the load into the next frame's scene list with nothing tracking it.
                     op.allowSceneActivation = true;
-                    _host.StartCoroutine(AbandonRoutine(op, sceneKey));
+                    TryStartCoroutine(AbandonRoutine(op, sceneKey));
                     Finish(sceneKey, ResultCode.LoadTimedOut, onComplete);
                     yield break;
                 }
@@ -300,7 +344,7 @@ namespace ForgottenIsle.Game.Scenes
 
                 if (elapsed >= WatchdogSeconds)
                 {
-                    _host.StartCoroutine(AbandonRoutine(op, sceneKey));
+                    TryStartCoroutine(AbandonRoutine(op, sceneKey));
                     Finish(sceneKey, ResultCode.LoadTimedOut, onComplete);
                     yield break;
                 }
@@ -402,14 +446,21 @@ namespace ForgottenIsle.Game.Scenes
         /// Clears the in-flight state, then reports the outcome.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// The order is load-bearing. Callbacks routinely start the next operation — the registry unloads
-        /// the oldest zone and immediately loads the new one — and a callback fired while
+        /// the outgoing zone and immediately loads the new one — and a callback fired while
         /// <see cref="IsLoading"/> was still true would be rejected with
         /// <see cref="ResultCode.AlreadyLoading"/> by the loader it is running inside.
+        /// </para>
+        /// <para>
+        /// This is also the ONLY place the busy state is cleared, which is what makes the ordering rule on
+        /// <see cref="_busy"/> hold: the routine sets nothing on the way in and the caller sets nothing on
+        /// the way out, so there is no assignment left that could resurrect a finished operation.
+        /// </para>
         /// </remarks>
         private void Finish(string sceneKey, ResultCode code, Action<ResultCode> onComplete)
         {
-            _running = null;
+            _busy = false;
             _pendingKey = null;
             if (code != ResultCode.Ok)
             {
@@ -461,6 +512,60 @@ namespace ForgottenIsle.Game.Scenes
             {
                 onComplete(code);
             }
+        }
+
+        /// <summary>Stamps the operation about to be committed and returns its generation.</summary>
+        private int NextGeneration()
+        {
+            unchecked
+            {
+                _generation++;
+            }
+
+            return _generation;
+        }
+
+        /// <summary>
+        /// Hands <paramref name="routine"/> to the host and reports whether it actually started.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="CanRunCoroutine"/> has already established that the host is active, so the throw is
+        /// not expected. It is caught anyway because the alternative — an exception escaping through
+        /// <see cref="LoadAdditive"/> with <see cref="_busy"/> already true, or out of a routine before it
+        /// reached <see cref="Finish"/> — is exactly the permanently wedged loader this design exists to
+        /// make impossible.
+        /// </remarks>
+        private bool TryStartCoroutine(IEnumerator routine)
+        {
+            try
+            {
+                _host.StartCoroutine(routine);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Rolls back the bookkeeping of an operation whose coroutine never started, then reports it.
+        /// </summary>
+        /// <remarks>
+        /// Guarded by <paramref name="generation"/> rather than clearing unconditionally: a routine that
+        /// did start may already have settled and handed a nested operation the busy state, and clearing
+        /// it from here would leave two operations believing they own the loader.
+        /// </remarks>
+        private void AbortStart(int generation, string sceneKey, ResultCode code, Action<ResultCode> onComplete)
+        {
+            if (_generation == generation)
+            {
+                _busy = false;
+                _pendingKey = null;
+                _progress = 0f;
+            }
+
+            Settle(sceneKey, code, onComplete);
         }
 
         private bool CanRunCoroutine()

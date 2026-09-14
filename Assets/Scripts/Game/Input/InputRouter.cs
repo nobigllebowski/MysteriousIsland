@@ -19,19 +19,29 @@ namespace ForgottenIsle.Game.Input
     /// </para>
     /// <para>
     /// THE GATE, AND WHY IT IS ONE PLACE. <see cref="ApplyGate"/> is the only method in the codebase that
-    /// enables or disables the action map. Everything that could suppress input — the game state, an
+    /// enables or disables an action map. Everything that could suppress input — the game state, an
     /// external suppression such as a cutscene — feeds into that one decision, and the decision is applied
     /// by disabling the map rather than by setting a flag. A disabled action reads as zero and raises no
     /// callbacks, so blocked input is blocked at the source: there is no code path that reads a stale
     /// value, and no queued callback that fires one frame after the pause screen opens.
     /// </para>
     /// <para>
-    /// BLOCKED MEANS BLOCKED. Input is live in <see cref="GameStateId.InGame"/> and in no other state —
-    /// not while paused, not in the menu, not on the loading screen. That includes the Pause action itself,
-    /// which raises the obvious question of how a paused game is ever resumed: it is resumed by the UI.
-    /// While a screen is on the stack, the UI Toolkit layer owns navigation and submit, and it is a
-    /// separate input path from this one (ADR-0014). Leaving the gameplay map live underneath a screen
-    /// would mean the player's stick both moved the menu cursor and turned the camera behind it.
+    /// BLOCKED MEANS BLOCKED — FOR THE WORLD. Move, Look and Interact are live in
+    /// <see cref="GameStateId.InGame"/> and in no other state: not while paused, not in the menu, not on
+    /// the loading screen. While a screen is on the stack, the UI Toolkit layer owns navigation and submit,
+    /// and it is a separate input path from this one (ADR-0014). Leaving the gameplay map live underneath
+    /// a screen would mean the player's stick both moved the menu cursor and turned the camera behind it.
+    /// </para>
+    /// <para>
+    /// PAUSE IS THE ONE EXCEPTION, AND IT HAS TO BE. It used to sit in the gameplay map and be gated the
+    /// same way, which meant the act of pausing switched off the only button that could unpause: a player
+    /// on a controller opened the pause screen with Start and then had no way to leave it. Pause therefore
+    /// lives in <see cref="VardholmControls.SystemMap"/> and is enabled across BOTH
+    /// <see cref="GameStateId.InGame"/> and <see cref="GameStateId.Paused"/>. Which of the two it means is
+    /// decided here rather than by the subscriber: a press in InGame raises <see cref="Pause"/>, a press in
+    /// Paused raises <see cref="Resume"/>. That keeps "what does this button do right now" answered in the
+    /// one place that already owns the gate, and leaves the existing guarantee intact — the gameplay map is
+    /// still dark while paused, so no press of this button can also nudge the character.
     /// </para>
     /// <para>
     /// Not a <see cref="MonoBehaviour"/>. It has no transform, no update, and no reason to be findable in
@@ -84,10 +94,23 @@ namespace ForgottenIsle.Game.Input
         public event Action Interact;
 
         /// <summary>
-        /// Raised when the player asks to pause. Only ever raised from
-        /// <see cref="GameStateId.InGame"/> — see the class remarks on how the pause screen is dismissed.
+        /// Raised when the player presses the pause button while in the world. Only ever raised from
+        /// <see cref="GameStateId.InGame"/>.
         /// </summary>
         public event Action Pause;
+
+        /// <summary>
+        /// Raised when the player presses the same button again while the game is paused. Only ever
+        /// raised from <see cref="GameStateId.Paused"/>.
+        /// </summary>
+        /// <remarks>
+        /// Separate from <see cref="Pause"/> rather than one event the subscriber has to disambiguate:
+        /// the router already knows the mode, and a single event would put a state check back into every
+        /// subscriber — which is the duplication this class exists to remove. A subscriber that wires
+        /// <see cref="Pause"/> to "open the pause screen" and this to "close it" needs no mode check of
+        /// its own and cannot get the two the wrong way round.
+        /// </remarks>
+        public event Action Resume;
 
         /// <summary>
         /// Movement intent on the ground plane this frame, or <see cref="Vector2.zero"/> while gated.
@@ -103,10 +126,15 @@ namespace ForgottenIsle.Game.Input
         public Vector2 Look => IsBlocked ? Vector2.zero : _controls.Look.ReadValue<Vector2>();
 
         /// <summary>
-        /// True when input is being withheld — because the game is not in
+        /// True when world input is being withheld — because the game is not in
         /// <see cref="GameStateId.InGame"/>, because something suppressed it, or because the router has
         /// been disposed.
         /// </summary>
+        /// <remarks>
+        /// Says nothing about the pause button, which is deliberately still live while this reads true in
+        /// <see cref="GameStateId.Paused"/>. This is the answer to "may the player move or interact", and
+        /// that is what every caller asks it.
+        /// </remarks>
         public bool IsBlocked => !IsInputAllowed;
 
         /// <summary>The action set, for a HUD that needs to draw the glyph currently bound to Interact.</summary>
@@ -155,6 +183,7 @@ namespace ForgottenIsle.Game.Input
 
             Interact = null;
             Pause = null;
+            Resume = null;
 
             if (_ownsControls)
             {
@@ -167,28 +196,62 @@ namespace ForgottenIsle.Game.Input
         }
 
         /// <summary>
-        /// The gate's predicate, stated once. Input is live only in the world, only when nothing has
-        /// suppressed it, and never after disposal.
+        /// The gameplay gate's predicate, stated once. Move, Look and Interact are live only in the
+        /// world, only when nothing has suppressed them, and never after disposal.
         /// </summary>
         private bool IsInputAllowed => !_disposed && !_suppressed && _stateMachine.Current == GameStateId.InGame;
 
         /// <summary>
-        /// THE GATE. The single point at which the action map is enabled or disabled.
+        /// The system gate's predicate. The pause button is live wherever a run exists — in the world and
+        /// on the pause screen — because the press that opens the screen has to be able to close it.
+        /// </summary>
+        /// <remarks>
+        /// Suppression still applies. A cutscene that has taken the camera has taken the pause button with
+        /// it, which is the behaviour <see cref="SetSuppressed"/> was written for: one owner, holding
+        /// everything, for a bounded stretch. Widening the exception to cover suppression as well would
+        /// let a screen open on top of a sequence that is mid-way through moving the player.
+        /// </remarks>
+        private bool IsSystemAllowed
+        {
+            get
+            {
+                if (_disposed || _suppressed)
+                {
+                    return false;
+                }
+
+                var current = _stateMachine.Current;
+                return current == GameStateId.InGame || current == GameStateId.Paused;
+            }
+        }
+
+        /// <summary>
+        /// THE GATE. The single point at which either action map is enabled or disabled.
         /// </summary>
         /// <remarks>
         /// Every caller that wants to change whether input flows changes an input to
-        /// <see cref="IsInputAllowed"/> and then calls this. Nothing else touches
-        /// <see cref="VardholmControls.Enable"/> or <see cref="VardholmControls.Disable"/>.
+        /// <see cref="IsInputAllowed"/> or <see cref="IsSystemAllowed"/> and then calls this. Nothing else
+        /// touches the maps' enabled state. The two maps are evaluated independently and in one pass, so
+        /// there is no window in which the world is live and the pause button is not, or the reverse.
         /// </remarks>
         private void ApplyGate()
         {
             if (IsInputAllowed)
             {
-                _controls.Enable();
+                _controls.EnableGameplay();
             }
             else
             {
-                _controls.Disable();
+                _controls.DisableGameplay();
+            }
+
+            if (IsSystemAllowed)
+            {
+                _controls.EnableSystem();
+            }
+            else
+            {
+                _controls.DisableSystem();
             }
         }
 
@@ -217,16 +280,36 @@ namespace ForgottenIsle.Game.Input
             handler?.Invoke();
         }
 
-        /// <inheritdoc cref="OnInteractPerformed" />
+        /// <summary>
+        /// Routes one pause press to whichever of the two events the current mode calls for.
+        /// </summary>
+        /// <remarks>
+        /// The gate is re-checked here for the reason given on <see cref="OnInteractPerformed"/>, and the
+        /// mode is read once so that a press cannot be classified against one state and delivered against
+        /// another. A press arriving in any other mode is dropped: the system map is disabled outside
+        /// InGame and Paused, so the only way to reach here otherwise is a callback queued across the
+        /// transition that disabled it.
+        /// </remarks>
         private void OnPausePerformed(InputAction.CallbackContext context)
         {
-            if (IsBlocked)
+            if (_disposed || _suppressed)
             {
                 return;
             }
 
-            var handler = Pause;
-            handler?.Invoke();
+            var current = _stateMachine.Current;
+            if (current == GameStateId.InGame)
+            {
+                var pause = Pause;
+                pause?.Invoke();
+                return;
+            }
+
+            if (current == GameStateId.Paused)
+            {
+                var resume = Resume;
+                resume?.Invoke();
+            }
         }
     }
 }

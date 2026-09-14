@@ -164,6 +164,12 @@ ForgottenIsle/
 
 ## 3.1 The state machine (the legal-transition table is the design)
 
+Ten edges, and the one worth reading twice is `Loading -> MainMenu`: quit to menu is not a direct
+hop from `InGame` or `Paused` but the two-step route `InGame|Paused -> Loading -> MainMenu`, so that
+the loading curtain is already down while the session's zone scenes are unloaded — a direct edge
+would put the game in menu mode with zones still resident and the player watching their world come
+apart behind the menu.
+
 ```csharp
 public enum GameStateId : byte { Boot, MainMenu, Loading, InGame, Paused, LoadFailed }
 
@@ -175,12 +181,13 @@ public sealed class GameStateMachine
         (GameStateId.Boot,       GameStateId.MainMenu),
         (GameStateId.MainMenu,   GameStateId.Loading),
         (GameStateId.Loading,    GameStateId.InGame),
+        (GameStateId.Loading,    GameStateId.MainMenu),  // quit, step 2: unload done, curtain up
         (GameStateId.Loading,    GameStateId.LoadFailed),
         (GameStateId.LoadFailed, GameStateId.MainMenu),
         (GameStateId.InGame,     GameStateId.Paused),
         (GameStateId.Paused,     GameStateId.InGame),
-        (GameStateId.Paused,     GameStateId.Loading),   // quit to menu
-        (GameStateId.InGame,     GameStateId.Loading),   // zone transition
+        (GameStateId.Paused,     GameStateId.Loading),   // quit, step 1: curtain in
+        (GameStateId.InGame,     GameStateId.Loading),   // zone transition, or quit without pausing
     };
 
     public GameStateId Current { get; private set; } = GameStateId.Boot;

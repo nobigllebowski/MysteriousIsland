@@ -653,6 +653,36 @@ def read_text(path):
         fail("cannot read %s: %s" % (path, exc))
 
 
+def read_bytes(path):
+    """Raw bytes, for comparisons that must see what read_text() normalises away.
+
+    read_text() opens with utf-8-sig, so a BOM on one copy of a file and not the
+    other is invisible to it -- and a BOM is exactly the kind of drift a
+    spreadsheet editor introduces when a translator saves one of the two
+    localization CSVs.
+    """
+    try:
+        with open(path, "rb") as handle:
+            return handle.read()
+    except (IOError, OSError) as exc:
+        fail("cannot read %s: %s" % (path, exc))
+
+
+def first_difference(left, right):
+    """(offset, 1-based line) of the first differing byte, or None if equal."""
+    limit = min(len(left), len(right))
+    offset = limit
+    for index in range(limit):
+        if left[index] != right[index]:
+            offset = index
+            break
+    else:
+        if len(left) == len(right):
+            return None
+
+    return offset, left[:offset].count(b"\n") + 1
+
+
 def relative(root, path):
     return os.path.relpath(path, root).replace(os.sep, "/")
 
@@ -1204,6 +1234,26 @@ def check_localization_mirror(report, root, authoring_keys):
                      "missing: a player build loads the string table from Resources, not from "
                      "Assets/Localization")
         return
+
+    # The two files are one file kept in two places on purpose: the authoring
+    # copy is what a translator edits, the Resources copy is the only one a
+    # player build can load. Nothing but a copy step keeps them equal, so an
+    # edit applied to one and not the other is a silent ship of #key# text.
+    # Compare bytes, not parsed keys: a drift in a VALUE, a comment, row order
+    # or a BOM is just as wrong and the key comparison below cannot see any of
+    # it.
+    authoring_bytes = read_bytes(os.path.join(root, LOCALIZATION_CSV))
+    mirror_bytes = read_bytes(mirror_path)
+    difference = first_difference(authoring_bytes, mirror_bytes)
+    if difference is not None:
+        offset, line = difference
+        report.error("LOCKEY", mirror_rel, None,
+                     "is not byte-identical to %s (first difference at byte %d, line %d; "
+                     "%d bytes here vs %d there) -- these two files must match exactly; "
+                     "re-copy with: cp %s %s"
+                     % (LOCALIZATION_CSV.replace(os.sep, "/"), offset, line,
+                        len(mirror_bytes), len(authoring_bytes),
+                        LOCALIZATION_CSV.replace(os.sep, "/"), mirror_rel))
 
     mirror_keys = parse_csv_table(read_text(mirror_path), mirror_rel, report)
     for key in sorted(authoring_keys):

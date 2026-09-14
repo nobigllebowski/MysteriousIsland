@@ -1,4 +1,6 @@
+using System;
 using ForgottenIsle.Core.Logging;
+using ForgottenIsle.Core.Primitives;
 using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Session;
 using UnityEngine;
@@ -114,11 +116,86 @@ namespace ForgottenIsle.Game.Player
                 return;
             }
 
-            // Adopt the persisted pose so a loaded game puts the player back where they stood rather
-            // than wherever the scene author left the prefab.
-            transform.position = session.PlayerPosition.ToVector3();
-            SetYaw(session.PlayerYawDegrees);
+            if (IsContinuingInThisZone(session))
+            {
+                // A genuine continue: the run was already standing in this zone, so put it back exactly
+                // where it stood rather than wherever the scene author left the prefab.
+                transform.position = session.PlayerPosition.ToVector3();
+                SetYaw(session.PlayerYawDegrees);
+            }
+            else
+            {
+                PlaceOnEntryAnchor(log);
+            }
+
+            // Written through immediately rather than waited for: until this lands, the session still
+            // holds the pose the OUTGOING zone's rig flushed on its way out, and a save taken inside the
+            // cadence window would record the new zone's id against the old zone's coordinates.
             _sinceLastPoseWrite = 0f;
+            FlushPose();
+        }
+
+        /// <summary>
+        /// Decides whether the restored pose belongs to the zone this rig is standing in.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// THE ARRIVAL RULE. A run's stored pose is coordinates in one specific zone, and coordinates do
+        /// not survive being carried into another one — the same numbers that put the player on the wreck
+        /// shelf in Ribcage put them inside a fern bank, or in open air, in Fernmaw. So the pose is
+        /// restored ONLY when the zone recorded in the session is the zone this rig belongs to, which is
+        /// exactly the continue-a-saved-run case: the save named the zone, the loader brought that zone
+        /// in, and the two agree. On every other arrival — travel, which loads the destination while the
+        /// session still names the zone being left, and a new run, which has no pose yet — the rig is
+        /// placed on the destination's own <see cref="ZoneEntryAnchor"/> instead.
+        /// </para>
+        /// <para>
+        /// WHY THE ORIGIN COUNTS AS "NO POSE": a fresh run is zeroed by <c>SessionService.BeginNewRun</c>,
+        /// which sets the starting zone AND a zero pose, so the zone check alone would drop a new game at
+        /// world origin. The origin with zero yaw is a default rather than a place anybody stood, and it
+        /// is indistinguishable from one; treating it as unset costs a genuine save taken at exactly
+        /// (0, 0, 0) facing north its handful of centimetres, and buys every new run a spawn point that
+        /// was authored rather than assumed.
+        /// </para>
+        /// </remarks>
+        private bool IsContinuingInThisZone(SessionService session)
+        {
+            var zoneKey = gameObject.scene.name;
+            if (string.IsNullOrEmpty(zoneKey) || !string.Equals(session.ZoneId, zoneKey, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return session.PlayerPosition != Vec3.Zero || session.PlayerYawDegrees != 0f;
+        }
+
+        /// <summary>
+        /// Stands the rig on this zone's authored entry anchor.
+        /// </summary>
+        /// <remarks>
+        /// A zone with no anchor leaves the rig exactly where the scene author placed it and says so in
+        /// the log. That is the honest degradation: the prefab's authored position is a real position in
+        /// this zone's coordinates, which is already better than the previous zone's, and Phase 1 zones
+        /// are permitted to be unfinished.
+        /// </remarks>
+        private void PlaceOnEntryAnchor(ICoreLog log)
+        {
+            var anchor = ZoneEntryAnchor.FindInScene(gameObject.scene);
+            if (anchor == null)
+            {
+                if (log != null)
+                {
+                    log.Warn(LogCode.CatalogMissing, nameof(ZoneEntryAnchor) + ":" + gameObject.scene.name);
+                }
+
+                // Adopt the authored rotation rather than leaving _yawDegrees at its default, which would
+                // snap the capsule to north on the first frame and write that to the session.
+                SetYaw(CoreInterop.RotationToYaw(transform.rotation));
+                return;
+            }
+
+            transform.position = anchor.Position;
+            SetYaw(anchor.YawDegrees);
         }
 
         /// <summary>
@@ -263,7 +340,11 @@ namespace ForgottenIsle.Game.Player
         private void OnDisable()
         {
             // The zone is being unloaded or the rig switched off. Persist the final pose while the
-            // transform still exists, so travel and quit both capture where the player actually stood.
+            // transform still exists, so a quit or a save captures where the player actually stood.
+            //
+            // On travel this writes the OUTGOING zone's coordinates into the session, and that is
+            // harmless rather than a leak: the arriving rig compares the session's zone against its own
+            // (see IsContinuingInThisZone) and ignores a pose that belongs to the zone being left.
             FlushPose();
         }
     }

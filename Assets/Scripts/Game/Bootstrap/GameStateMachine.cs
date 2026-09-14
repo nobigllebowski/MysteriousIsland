@@ -34,16 +34,29 @@ namespace ForgottenIsle.Game.Bootstrap
         /// The complete legal transition set. Nothing outside this array is reachable.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Deliberately absent, and worth naming because their absence looks like an oversight:
         /// there is no self-transition (re-entering the state you are already in is a caller bug,
         /// not a no-op), and there is no edge back to <see cref="GameStateId.Boot"/> (boot happens
         /// once per process; a second boot is a new process).
+        /// </para>
+        /// <para>
+        /// Also deliberately absent, and the reason this table is ten edges rather than eleven or
+        /// twelve: there is no direct <c>InGame -&gt; MainMenu</c> or <c>Paused -&gt; MainMenu</c>.
+        /// Quitting to the menu is not an instant mode flip; it has to unload every session scene
+        /// first, and that work needs the loading curtain over it or the player watches their world
+        /// disappear one scene at a time. Quit therefore routes
+        /// <c>InGame|Paused -&gt; Loading -&gt; MainMenu</c>, which is what the
+        /// <c>Loading -&gt; MainMenu</c> edge below is for. A direct edge would let a caller reach
+        /// the menu with zones still resident and nothing tracking them.
+        /// </para>
         /// </remarks>
         private static readonly (GameStateId From, GameStateId To)[] LegalTransitions =
         {
             (GameStateId.Boot, GameStateId.MainMenu),
             (GameStateId.MainMenu, GameStateId.Loading),
             (GameStateId.Loading, GameStateId.InGame),
+            (GameStateId.Loading, GameStateId.MainMenu),
             (GameStateId.Loading, GameStateId.LoadFailed),
             (GameStateId.LoadFailed, GameStateId.MainMenu),
             (GameStateId.InGame, GameStateId.Paused),

@@ -213,19 +213,26 @@ namespace ForgottenIsle.Game.Bootstrap
     }
 
     /// <summary>
-    /// Tears the run down, unloads its zones and returns to the main menu.
+    /// Tears the run down, unloads its zones behind the loading curtain, and returns to the main menu.
     /// </summary>
     /// <remarks>
-    /// ⚠ VERIFY — CONTRACT DEFECT, NOT AN IMPLEMENTATION GAP. The legal transition table fixed by the
-    /// architecture contract contains no edge from <see cref="GameStateId.InGame"/> or
-    /// <see cref="GameStateId.Paused"/> to <see cref="GameStateId.MainMenu"/>; the only edge into
-    /// MainMenu is from <see cref="GameStateId.LoadFailed"/>. As specified, therefore, this command
-    /// can never succeed from a live run, and <see cref="Validate"/> below correctly refuses it with
-    /// <see cref="ResultCode.IllegalStateTransition"/>. The table was not widened here because it is
-    /// binding and a silent extra edge is exactly the kind of drift the table exists to prevent. The
-    /// owner of <see cref="GameStateMachine"/> must add <c>Paused -&gt; MainMenu</c> (and, if quitting
-    /// without pausing is wanted, <c>InGame -&gt; MainMenu</c>) before the pause menu ships. The
-    /// moment that edge exists this handler works unchanged.
+    /// <para>
+    /// WHY THIS IS A TWO-STEP ROUTE. There is no <c>InGame -&gt; MainMenu</c> or
+    /// <c>Paused -&gt; MainMenu</c> edge, and their absence is the design rather than an omission:
+    /// quitting has to unload every resident zone, which takes frames, and a mode that said
+    /// "MainMenu" while zone scenes were still being torn down would let the menu draw over a world
+    /// that is visibly dissolving. So the quit route is
+    /// <c>InGame|Paused -&gt; Loading -&gt; MainMenu</c>. <see cref="GameStateId.Loading"/> is where
+    /// the curtain lives; the unload happens under it, and MainMenu is entered from the unload's
+    /// completion, once there is nothing left resident.
+    /// </para>
+    /// <para>
+    /// WHY MainMenu IS ENTERED EVEN WHEN AN UNLOAD REPORTS FAILURE: <see cref="ZoneRegistry"/>
+    /// guarantees it ends up empty either way — a zone the loader gave up on is no longer the
+    /// registry's to account for. Refusing to leave Loading on a failed unload would strand the
+    /// player under a curtain with no way out, which is strictly worse than a logged warning and a
+    /// menu.
+    /// </para>
     /// </remarks>
     public sealed class QuitToMenuHandler : ICommandHandler<QuitToMenuCommand>
     {
@@ -246,18 +253,24 @@ namespace ForgottenIsle.Game.Bootstrap
             _log = log;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Accepts from <see cref="GameStateId.InGame"/> and <see cref="GameStateId.Paused"/> only.
+        /// </summary>
+        /// <remarks>
+        /// Those are the two modes that own a live run, and they are exactly the two with an edge into
+        /// <see cref="GameStateId.Loading"/>, so acceptance here is a promise the route can be walked.
+        /// Everything else is refused with <see cref="ResultCode.NotAllowedInState"/>: Boot and
+        /// MainMenu have no run to quit, Loading is already mid-route, and
+        /// <see cref="GameStateId.LoadFailed"/> is not this command's business — nothing was ever
+        /// entered, so there is nothing to tear down, and its own edge straight to MainMenu is the
+        /// failure screen's to take.
+        /// </remarks>
         public ResultCode Validate(in QuitToMenuCommand command)
         {
             var current = _states.Current;
-            if (current != GameStateId.InGame && current != GameStateId.Paused && current != GameStateId.LoadFailed)
+            if (current != GameStateId.InGame && current != GameStateId.Paused)
             {
                 return ResultCode.NotAllowedInState;
-            }
-
-            if (!_states.CanTransition(GameStateId.MainMenu))
-            {
-                return ResultCode.IllegalStateTransition;
             }
 
             return ResultCode.Ok;
@@ -266,19 +279,172 @@ namespace ForgottenIsle.Game.Bootstrap
         /// <inheritdoc />
         public void Execute(in QuitToMenuCommand command)
         {
-            // Order matters: end the run before the scenes go, so nothing left in a dying zone can
+            // Step one: the curtain. This happens before anything is destroyed so that no frame is
+            // ever presented showing a world mid-teardown.
+            _states.TryTransition(GameStateId.Loading);
+
+            // Then end the run, still before the scenes go, so nothing left alive in a dying zone can
             // observe a session that is half torn down, and so an in-flight autosave finds no run to
             // write rather than a partial one.
             _session.EndRun();
-            _states.TryTransition(GameStateId.MainMenu);
 
+            // Step two: the menu, entered from the unload's completion rather than beside it. The
+            // registry completes synchronously when nothing is resident, so a quit from a run whose
+            // zones are already gone still lands in MainMenu within this call.
             _zones.UnloadAll(code =>
             {
                 if (code != ResultCode.Ok && _log != null)
                 {
                     _log.Warn(LogCode.SceneLoadSlow, "quit:" + code);
                 }
+
+                _states.TryTransition(GameStateId.MainMenu);
             });
+        }
+    }
+
+    /// <summary>
+    /// Loads a saved run out of a slot and takes the player back into the zone it was saved in —
+    /// the main menu's "Continue".
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// WHY THE CURTAIN GOES UP BEFORE THE SLOT IS READ, even though reading is the part that can
+    /// fail: <see cref="GameStateId.LoadFailed"/> is reachable only from
+    /// <see cref="GameStateId.Loading"/>. Reading first would mean a corrupt slot discovered while
+    /// still in MainMenu had nowhere legal to go, and the handler would have to either strand the
+    /// machine or widen the table. Entering Loading first gives every failure below a legal
+    /// destination, and costs nothing on the happy path because Loading is where the resume was
+    /// always going.
+    /// </para>
+    /// <para>
+    /// WHY A FAILURE ENDS THE RUN: <c>SaveSlotService.Load</c> restores participants in order and
+    /// stops at the first one that cannot make sense of its section, which leaves the session
+    /// half-populated. Half a run is more dangerous than no run — it will autosave over the file it
+    /// came from — so the failure path clears it before surfacing the failure screen.
+    /// </para>
+    /// </remarks>
+    public sealed class ResumeSavedRunHandler : ICommandHandler<ResumeSavedRunCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly SaveSlotService _slots;
+        private readonly SessionService _session;
+        private readonly ZoneRegistry _zones;
+        private readonly ICoreLog _log;
+
+        /// <param name="states">The mode machine.</param>
+        /// <param name="slots">Slot persistence, already holding the participant register.</param>
+        /// <param name="session">The run being restored into.</param>
+        /// <param name="zones">Zone residency.</param>
+        /// <param name="log">Diagnostics sink. Null tolerated.</param>
+        public ResumeSavedRunHandler(
+            GameStateMachine states,
+            SaveSlotService slots,
+            SessionService session,
+            ZoneRegistry zones,
+            ICoreLog log)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _slots = slots ?? throw new ArgumentNullException(nameof(slots));
+            _session = session ?? throw new ArgumentNullException(nameof(session));
+            _zones = zones ?? throw new ArgumentNullException(nameof(zones));
+            _log = log;
+        }
+
+        /// <summary>
+        /// Accepts only from <see cref="GameStateId.MainMenu"/>, and only for a slot whose header can
+        /// actually be read.
+        /// </summary>
+        /// <remarks>
+        /// The header read is the cheapest honest test of "is there something here to continue" — it
+        /// touches a bounded prefix of the file rather than the sections, and it is the same read the
+        /// menu already did to label the Continue button. A slot that is empty and a slot whose header
+        /// is damaged both answer <see cref="ResultCode.SlotEmpty"/>: from the player's side there is
+        /// nothing to resume either way, and the corruption has already been logged once by the slot
+        /// service, so reporting it a second time as a distinct code would only give the UI a second
+        /// message to write for the same dead end.
+        /// </remarks>
+        public ResultCode Validate(in ResumeSavedRunCommand command)
+        {
+            if (!SaveSlotService.IsValidSlot(command.Slot))
+            {
+                // Not a slot at all. Distinct from SlotEmpty on purpose: an out-of-range index is a
+                // caller bug, and answering "nothing saved there" would hide it behind a plausible
+                // player-facing explanation.
+                return ResultCode.InvalidArgument;
+            }
+
+            if (_states.Current != GameStateId.MainMenu)
+            {
+                // Continue is a main-menu action. Resuming over a live run would restore participants
+                // underneath a world that is already standing.
+                return ResultCode.NotAllowedInState;
+            }
+
+            if (_zones.ResidentCount > 0)
+            {
+                // Menu mode with zones still resident means a previous run has not finished unloading.
+                return ResultCode.NotAllowedInState;
+            }
+
+            SaveMetadata metadata;
+            if (_slots.ReadMetadata(command.Slot, out metadata) != ResultCode.Ok || metadata == null)
+            {
+                return ResultCode.SlotEmpty;
+            }
+
+            return ResultCode.Ok;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in ResumeSavedRunCommand command)
+        {
+            var slot = command.Slot;
+            _states.TryTransition(GameStateId.Loading);
+
+            var loadCode = _slots.Load(slot);
+            if (loadCode != ResultCode.Ok)
+            {
+                Fail(LogCode.SaveCorrupt, "resume slot" + slot + ":" + loadCode);
+                return;
+            }
+
+            // The zone comes from the restored session rather than from the header, because the
+            // session is what the world will be built around and the two must not be allowed to
+            // disagree. A save naming a zone this build no longer ships is a real possibility after a
+            // content change, and it is caught here rather than inside the loader.
+            var zone = _session.ZoneId;
+            if (!SceneKeys.IsZone(zone))
+            {
+                Fail(LogCode.CatalogMissing, "resume slot" + slot + ":" + (string.IsNullOrEmpty(zone) ? "<none>" : zone));
+                return;
+            }
+
+            _zones.EnterZone(zone, code =>
+            {
+                if (code == ResultCode.Ok)
+                {
+                    _session.SetZone(zone);
+                    _states.TryTransition(GameStateId.InGame);
+                    return;
+                }
+
+                Fail(LogCode.SceneLoadSlow, zone + ":" + code);
+            });
+        }
+
+        /// <summary>
+        /// Reports why the resume died, discards whatever was restored, and shows the failure screen.
+        /// </summary>
+        private void Fail(LogCode code, string detail)
+        {
+            if (_log != null)
+            {
+                _log.Warn(code, detail);
+            }
+
+            _session.EndRun();
+            _states.TryTransition(GameStateId.LoadFailed);
         }
     }
 
@@ -368,6 +534,11 @@ namespace ForgottenIsle.Game.Bootstrap
                     _log.Warn(LogCode.SceneLoadSlow, destination + ":" + code);
                 }
 
+                // The outgoing zone was hard-unloaded before this load began (ADR-0004), so a failure here
+                // leaves a run whose recorded zone is no longer resident. Resuming it would place the
+                // player in a scene that is not loaded, so discard the run rather than carry a pointer to
+                // nothing into the failure screen.
+                _session.EndRun();
                 _states.TryTransition(GameStateId.LoadFailed);
             });
         }

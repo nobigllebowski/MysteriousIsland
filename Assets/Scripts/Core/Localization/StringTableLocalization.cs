@@ -94,7 +94,9 @@ namespace ForgottenIsle.Core.Localization
         /// Merging rather than replacing, last-write-wins, is what makes overrides work: load the shipped
         /// table, then load a patch or a platform-specific sheet on top of it, and only the rows the patch
         /// mentions change. Rows with an empty key are dropped; a null value becomes an empty string, so
-        /// the table itself can never hand a lookup null.
+        /// the table itself can never hand a lookup null. A row with an EMPTY value is stored as given and
+        /// is not an error here — <see cref="TryLookup"/> is what refuses to treat it as a translation, so
+        /// that an override sheet can be loaded verbatim without a blank cell ever reaching a label.
         /// </remarks>
         /// <exception cref="ArgumentException"><paramref name="locale"/> is null or empty.</exception>
         /// <exception cref="ArgumentNullException"><paramref name="entries"/> is null.</exception>
@@ -193,9 +195,31 @@ namespace ForgottenIsle.Core.Localization
         }
 
         /// <summary>
-        /// Looks up <paramref name="key"/> in the current locale, then in the fallback locale.
+        /// Looks up <paramref name="key"/> in the current locale, then in the fallback locale, treating a
+        /// row that exists but carries no text as no row at all.
         /// </summary>
-        /// <returns>True when found; <paramref name="value"/> is then non-null.</returns>
+        /// <remarks>
+        /// <para>
+        /// WHY PRESENCE ALONE IS NOT ENOUGH. The obvious implementation asks the dictionary whether it
+        /// contains the key and returns whatever it holds. That defeats the entire <c>#key#</c> design at
+        /// the one point where it matters, because a row CAN legitimately hold an empty string:
+        /// <c>CsvTableParser</c> only drops a row whose KEY is empty, so the line
+        /// <c>ui.menu.continue,</c> — a translator who tabbed past a cell, a merge that emptied a column,
+        /// an export that wrote a header row and no body — parses successfully into an entry whose value
+        /// is <c>""</c>. Presence-based lookup calls that a hit and the button renders BLANK: invisible in
+        /// the only artefact a missing-translation bug ever arrives as, which is a screenshot, and not
+        /// reported anywhere because nothing looked like a miss.
+        /// </para>
+        /// <para>
+        /// Requiring non-empty CONTENT in BOTH branches turns that row back into what it actually is — an
+        /// absent translation. It falls through to the fallback locale, which is where the authored English
+        /// lives and is very often not empty, and only then to <c>#key#</c> with a
+        /// <see cref="LogCode.MissingLocKey"/> warning. The cost is that a translation cannot deliberately
+        /// be the empty string; that is not a loss, because a label a designer wants blank is a label the
+        /// layout should not be drawing at all.
+        /// </para>
+        /// </remarks>
+        /// <returns>True when found with non-empty text; <paramref name="value"/> is then non-null and non-empty.</returns>
         private bool TryLookup(string key, out string value)
         {
             value = null;
@@ -204,17 +228,25 @@ namespace ForgottenIsle.Core.Localization
                 return false;
             }
 
+            string candidate;
+
             Dictionary<string, string> current;
-            if (_tables.TryGetValue(CurrentLocale, out current) && current.TryGetValue(key, out value))
+            if (_tables.TryGetValue(CurrentLocale, out current)
+                && current.TryGetValue(key, out candidate)
+                && !string.IsNullOrEmpty(candidate))
             {
+                value = candidate;
                 return true;
             }
 
             if (!string.Equals(CurrentLocale, _fallbackLocale, StringComparison.OrdinalIgnoreCase))
             {
                 Dictionary<string, string> fallback;
-                if (_tables.TryGetValue(_fallbackLocale, out fallback) && fallback.TryGetValue(key, out value))
+                if (_tables.TryGetValue(_fallbackLocale, out fallback)
+                    && fallback.TryGetValue(key, out candidate)
+                    && !string.IsNullOrEmpty(candidate))
                 {
+                    value = candidate;
                     return true;
                 }
             }

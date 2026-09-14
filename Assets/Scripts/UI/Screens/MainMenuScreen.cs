@@ -28,15 +28,19 @@ namespace ForgottenIsle.UI.Screens
     /// </remarks>
     public sealed class MainMenuScreen : UIScreen
     {
+        // Keys follow the string table, which is the authority: lowercase segments, snake_case in the
+        // final one, under the sub-namespace that already owns the string. Where a row exists for what
+        // this screen needs it is reused rather than duplicated under ui.menu.* — the slot wording is
+        // the save area's (ui.save.*) and the subtitle is the product's (game.*).
         private static readonly LocKey TitleKey = new LocKey("ui.menu.title");
-        private static readonly LocKey SubtitleKey = new LocKey("ui.menu.subtitle");
+        private static readonly LocKey SubtitleKey = new LocKey("game.subtitle");
         private static readonly LocKey ContinueKey = new LocKey("ui.menu.continue");
-        private static readonly LocKey NewGameKey = new LocKey("ui.menu.newGame");
+        private static readonly LocKey NewGameKey = new LocKey("ui.menu.new_game");
         private static readonly LocKey SettingsKey = new LocKey("ui.menu.settings");
-        private static readonly LocKey NoSaveKey = new LocKey("ui.menu.slot.empty");
-        private static readonly LocKey SlotSummaryKey = new LocKey("ui.menu.slot.summary");
-        private static readonly LocKey UnknownZoneKey = new LocKey("ui.menu.slot.unknownZone");
-        private static readonly LocKey DurationKey = new LocKey("ui.common.duration.hm");
+        private static readonly LocKey NoSaveKey = new LocKey("ui.save.slot_empty");
+        private static readonly LocKey SlotSummaryKey = new LocKey("ui.menu.slot_summary");
+        private static readonly LocKey UnknownZoneKey = new LocKey("ui.common.unknown");
+        private static readonly LocKey DurationKey = new LocKey("ui.save.playtime");
 
         private readonly Action _onContinue;
         private readonly Action _onNewGame;

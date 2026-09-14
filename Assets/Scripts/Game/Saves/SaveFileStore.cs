@@ -147,6 +147,12 @@ namespace ForgottenIsle.Game.Saves
         /// (notably some Android external storage mounts), hence the explicit fallback, which orders its
         /// steps so the backup is in place before the live file is disturbed.
         /// </para>
+        /// <para>
+        /// THE GUARANTEE ON FAILURE: a write that returns <see cref="ResultCode.SaveWriteFailed"/> leaves
+        /// the previous good state recoverable. Either the live save is untouched, or — if the rotation got
+        /// as far as removing it — the backup holds it, and the temp file is deleted rather than promoted.
+        /// No failure path here deletes or rewrites the backup.
+        /// </para>
         /// </remarks>
         /// <returns><see cref="ResultCode.Ok"/>, or <see cref="ResultCode.SaveWriteFailed"/> with the cause logged.</returns>
         public ResultCode Write(string fileKey, string payload)
@@ -190,6 +196,19 @@ namespace ForgottenIsle.Game.Saves
             catch (Exception exception)
             {
                 Warn(LogCode.SaveCorrupt, "write " + fileKey + ": " + exception.GetType().Name + " " + exception.Message);
+
+                // WHAT THIS PATH MUST NOT DO, and why each half matters.
+                //
+                // It must not PROMOTE the temp file. Reaching here means nobody confirmed the write was
+                // complete, and a half-written document renamed into place is worse than a failed save:
+                // it looks like a save, and the game will load it. Deleting it is how that is guaranteed.
+                //
+                // It must not TOUCH THE BACKUP. The backup is the previous good save, it is the only copy
+                // that is known-complete once the live file has been disturbed, and every failure this
+                // catch can see leaves it as the thing the player's run depends on — a failed rotation may
+                // already have removed the live file. Deleting or rewriting it here would turn a save that
+                // did not happen into a save that was destroyed. Nothing below the temp file is cleaned up
+                // for that reason, and SaveSlotService.Read/ReadMetadata both fall back to it.
                 TryDeleteQuietly(tempPath);
                 return ResultCode.SaveWriteFailed;
             }
@@ -306,7 +325,12 @@ namespace ForgottenIsle.Game.Saves
 
             // Fallback, ordered so a failure at any step leaves a complete save somewhere: copy the current
             // save aside FIRST, then delete it, then promote the temp file.
-            TryDeleteQuietly(backupPath);
+            //
+            // The copy overwrites in one operation and the previous backup is NOT deleted beforehand. That
+            // deletion used to come first and was the one step in this method that could destroy data: if
+            // the copy then failed — a full disk is the ordinary way for it to fail — the old backup was
+            // already gone, and the slot was left with nothing behind the live file at all. Letting Copy do
+            // its own overwrite means the previous backup survives until a complete replacement exists.
             File.Copy(savePath, backupPath, true);
             File.Delete(savePath);
             File.Move(tempPath, savePath);

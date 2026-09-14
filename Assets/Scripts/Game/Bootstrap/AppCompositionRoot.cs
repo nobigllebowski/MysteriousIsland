@@ -68,12 +68,17 @@ namespace ForgottenIsle.Game.Bootstrap
                 slots.RegisterParticipant(participants[i]);
             }
 
+            // Resume is registered after the participant loop above, and that ordering is load-bearing
+            // rather than cosmetic: ResumeSavedRunHandler restores a run by calling SaveSlotService.Load,
+            // which walks the participant register. A handler wired before the register was filled would
+            // resume into an empty world and report success.
             dispatcher.Register<StartNewGameCommand>(new StartNewGameHandler(states, session, zones, log));
+            dispatcher.Register<ResumeSavedRunCommand>(new ResumeSavedRunHandler(states, slots, session, zones, log));
             dispatcher.Register<SaveGameCommand>(new SaveGameHandler(slots, session, states, signals, log));
             dispatcher.Register<QuitToMenuCommand>(new QuitToMenuHandler(states, zones, session, log));
             dispatcher.Register<TravelToZoneCommand>(new TravelToZoneHandler(states, zones, session, sceneLoader, log));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, input, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, participants);
         }
 
         /// <summary>

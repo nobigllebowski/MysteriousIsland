@@ -56,6 +56,7 @@ namespace ForgottenIsle.Game.Bootstrap
             SessionService session,
             SceneLoader sceneLoader,
             ZoneRegistry zones,
+            SaveSlotService slots,
             InputRouter input,
             IReadOnlyList<ISaveParticipant> saveParticipants)
         {
@@ -123,6 +124,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Session = session;
             SceneLoader = sceneLoader;
             Zones = zones;
+            Slots = slots ?? throw new ArgumentNullException(nameof(slots));
             Input = input;
 
             // Copied defensively. The participant list is what a save iterates; handing out the
@@ -161,6 +163,16 @@ namespace ForgottenIsle.Game.Bootstrap
 
         /// <summary>Zone residency and the ADR-0004 two-zone cap.</summary>
         public ZoneRegistry Zones { get; }
+
+        /// <summary>The save slot register: three manual slots plus the autosave ring.</summary>
+        /// <remarks>
+        /// Exposed so that presentation code can READ slot metadata (to render CONTINUE) without
+        /// standing up a second <see cref="SaveSlotService"/> over the same files. Two services over one
+        /// directory means two caches that disagree the moment either writes, so there is exactly one
+        /// instance and it lives here. Reading metadata is safe for UI; writing still goes through a
+        /// command, because only a command handler may mutate.
+        /// </remarks>
+        public SaveSlotService Slots { get; }
 
         /// <summary>
         /// Player input, already gated on the state machine so it reads as centred outside

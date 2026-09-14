@@ -36,14 +36,15 @@ namespace ForgottenIsle.UI.Controllers
     /// </remarks>
     public sealed class MainMenuController
     {
-        private static readonly LocKey SlotsFullKey = new LocKey("ui.toast.slots.full");
-        private static readonly LocKey NoSaveKey = new LocKey("ui.toast.continue.unavailable");
+        // Keys follow the string table. "Nothing to continue" is the menu's own ui.menu.no_save row
+        // rather than a second toast-only phrasing of the same sentence.
+        private static readonly LocKey SlotsFullKey = new LocKey("ui.toast.slots_full");
+        private static readonly LocKey NoSaveKey = new LocKey("ui.menu.no_save");
 
         private readonly UIService _ui;
         private readonly CommandDispatcher _commands;
         private readonly SaveSlotService _slots;
         private readonly ICoreLog _log;
-        private readonly Func<int, ResultCode> _resumeSavedRun;
         private readonly string _buildVersion;
 
         private SettingsScreen _settings;
@@ -56,17 +57,6 @@ namespace ForgottenIsle.UI.Controllers
         /// <param name="commands">The dispatcher. The only route from this class to a state change.</param>
         /// <param name="slots">Slot headers, read to decide whether CONTINUE is offered and what it says.</param>
         /// <param name="log">Diagnostics sink.</param>
-        /// <param name="resumeSavedRun">
-        /// Resumes an existing save in the given slot and returns the outcome.
-        /// <para>
-        /// WHY this is a delegate and not a command: Phase 1's command set has no LoadGameCommand (the
-        /// contract lists StartNewGame, SaveGame, QuitToMenu and TravelToZone), and inventing one here would
-        /// put a second, unreviewed definition of "load a game" in the UI assembly. Composition supplies the
-        /// load path instead, and this controller still never touches state itself. When the command exists,
-        /// this parameter disappears and CONTINUE becomes one more <c>Dispatch</c> like the others.
-        /// </para>
-        /// Null disables CONTINUE entirely, which is the honest behaviour when nothing can service it.
-        /// </param>
         /// <param name="buildVersion">Build string shown on the settings screen.</param>
         /// <exception cref="ArgumentNullException"><paramref name="ui"/>, <paramref name="commands"/>, <paramref name="slots"/> or <paramref name="log"/> is null.</exception>
         public MainMenuController(
@@ -74,14 +64,12 @@ namespace ForgottenIsle.UI.Controllers
             CommandDispatcher commands,
             SaveSlotService slots,
             ICoreLog log,
-            Func<int, ResultCode> resumeSavedRun = null,
             string buildVersion = "")
         {
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
             _slots = slots ?? throw new ArgumentNullException(nameof(slots));
             _log = log ?? throw new ArgumentNullException(nameof(log));
-            _resumeSavedRun = resumeSavedRun;
             _buildVersion = buildVersion ?? string.Empty;
 
             Screen = new MainMenuScreen(_ui.Context, OnContinue, OnNewGame, OnSettings);
@@ -120,7 +108,10 @@ namespace ForgottenIsle.UI.Controllers
             SaveMetadata metadata;
             int slot;
 
-            if (_resumeSavedRun != null && _slots.TryFindMostRecent(out slot, out metadata) && metadata != null)
+            // The dispatcher is asked whether it can service a resume at all. A build whose composition
+            // root never registered the handler would otherwise offer CONTINUE and answer the tap with a
+            // NoHandler toast, which blames the player's save for a wiring mistake.
+            if (CanResume() && _slots.TryFindMostRecent(out slot, out metadata) && metadata != null)
             {
                 _continueSlot = slot;
                 Screen.ShowContinueSlot(metadata);
@@ -131,10 +122,16 @@ namespace ForgottenIsle.UI.Controllers
             Screen.ShowNoSave();
         }
 
-        /// <summary>Resumes the most recent save, reporting whatever the load path returns.</summary>
+        /// <summary>Resumes the most recent save, as a command.</summary>
+        /// <remarks>
+        /// CONTINUE is a <see cref="ResumeSavedRunCommand"/> like every other menu action is a command:
+        /// the handler validates the slot, raises the curtain, restores the participants and decides
+        /// what a corrupt file means. This method chooses a slot and reports the outcome, and that is
+        /// the whole of its authority.
+        /// </remarks>
         private void OnContinue()
         {
-            if (_continueSlot < 0 || _resumeSavedRun == null)
+            if (_continueSlot < 0 || !CanResume())
             {
                 // Reachable if a save disappeared between the last Refresh and this tap. Saying so is better
                 // than a dead button: the player learns the state changed, and Refresh corrects the label.
@@ -143,13 +140,19 @@ namespace ForgottenIsle.UI.Controllers
                 return;
             }
 
-            var code = _resumeSavedRun(_continueSlot);
-            if (code != ResultCode.Ok)
+            var result = _commands.Dispatch(new ResumeSavedRunCommand(_continueSlot));
+            if (!result.Success)
             {
-                _log.Warn(LogCode.SaveCorrupt, "continue slot " + _continueSlot.ToString(CultureInfo.InvariantCulture) + ": " + code);
-                _ui.ToastResult(code);
+                _log.Warn(LogCode.SaveCorrupt, "continue slot " + _continueSlot.ToString(CultureInfo.InvariantCulture) + ": " + result.Code);
+                _ui.ToastResult(result.Code);
                 Refresh();
             }
+        }
+
+        /// <summary>True when a resume can actually be serviced by the dispatcher this menu was given.</summary>
+        private bool CanResume()
+        {
+            return _commands.HasHandler<ResumeSavedRunCommand>();
         }
 
         /// <summary>Starts a new run in the first free slot, as a command.</summary>

@@ -59,6 +59,18 @@ Contents:
 
 ## 2. `Assets/Scenes/MainMenu.unity`
 
+
+> **⚠ PHASE 1 STATUS — READ BEFORE BUILDING THIS SCENE.**
+> **Nothing in Phase 1 loads `MainMenu.unity`.** The main menu is UI Toolkit screens drawn on the
+> persistent `UIDocument` created by `UiInstaller`, over a flat themed background. This scene is
+> the *future* home of the cinematic backdrop (island coastline, ocean, wind, distant storm) that
+> the Mobile UX Plan calls for, and a menu-scene lifecycle owner is scheduled for Phase 2
+> (ADR open item **O-9**).
+>
+> So: **create it if you want the placeholder in Build Settings** (the build order below assumes
+> it exists, and `SceneKeys.MainMenu` references it), but do not expect to see it on screen yet,
+> and do not spend art time on it until O-9 is resolved.
+
 The menu has no world. The menu *screen* is built by
 `ForgottenIsle.UI.Screens.MainMenuScreen` into the Bootstrap `UIDocument`, so
 this scene exists only to be something to be loaded while the menu is up — it is

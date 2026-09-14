@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
 using ForgottenIsle.Core.Data;
 using ForgottenIsle.Core.Localization;
 using ForgottenIsle.Core.Logging;
@@ -463,6 +466,155 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.AreEqual(0, _log.WarningCount);
         }
 
+        // ------------------------------------------------------------------ CI gate
+
+        /// <summary>
+        /// The gate that bans hardcoded strings: every <c>new LocKey("...")</c> literal anywhere under
+        /// Assets/Scripts must have a row in the shipped string table.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// WHY this exists as a test and not only as a code review habit: a key with no row does not
+        /// throw, does not fail to compile and does not even log on the frame it is created. It renders
+        /// as <c>#the.key#</c>, and only in the one screen state that draws it. A rename in a screen and
+        /// a forgotten row in the table are the same edit from the compiler's point of view, so nothing
+        /// but a scan of both sides catches the drift.
+        /// </para>
+        /// <para>
+        /// WHY the Resources copy is the one parsed: Assets/Localization/en.csv is the authoring copy a
+        /// translator edits, but Unity only serves <c>Resources.Load</c> from a folder literally named
+        /// Resources, so Assets/Resources/Localization/en.csv is the only file a player build ever
+        /// reads. A key present in the authoring copy and absent from the shipped one is still a
+        /// <c>#key#</c> in the player's build. (ci/validate-structure.py separately asserts the two
+        /// files are byte-identical.)
+        /// </para>
+        /// <para>
+        /// WHY the literal scan is a regex and not a parse: the pattern is anchored on the constructor
+        /// call, so a key built by concatenation -- <c>new LocKey("zone." + id + ".name")</c> -- is
+        /// deliberately not matched. Those cannot be resolved without running the game, and the rows
+        /// backing them (zone.*, ui.locale.*) are covered by the act/zone sections of the table
+        /// instead. Everything this test does match is a literal that must exist today.
+        /// </para>
+        /// </remarks>
+        [Test]
+        public void EveryKeyReferencedInCode_ExistsIn_en_csv()
+        {
+            var scriptsRoot = ScriptsRoot();
+            Assert.IsTrue(Directory.Exists(scriptsRoot),
+                "Expected shipped C# sources at " + scriptsRoot + ". If this path is wrong the whole " +
+                "gate silently passes, so it is asserted rather than skipped.");
+
+            var table = ShippedTableKeys();
+
+            var sources = Directory.GetFiles(scriptsRoot, "*.cs", SearchOption.AllDirectories);
+            System.Array.Sort(sources, System.StringComparer.Ordinal);
+            Assert.Greater(sources.Length, 0, "No .cs files were found under " + scriptsRoot + ".");
+
+            // Key -> the first "Assets/...cs:line" that references it, in key order so a failure
+            // message is stable across runs and machines.
+            var missing = new SortedDictionary<string, string>(System.StringComparer.Ordinal);
+            var referenced = 0;
+
+            foreach (var source in sources)
+            {
+                var code = File.ReadAllText(source);
+                foreach (Match match in LocKeyLiteral.Matches(code))
+                {
+                    var key = match.Groups["key"].Value;
+                    if (key.Length == 0)
+                    {
+                        // new LocKey("") is a caller bug, but it is LocKey's own contract to render it
+                        // as ## -- see Localization_EmptyKey_ReturnsDoubleHashRatherThanVanishing.
+                        continue;
+                    }
+
+                    referenced++;
+                    if (table.Contains(key) || missing.ContainsKey(key))
+                    {
+                        continue;
+                    }
+
+                    missing.Add(key, ProjectRelative(source) + ":" + LineOf(code, match.Index));
+                }
+            }
+
+            Assert.Greater(referenced, 0,
+                "Not one LocKey literal was found in " + sources.Length + " source files. The scan " +
+                "pattern has stopped matching the code, which would let any missing key through.");
+
+            if (missing.Count == 0)
+            {
+                return;
+            }
+
+            var message = new StringBuilder();
+            message.Append(missing.Count);
+            message.Append(" LocKey literal(s) under Assets/Scripts have no row in ");
+            message.Append(ShippedTableRelativePath);
+            message.Append(". Each renders in game as #the.key#. Add a row for every key below to ");
+            message.Append("Assets/Localization/en.csv and copy it to the Resources mirror -- do not ");
+            message.Append("hardcode the text in a screen:");
+            foreach (var entry in missing)
+            {
+                message.Append("\n    ");
+                message.Append(entry.Key);
+                message.Append("   (first referenced at ");
+                message.Append(entry.Value);
+                message.Append(")");
+            }
+
+            Assert.Fail(message.ToString());
+        }
+
+        /// <summary>
+        /// The mirror of the gate above: a row that exists but carries no value is a blank label, which
+        /// is the one failure mode worse than <c>#key#</c> because it is invisible in a screenshot.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="CsvTableParser"/> only drops a row with an empty KEY, so <c>ui.menu.continue,</c>
+        /// parses into a real entry whose value is <c>""</c>. <see cref="StringTableLocalization"/>
+        /// rejects that at lookup and falls through to <c>#key#</c>, but it tests with
+        /// <c>string.IsNullOrEmpty</c> -- a value of one space passes that check and reaches the label
+        /// as blank text. A whitespace-only row therefore has no runtime guard at all, and this is the
+        /// only place it is caught.
+        /// </remarks>
+        [Test]
+        public void NoKeyIn_en_csv_HasAnEmptyValue()
+        {
+            var rows = ShippedTableRows();
+
+            var blank = new List<string>();
+            foreach (var row in rows)
+            {
+                if (!string.IsNullOrWhiteSpace(row.Value))
+                {
+                    continue;
+                }
+
+                blank.Add(row.Key);
+            }
+
+            if (blank.Count == 0)
+            {
+                return;
+            }
+
+            blank.Sort(System.StringComparer.Ordinal);
+
+            var message = new StringBuilder();
+            message.Append(blank.Count);
+            message.Append(" row(s) in ");
+            message.Append(ShippedTableRelativePath);
+            message.Append(" have an empty or whitespace-only value, which draws as a blank label:");
+            foreach (var key in blank)
+            {
+                message.Append("\n    ");
+                message.Append(key);
+            }
+
+            Assert.Fail(message.ToString());
+        }
+
         // ---------------------------------------------------------------- fixtures
 
         private StringTableLocalization NewLocalization()
@@ -475,6 +627,88 @@ namespace ForgottenIsle.Tests.EditMode
         private static KeyValuePair<string, string> Row(string key, string value)
         {
             return new KeyValuePair<string, string>(key, value);
+        }
+
+        // ------------------------------------------------- fixtures for the CI gate
+
+        /// <summary>Path of the shipped table, relative to the project root, for failure messages.</summary>
+        private const string ShippedTableRelativePath = "Assets/Resources/Localization/en.csv";
+
+        /// <summary>
+        /// Matches a <c>new LocKey("literal")</c> construction. The key class excludes the backslash so
+        /// an escaped sequence is skipped rather than half-read; house-style keys never contain one.
+        /// </summary>
+        private static readonly Regex LocKeyLiteral = new Regex(
+            @"\bnew\s+LocKey\s*\(\s*""(?<key>[^""\\\r\n]*)""\s*\)",
+            RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Assets/Scripts. <c>Application.dataPath</c> is the project's Assets folder in the Editor, and
+        /// an EditMode test always runs in the Editor, so this needs no asset-database lookup.
+        /// </summary>
+        private static string ScriptsRoot()
+        {
+            return Path.Combine(UnityEngine.Application.dataPath, "Scripts");
+        }
+
+        /// <summary>Absolute path of the table a player build actually loads.</summary>
+        private static string ShippedTablePath()
+        {
+            return Path.Combine(UnityEngine.Application.dataPath, "Resources", "Localization", "en.csv");
+        }
+
+        /// <summary>Parsed rows of the shipped table, asserting it exists and is not empty.</summary>
+        private static IList<KeyValuePair<string, string>> ShippedTableRows()
+        {
+            var path = ShippedTablePath();
+            Assert.IsTrue(File.Exists(path),
+                "The shipped string table is missing from " + path + ". A player build loads it from " +
+                "Resources, not from Assets/Localization.");
+
+            var rows = CsvTableParser.Parse(File.ReadAllText(path));
+            Assert.Greater(rows.Count, 0,
+                "Parsed no rows from " + ShippedTableRelativePath + ". An empty parse would make every " +
+                "key look missing, or make the blank-value check pass vacuously.");
+            return rows;
+        }
+
+        /// <summary>Key set of the shipped table.</summary>
+        private static HashSet<string> ShippedTableKeys()
+        {
+            var keys = new HashSet<string>(System.StringComparer.Ordinal);
+            foreach (var row in ShippedTableRows())
+            {
+                keys.Add(row.Key);
+            }
+
+            return keys;
+        }
+
+        /// <summary>1-based line containing <paramref name="offset"/>.</summary>
+        private static int LineOf(string text, int offset)
+        {
+            var line = 1;
+            var limit = offset < text.Length ? offset : text.Length;
+            for (var index = 0; index < limit; index++)
+            {
+                if (text[index] == '\n')
+                {
+                    line++;
+                }
+            }
+
+            return line;
+        }
+
+        /// <summary>
+        /// Rewrites an absolute source path as a project-relative one ("Assets/Scripts/..."), so a
+        /// failure message is the same on CI as on a developer's machine and can be pasted into a grep.
+        /// </summary>
+        private static string ProjectRelative(string absolutePath)
+        {
+            var normalized = absolutePath.Replace('\\', '/');
+            var marker = normalized.LastIndexOf("/Assets/", System.StringComparison.Ordinal);
+            return marker < 0 ? normalized : normalized.Substring(marker + 1);
         }
     }
 }

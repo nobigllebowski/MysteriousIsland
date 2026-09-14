@@ -216,36 +216,52 @@ namespace ForgottenIsle.UI.Core
             return settings;
         }
 
-        /// <summary>Maps a failure to the message the player sees.</summary>
+        /// <summary>
+        /// Maps a failure to the message the player sees.
+        /// </summary>
+        /// <remarks>
+        /// The keys are the <c>err.*</c> family the string table already ships, one row per
+        /// <see cref="ResultCode"/> named after the code in snake_case. The mapping is therefore
+        /// mechanical and total: adding a code adds a row and a case, and nothing has to invent a
+        /// second naming scheme for the same set of failures. An earlier draft coined a parallel
+        /// <c>ui.toast.error.*</c> family; every one of those keys was missing from the table and
+        /// rendered as a <c>#key#</c> marker in game.
+        /// </remarks>
         private static LocKey KeyForResult(ResultCode code)
         {
             switch (code)
             {
                 case ResultCode.UnknownCommand:
+                    return new LocKey("err.unknown_command");
                 case ResultCode.NoHandler:
-                    return new LocKey("ui.toast.error.unsupported");
+                    return new LocKey("err.no_handler");
                 case ResultCode.IllegalStateTransition:
+                    return new LocKey("err.illegal_state_transition");
                 case ResultCode.NotAllowedInState:
-                    return new LocKey("ui.toast.error.notNow");
+                    return new LocKey("err.not_allowed_in_state");
                 case ResultCode.InvalidArgument:
-                    return new LocKey("ui.toast.error.invalid");
+                    return new LocKey("err.invalid_argument");
                 case ResultCode.NotFound:
+                    return new LocKey("err.not_found");
                 case ResultCode.SlotEmpty:
-                    return new LocKey("ui.toast.error.slotEmpty");
+                    return new LocKey("err.slot_empty");
                 case ResultCode.SaveWriteFailed:
-                    return new LocKey("ui.toast.error.saveFailed");
+                    return new LocKey("err.save_write_failed");
                 case ResultCode.SaveCorrupt:
-                    return new LocKey("ui.toast.error.saveCorrupt");
+                    return new LocKey("err.save_corrupt");
                 case ResultCode.SaveVersionTooNew:
-                    return new LocKey("ui.toast.error.saveTooNew");
+                    return new LocKey("err.save_version_too_new");
                 case ResultCode.SceneNotFound:
-                    return new LocKey("ui.toast.error.sceneMissing");
+                    return new LocKey("err.scene_not_found");
                 case ResultCode.AlreadyLoading:
-                    return new LocKey("ui.toast.error.busy");
+                    return new LocKey("err.already_loading");
                 case ResultCode.LoadTimedOut:
-                    return new LocKey("ui.toast.error.loadTimeout");
+                    return new LocKey("err.load_timed_out");
                 default:
-                    return new LocKey("ui.toast.error.generic");
+                    // Ok never reaches here (ToastResult returns early) and every other member is
+                    // named above, so this is the "a code was appended and this switch was not
+                    // updated" path. The generic refusal is the safest thing to say about it.
+                    return new LocKey("err.unknown_command");
             }
         }
 

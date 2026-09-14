@@ -22,13 +22,16 @@ namespace ForgottenIsle.UI.Screens
     /// </remarks>
     public sealed class SettingsScreen : UIScreen
     {
+        // Keys follow the string table: the language and version rows are ui.settings.language and
+        // ui.settings.version there, BACK is shared chrome (ui.common.back) rather than a settings
+        // string of its own, and an absent build string reuses ui.common.unknown.
         private static readonly LocKey TitleKey = new LocKey("ui.settings.title");
-        private static readonly LocKey LanguageLabelKey = new LocKey("ui.settings.language.label");
-        private static readonly LocKey ComfortLabelKey = new LocKey("ui.settings.comfort.label");
-        private static readonly LocKey ComfortHintKey = new LocKey("ui.settings.comfort.hint");
+        private static readonly LocKey LanguageLabelKey = new LocKey("ui.settings.language");
+        private static readonly LocKey ComfortLabelKey = new LocKey("ui.settings.comfort");
+        private static readonly LocKey ComfortHintKey = new LocKey("ui.settings.comfort_hint");
         private static readonly LocKey VersionKey = new LocKey("ui.settings.version");
-        private static readonly LocKey VersionUnknownKey = new LocKey("ui.settings.version.unknown");
-        private static readonly LocKey BackKey = new LocKey("ui.settings.back");
+        private static readonly LocKey UnknownKey = new LocKey("ui.common.unknown");
+        private static readonly LocKey BackKey = new LocKey("ui.common.back");
 
         /// <summary>Prefix of the per-locale display-name keys, e.g. <c>ui.locale.en.name</c>.</summary>
         private const string LocaleNamePrefix = "ui.locale.";
@@ -105,16 +108,18 @@ namespace ForgottenIsle.UI.Screens
             card.Add(BuildValueRow(Text(LanguageLabelKey), LocaleDisplayName()));
             card.Add(BuildSeparator());
             card.Add(BuildComfortRow());
+            card.Add(BuildSeparator());
+
+            // The build string is a value row rather than a formatted line, because
+            // ui.settings.version is a LABEL in the string table ("Version") and has no placeholder:
+            // formatting the build number into it would have rendered the label alone and silently
+            // dropped the one number this screen exists to show.
+            card.Add(BuildValueRow(Text(VersionKey), VersionText()));
 
             var spacer = new VisualElement { name = "settings-spacer", pickingMode = PickingMode.Ignore };
             spacer.style.flexGrow = 1f;
             spacer.style.minHeight = Theme.Space24;
             root.Add(spacer);
-
-            var version = Typography.Mono(VersionText(), "settings__version");
-            version.style.unityTextAlign = TextAnchor.MiddleCenter;
-            version.style.marginBottom = Theme.Space16;
-            root.Add(version);
 
             var back = Buttons.Secondary(Text(BackKey), _onBack);
             back.name = "settings-back";
@@ -247,11 +252,10 @@ namespace ForgottenIsle.UI.Screens
             return Loc.Has(key) ? Loc.Get(key) : code;
         }
 
-        /// <summary>The build string, or the unknown-version text when nothing was supplied.</summary>
+        /// <summary>The build string, or the shared "unknown" text when nothing was supplied.</summary>
         private string VersionText()
         {
-            var value = string.IsNullOrEmpty(_buildVersion) ? Text(VersionUnknownKey) : _buildVersion;
-            return TextFormat(VersionKey, value);
+            return string.IsNullOrEmpty(_buildVersion) ? Text(UnknownKey) : _buildVersion;
         }
     }
 }

@@ -161,9 +161,14 @@ namespace ForgottenIsle.Tests.PlayMode
             Assert.AreEqual(SceneKeys.ZoneRibcage, context.Session.ZoneId, "The session's zone was not updated to the loaded zone.");
             Assert.IsTrue(IsSceneLoaded(SceneKeys.ZoneRibcage), "ZoneRibcage is tracked as resident but is not in SceneManager's loaded list.");
 
-            // Assets/Scenes/README.md: MainMenu exists only to be "what gets unloaded when a run
-            // starts". Leaving it loaded costs a scene's worth of memory for the whole run and puts a
-            // second set of roots under the player's feet.
+            // The menu must not be resident during a run: it would cost a scene's worth of memory for the
+            // whole run and put a second set of roots under the player's feet.
+            //
+            // HONEST NOTE ON WHAT THIS PROVES TODAY: in Phase 1 nothing ever LOADS MainMenu.unity -- the
+            // menu is UI Toolkit screens drawn on the persistent Bootstrap UIDocument, so this assertion
+            // currently passes vacuously. It is kept because it becomes load-bearing the moment the
+            // cinematic menu backdrop is wired up (Phase 2, tracked as ADR open item O-9), and a test that
+            // only starts mattering later is cheaper than one nobody remembers to add.
             Assert.IsFalse(IsSceneLoaded(SceneKeys.MainMenu), "The MainMenu scene is still loaded after entering a run.");
         }
 
@@ -304,9 +309,19 @@ namespace ForgottenIsle.Tests.PlayMode
             // unload issued now would come back AlreadyLoading and the zones would stay resident.
             yield return WaitFor(() => !context.SceneLoader.IsLoading, LoadTimeoutSeconds);
 
-            if (context.States.Current == GameStateId.InGame || context.States.Current == GameStateId.Paused || context.States.Current == GameStateId.LoadFailed)
+            // QuitToMenuCommand owns the two modes that hold a live run. LoadFailed is not one of them --
+            // its validator refuses it -- because nothing was successfully entered, so there is no run to
+            // tear down. The failure screen takes the direct LoadFailed -> MainMenu edge instead, and this
+            // helper mirrors that rather than dispatching a command that would come back NotAllowedInState.
+            var current = context.States.Current;
+            if (current == GameStateId.InGame || current == GameStateId.Paused)
             {
                 context.Commands.Dispatch(new QuitToMenuCommand());
+            }
+            else if (current == GameStateId.LoadFailed)
+            {
+                context.States.TryTransition(GameStateId.MainMenu);
+                context.Zones.UnloadAll();
             }
 
             yield return WaitFor(() => context.Zones.ResidentCount == 0 && !context.SceneLoader.IsLoading, UnloadTimeoutSeconds);

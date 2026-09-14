@@ -14,6 +14,11 @@
 #
 #     cp Assets/Localization/en.csv Assets/Resources/Localization/en.csv
 #
+# ci/validate-structure.py fails the build if the two files are not
+# byte-identical, and the EditMode test EveryKeyReferencedInCode_ExistsIn_en_csv
+# fails if any LocKey literal under Assets/Scripts has no row in the Resources
+# copy. Neither is a style check: both failure modes ship #the.key# to a player.
+#
 # A key that is missing here renders in game as #the.key# — never as blank text.
 # That marker is the intended failure mode; do not "fix" it by hardcoding a
 # string in a screen. Add the row here instead.
@@ -42,6 +47,7 @@ ui.menu.settings,Settings
 ui.menu.credits,Credits
 ui.menu.quit,Quit
 ui.menu.no_save,No save found
+ui.menu.slot_summary,{0} · {1} · {2}% recorded
 ui.menu.confirm_overwrite,"This slot already holds a run. Starting a new game will overwrite it."
 ui.menu.confirm_quit,Quit to desktop?
 
@@ -49,6 +55,7 @@ ui.menu.confirm_quit,Quit to desktop?
 # Pause menu — ForgottenIsle.UI.Screens.PauseScreen
 # -----------------------------------------------------------------------------
 ui.pause.title,Paused
+ui.pause.hint,The island waits.
 ui.pause.resume,Resume
 ui.pause.save,Save
 ui.pause.load,Load
@@ -69,10 +76,15 @@ ui.settings.audio_music,Music
 ui.settings.audio_sfx,Effects
 ui.settings.display,Display
 ui.settings.controls,Controls
+ui.settings.comfort,Reduced Motion
+ui.settings.comfort_hint,Damps camera shake and transition movement.
 ui.settings.version,Version
 ui.settings.build,Build
 ui.settings.restore_defaults,Restore Defaults
-ui.settings.language_en,English
+
+# Locale display names. SettingsScreen composes ui.locale.<code>.name at runtime;
+# a locale with no row here falls back to its raw code ("en"), not to #key#.
+ui.locale.en.name,English
 
 # -----------------------------------------------------------------------------
 # Loading — ForgottenIsle.UI.Screens.LoadingScreen
@@ -133,6 +145,7 @@ ui.hud.interact,Examine
 ui.toast.game_saved,Game saved
 ui.toast.zone_entered,Entered {0}
 ui.toast.save_failed,Could not save
+ui.toast.slots_full,Every save slot is full.
 
 # -----------------------------------------------------------------------------
 # Failure messages, one per ResultCode the player can actually provoke.

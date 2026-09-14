@@ -53,6 +53,41 @@ namespace ForgottenIsle.Game.Bootstrap
         /// </remarks>
         private static bool _booted;
 
+        /// <summary>
+        /// Raised once per boot, as soon as the object graph exists and before the first state
+        /// transition. The argument is the booting behaviour, which carries both the graph
+        /// (<see cref="Context"/>) and the persistent host object every later layer attaches to.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// WHY THIS EVENT EXISTS — the mechanism, stated plainly because it is the one piece of the boot
+        /// path that is not a straight call. <c>ForgottenIsle.Game</c> must not reference
+        /// <c>ForgottenIsle.UI</c> (the UI assembly references Game, and inverting that creates a cycle
+        /// Unity will not compile), so this method cannot name the UI installer, construct
+        /// <c>UIService</c>, or so much as mention a screen. The alternatives were: put the UI types in
+        /// Game, which collapses the layering the whole project is built around; or have the UI poll for
+        /// a booted bootstrap, which is a service locator by another name. An event inverts the
+        /// dependency instead: Game announces, UI listens, and the arrow still points UI -&gt; Game.
+        /// </para>
+        /// <para>
+        /// WHY A STATIC EVENT IS NOT THE SERVICE LOCATOR ADR-0012 FORBIDS: it holds a delegate list, not
+        /// a service. Nothing can read a <see cref="GameContext"/> out of it — a subscriber is *handed*
+        /// the graph at the one moment it is built, exactly as a constructor parameter would be, and a
+        /// type that never subscribed has no route to it at all.
+        /// </para>
+        /// <para>
+        /// SUBSCRIBE FROM AN EARLIER INITIALIZATION PHASE than the one that raises it.
+        /// <c>RuntimeInitializeLoadType.SubsystemRegistration</c> is the phase to use: the order of two
+        /// hooks *within* a phase is unspecified, so a listener registering in <c>AfterSceneLoad</c>
+        /// alongside <see cref="BootAfterFirstScene"/> would be a coin flip, while an earlier phase is
+        /// ordered by the engine. Subscribe idempotently (<c>-=</c> then <c>+=</c>): with domain reload
+        /// disabled this delegate list survives into the next play session, and
+        /// <see cref="ResetStatics"/> deliberately does NOT clear it, because clearing it could run
+        /// after a listener had already subscribed and would silently unwire the UI.
+        /// </para>
+        /// </remarks>
+        public static event Action<AppBootstrap> Booted;
+
         /// <summary>The composed graph. Owned by this behaviour and handed down, never looked up.</summary>
         public GameContext Context { get; private set; }
 
@@ -66,6 +101,13 @@ namespace ForgottenIsle.Game.Bootstrap
         /// With "Enter Play Mode Options" set to reload neither domain nor scene, statics keep their
         /// values from the previous play session, so without this the second Play press would decide
         /// the game was already booted and skip composition entirely.
+        /// <para>
+        /// <see cref="Booted"/> is pointedly NOT cleared here. This method and a listener's own
+        /// subscribe hook both run in <c>SubsystemRegistration</c>, and the order between two hooks in
+        /// one phase is unspecified, so clearing the list could erase a subscription that had already
+        /// been made and leave the UI dead for that play session. Listeners are required to subscribe
+        /// idempotently instead, which makes a surviving delegate list harmless.
+        /// </para>
         /// </remarks>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
@@ -95,6 +137,11 @@ namespace ForgottenIsle.Game.Bootstrap
 
             Context = AppCompositionRoot.Build(this);
 
+            // Announced here, before the transitions below, so that a listener is already wired when
+            // MainMenu (and, on the self-heal path, Loading and InGame) is published and does not have to
+            // reconstruct the mode it missed.
+            RaiseBooted();
+
             Ticker = gameObject.AddComponent<Ticker>();
             Ticker.Initialize(Context.Session, Context.States, Context.Signals, Context.Log);
 
@@ -108,6 +155,34 @@ namespace ForgottenIsle.Game.Bootstrap
 
             Context.States.TryTransition(GameStateId.MainMenu);
             SelfHealIntoOpenScene();
+        }
+
+        /// <summary>
+        /// Publishes <see cref="Booted"/>, absorbing anything a listener throws.
+        /// </summary>
+        /// <remarks>
+        /// The catch is deliberate and narrow in effect: a listener is a different assembly's code
+        /// attached to this one's boot, and a failure over there must not leave the game with a graph but
+        /// no ticker, no input and no state machine — which is what an exception escaping mid-Build would
+        /// produce. A build that boots with a broken UI can still be diagnosed from the logged exception;
+        /// a build that does not boot at all reports nothing.
+        /// </remarks>
+        private void RaiseBooted()
+        {
+            var booted = Booted;
+            if (booted == null)
+            {
+                return;
+            }
+
+            try
+            {
+                booted(this);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception, this);
+            }
         }
 
         /// <summary>

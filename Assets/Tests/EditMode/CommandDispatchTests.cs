@@ -254,6 +254,122 @@ namespace ForgottenIsle.Tests.EditMode
         }
 
         /// <summary>
+        /// "Continue" is a distinct command type, not a flag on <see cref="StartNewGameCommand"/>, so the
+        /// registry has to key it separately. Registering the new-game handler must leave resume
+        /// unroutable — a fallback that routed resume into new-game would answer the player's "continue"
+        /// by silently erasing the save they asked to continue from.
+        /// </summary>
+        [Test]
+        public void Dispatcher_ResumeSavedRun_IsNotServedByTheNewGameHandler()
+        {
+            _dispatcher.Register(new SpyResumeHandler(ResultCode.Ok));
+
+            var resume = _dispatcher.Dispatch(new ResumeSavedRunCommand(1));
+            var newGame = _dispatcher.Dispatch(new StartNewGameCommand(1));
+
+            Assert.IsTrue(resume.Success, "The resume handler did not serve its own command type.");
+            Assert.IsFalse(newGame.Success, "A new-game command was routed to the resume handler.");
+            Assert.AreEqual(ResultCode.NoHandler, newGame.Code);
+            Assert.IsTrue(_dispatcher.HasHandler<ResumeSavedRunCommand>());
+            Assert.IsFalse(_dispatcher.HasHandler<StartNewGameCommand>());
+        }
+
+        /// <summary>
+        /// The rejection that the Continue button exists to surface: an empty slot.
+        /// </summary>
+        /// <remarks>
+        /// This is the case where validate-before-execute earns its keep. <c>ResumeSavedRunHandler</c>
+        /// executes by raising the loading curtain and restoring participants from the slot; if a
+        /// rejected command still reached <c>Execute</c>, pressing Continue on an empty slot would drop
+        /// the player behind a curtain into a world with no run in it. The assertion is therefore not
+        /// only on the code but on <c>Execute</c> never having run at all.
+        /// </remarks>
+        [Test]
+        public void Dispatcher_ResumeSavedRunOnEmptySlot_ReturnsSlotEmptyAndNeverExecutes()
+        {
+            var handler = new SpyResumeHandler(ResultCode.SlotEmpty);
+            _dispatcher.Register(handler);
+
+            var result = _dispatcher.Dispatch(new ResumeSavedRunCommand(2));
+
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual(ResultCode.SlotEmpty, result.Code, "The empty-slot rejection was not passed through.");
+            Assert.AreEqual(1, handler.ValidateCallCount);
+            Assert.AreEqual(0, handler.ExecuteCallCount, "Resume executed against a slot it had just rejected as empty.");
+            Assert.AreEqual(SpyResumeHandler.NeverExecuted, handler.LastExecutedSlot);
+        }
+
+        /// <summary>
+        /// Every code the resume handler's own validation can produce, passed through untouched: an
+        /// out-of-range slot index is a caller bug and an empty slot is a player-facing dead end, and
+        /// the menu writes a different message for each.
+        /// </summary>
+        [TestCase(ResultCode.SlotEmpty)]
+        [TestCase(ResultCode.InvalidArgument)]
+        [TestCase(ResultCode.NotAllowedInState)]
+        public void Dispatcher_ResumeSavedRunRejection_ReturnsTheHandlersExactCode(ResultCode code)
+        {
+            var handler = new SpyResumeHandler(code);
+            _dispatcher.Register(handler);
+
+            var result = _dispatcher.Dispatch(new ResumeSavedRunCommand(0));
+
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual(code, result.Code);
+            Assert.AreEqual(0, handler.ExecuteCallCount);
+        }
+
+        /// <summary>
+        /// The slot has to survive the <c>in</c> hand-off to both halves. It is the only payload the
+        /// command carries and it selects which save is read.
+        /// </summary>
+        [Test]
+        public void Dispatcher_ResumeSavedRun_DeliversTheSlotToBothValidateAndExecute()
+        {
+            var handler = new SpyResumeHandler(ResultCode.Ok);
+            _dispatcher.Register(handler);
+
+            var result = _dispatcher.Dispatch(new ResumeSavedRunCommand(2));
+
+            Assert.IsTrue(result.Success);
+            Assert.AreEqual(ResultCode.Ok, result.Code);
+            Assert.AreEqual(2, handler.LastValidatedSlot);
+            Assert.AreEqual(2, handler.LastExecutedSlot);
+            Assert.AreEqual(1, handler.ExecuteCallCount);
+            Assert.AreEqual(0, _log.WarningCount, "A successful resume dispatch should be silent.");
+        }
+
+        /// <summary>
+        /// An autosave ring slot is a legitimate resume source — after a crash it is usually the newest
+        /// save there is — so the payload must carry indices above the manual range intact rather than
+        /// being clamped somewhere in the hand-off.
+        /// </summary>
+        [Test]
+        public void Dispatcher_ResumeSavedRunFromAutosaveSlot_DeliversTheRingIndexIntact()
+        {
+            var handler = new SpyResumeHandler(ResultCode.Ok);
+            _dispatcher.Register(handler);
+
+            var autosaveSlot = ForgottenIsle.Game.Saves.SaveSlotService.AutosaveSlot(1);
+            Assert.IsTrue(_dispatcher.Dispatch(new ResumeSavedRunCommand(autosaveSlot)).Success);
+
+            Assert.AreEqual(autosaveSlot, handler.LastValidatedSlot);
+            Assert.AreEqual(autosaveSlot, handler.LastExecutedSlot);
+        }
+
+        [Test]
+        public void Dispatcher_UnregisteredResumeSavedRun_ReturnsNoHandler()
+        {
+            CommandResult result = CommandResult.Ok;
+
+            Assert.DoesNotThrow(() => result = _dispatcher.Dispatch(new ResumeSavedRunCommand(0)));
+
+            Assert.IsFalse(result.Success);
+            Assert.AreEqual(ResultCode.NoHandler, result.Code);
+            Assert.AreEqual(1, _log.CountOf(LogCode.UnknownCommand));
+        }
+
+        /// <summary>
         /// Records what it was asked and when, and returns a validation verdict chosen by the test.
         /// </summary>
         /// <remarks>
@@ -300,6 +416,54 @@ namespace ForgottenIsle.Tests.EditMode
                 ExecuteCallCount++;
                 LastExecutedSlot = command.Slot;
                 ExecutedAtSimHours = _clock.SimHours;
+            }
+        }
+
+        /// <summary>
+        /// The resume equivalent of <see cref="SpySaveHandler"/>: counts both halves separately and
+        /// records the slot each was given.
+        /// </summary>
+        /// <remarks>
+        /// A spy rather than the real <c>ResumeSavedRunHandler</c> because that handler needs a
+        /// <c>ZoneRegistry</c>, which needs a <c>SceneLoader</c>, which needs a live
+        /// <c>MonoBehaviour</c> coroutine driver — none of which exists in EditMode, and its zone load
+        /// would never complete if it did. What is under test here is the dispatcher's contract around
+        /// the command: routing by type, verdict pass-through, payload fidelity, and no execution after
+        /// a rejection. The handler's own restore-and-enter behaviour belongs in a PlayMode test.
+        /// </remarks>
+        private sealed class SpyResumeHandler : ICommandHandler<ResumeSavedRunCommand>
+        {
+            /// <summary>Sentinel the recorded slots hold while the matching half has not run.</summary>
+            public const int NeverExecuted = int.MinValue;
+
+            private readonly ResultCode _validationVerdict;
+
+            public SpyResumeHandler(ResultCode validationVerdict)
+            {
+                _validationVerdict = validationVerdict;
+                LastValidatedSlot = NeverExecuted;
+                LastExecutedSlot = NeverExecuted;
+            }
+
+            public int ValidateCallCount { get; private set; }
+
+            public int ExecuteCallCount { get; private set; }
+
+            public int LastValidatedSlot { get; private set; }
+
+            public int LastExecutedSlot { get; private set; }
+
+            public ResultCode Validate(in ResumeSavedRunCommand command)
+            {
+                ValidateCallCount++;
+                LastValidatedSlot = command.Slot;
+                return _validationVerdict;
+            }
+
+            public void Execute(in ResumeSavedRunCommand command)
+            {
+                ExecuteCallCount++;
+                LastExecutedSlot = command.Slot;
             }
         }
 

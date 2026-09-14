@@ -17,6 +17,34 @@ namespace ForgottenIsle.Core.Commands
     }
 
     /// <summary>
+    /// Resumes the run stored in a save slot — the main menu's "Continue".
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Distinct from <see cref="StartNewGameCommand"/> rather than a flag on it, because the two
+    /// intents disagree about what the slot means: for a new game the slot is a destination that
+    /// may legitimately be empty and is about to be overwritten, and for a resume it is a source
+    /// that must already hold a readable save. One command carrying a boolean would make that
+    /// difference invisible at the call site and would give the handler two validation contracts.
+    /// </para>
+    /// <para>
+    /// The slot may be a manual slot or an autosave ring slot: a player continuing after a crash is
+    /// resuming the newest autosave far more often than a slot they chose by hand.
+    /// </para>
+    /// </remarks>
+    public readonly struct ResumeSavedRunCommand : ICommand
+    {
+        /// <summary>Save slot index to resume from, manual or autosave.</summary>
+        public readonly int Slot;
+
+        /// <summary>Creates the command for <paramref name="slot"/>.</summary>
+        public ResumeSavedRunCommand(int slot)
+        {
+            Slot = slot;
+        }
+    }
+
+    /// <summary>
     /// Writes the current session to a save slot.
     /// </summary>
     /// <remarks>

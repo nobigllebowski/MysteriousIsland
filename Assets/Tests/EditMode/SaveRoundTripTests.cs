@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using ForgottenIsle.Core.Localization;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.Primitives;
 using ForgottenIsle.Core.Save;
@@ -38,14 +41,59 @@ namespace ForgottenIsle.Tests.EditMode
         private const int WorldSeed = 31337;
         private const int Slot = 2;
 
+        /// <summary>
+        /// The on-disk name <see cref="SaveSlotService"/> gives manual slot <see cref="Slot"/>. Spelled out
+        /// rather than derived because the mapping is deliberately stable — these names appear on players'
+        /// devices — and a test that reaches for the file directly should break if it ever changes.
+        /// </summary>
+        private const string SlotFileKey = "slot2";
+
+        /// <summary>A locale with a table but a deliberately blank row, for the never-blank guarantee.</summary>
+        private const string BlankValueLocale = "en";
+
+        /// <summary>A second locale, so the fallback branch of the lookup can be exercised separately.</summary>
+        private const string TranslatedLocale = "fr";
+
         private FakeCoreLog _log;
         private SaveCodec _codec;
+        private string _tempRoot;
 
         [SetUp]
         public void SetUp()
         {
             _log = new FakeCoreLog();
             _codec = new SaveCodec();
+            _tempRoot = null;
+        }
+
+        /// <summary>
+        /// Removes the scratch save directory, if a test made one. Failures to clean up are swallowed: a
+        /// leftover temp folder is untidy, whereas a test that reports red because the OS held a handle a
+        /// moment longer is actively misleading.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            if (string.IsNullOrEmpty(_tempRoot))
+            {
+                return;
+            }
+
+            try
+            {
+                if (Directory.Exists(_tempRoot))
+                {
+                    Directory.Delete(_tempRoot, true);
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
+            _tempRoot = null;
         }
 
         // ---------------------------------------------------------------- capture / restore
@@ -442,6 +490,190 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.IsNull(metadata);
         }
 
+        // ---------------------------------------------------------------- backup recovery
+
+        /// <summary>
+        /// The disaster the <c>.bak</c> exists for, reproduced exactly: the process is killed mid-write,
+        /// the rename has landed but the bytes have not, and the live file is left at zero length.
+        /// </summary>
+        /// <remarks>
+        /// The point of truncating rather than scribbling over the file is that a zero-length save is NOT
+        /// <see cref="ResultCode.SaveCorrupt"/>. It reads back cleanly as empty text and decodes as
+        /// <see cref="ResultCode.SlotEmpty"/> — so a fallback that triggers only on corruption is
+        /// unreachable in precisely the scenario it was written for, and the half-written slot is then
+        /// overwritten by the next save with the last good copy still sitting beside it.
+        /// </remarks>
+        [Test]
+        public void SaveSlotService_LiveFileTruncatedByAKillMidWrite_RecoversFromTheBackup()
+        {
+            var store = NewTempStore();
+            var slots = new SaveSlotService(store, _codec, _log, BuildVersion);
+
+            // Two writes: the first is rotated into the backup by the second. One write leaves no backup
+            // at all, which is the state a genuinely fresh slot is in.
+            Assert.AreEqual(ResultCode.Ok, slots.Write(Slot, NewSlotDocument("act1", 11)));
+            Assert.AreEqual(ResultCode.Ok, slots.Write(Slot, NewSlotDocument("act2", 22)));
+
+            var livePath = store.GetSavePath(SlotFileKey);
+            Assert.IsTrue(
+                File.Exists(store.GetBackupPath(SlotFileKey)),
+                "Fixture is broken: the second write did not rotate a backup in.");
+
+            using (var truncate = new FileStream(livePath, FileMode.Truncate, FileAccess.Write, FileShare.None))
+            {
+                truncate.SetLength(0L);
+            }
+
+            Assert.AreEqual(0L, new FileInfo(livePath).Length, "Fixture is broken: the live file was not truncated.");
+
+            SaveDocument recovered;
+            var code = slots.Read(Slot, out recovered);
+
+            Assert.AreEqual(ResultCode.Ok, code, "A zero-length live file did not fall back to the backup.");
+            Assert.IsNotNull(recovered, "A successful recovery handed back no document.");
+            Assert.AreEqual("act1", recovered.Metadata.ActId, "The recovered save is not the rotated previous one.");
+            Assert.AreEqual(11, recovered.Metadata.RecordedPercent);
+            Assert.IsTrue(_log.Contains(LogCode.SaveCorrupt), "The recovery took a path nobody logged.");
+        }
+
+        /// <summary>
+        /// The same recovery, seen through the header read the main menu actually uses.
+        /// </summary>
+        /// <remarks>
+        /// <c>TryFindMostRecent</c> and <c>ReadAllMetadata</c> are both built on <c>ReadMetadata</c>, so a
+        /// header read that gives up without consulting the backup makes a recoverable slot show as
+        /// unusable and makes CONTINUE refuse a run the loader would have opened without complaint. The
+        /// menu and the loader have to agree about what is loadable.
+        /// </remarks>
+        [Test]
+        public void SaveSlotService_ReadMetadataWithACorruptLiveFile_RecoversTheHeaderFromTheBackup()
+        {
+            var store = NewTempStore();
+            var slots = new SaveSlotService(store, _codec, _log, BuildVersion);
+
+            Assert.AreEqual(ResultCode.Ok, slots.Write(Slot, NewSlotDocument("act1", 11)));
+            Assert.AreEqual(ResultCode.Ok, slots.Write(Slot, NewSlotDocument("act2", 22)));
+
+            // Not truncation this time: a file that is present, non-empty, and has no header in it.
+            File.WriteAllText(store.GetSavePath(SlotFileKey), "@@@ this is not a save @@@");
+
+            SaveMetadata metadata;
+            var code = slots.ReadMetadata(Slot, out metadata);
+
+            Assert.AreEqual(ResultCode.Ok, code, "A corrupt live file reported no header despite a good backup.");
+            Assert.IsNotNull(metadata);
+            Assert.AreEqual("act1", metadata.ActId, "The header did not come from the backup.");
+            Assert.AreEqual(11, metadata.RecordedPercent);
+
+            int recentSlot;
+            SaveMetadata recent;
+            Assert.IsTrue(
+                slots.TryFindMostRecent(out recentSlot, out recent),
+                "CONTINUE would have refused a save that is sitting recoverable on disk.");
+            Assert.AreEqual(Slot, recentSlot);
+            Assert.AreEqual("act1", recent.ActId);
+        }
+
+        /// <summary>
+        /// A write that fails must leave the previous good state intact — both copies of it.
+        /// </summary>
+        /// <remarks>
+        /// The failure is arranged by planting a DIRECTORY where the temp file has to go, which makes the
+        /// very first step of the write throw on every platform without depending on advisory file locks
+        /// or on a full disk. What is asserted is the guarantee that matters: the live save still loads and
+        /// the backup is still there behind it. A failure path that tidied either of them away would turn
+        /// a save that did not happen into a save that was destroyed.
+        /// </remarks>
+        [Test]
+        public void SaveFileStore_FailedWrite_LeavesBothTheLiveSaveAndTheBackupRecoverable()
+        {
+            var store = NewTempStore();
+            var slots = new SaveSlotService(store, _codec, _log, BuildVersion);
+
+            Assert.AreEqual(ResultCode.Ok, slots.Write(Slot, NewSlotDocument("act1", 11)));
+            Assert.AreEqual(ResultCode.Ok, slots.Write(Slot, NewSlotDocument("act2", 22)));
+
+            Directory.CreateDirectory(store.GetTempPath(SlotFileKey));
+
+            Assert.AreEqual(
+                ResultCode.SaveWriteFailed,
+                slots.Write(Slot, NewSlotDocument("act3", 33)),
+                "Fixture is broken: the write was expected to fail.");
+
+            SaveDocument live;
+            Assert.AreEqual(ResultCode.Ok, slots.Read(Slot, out live), "A failed write left the live save unreadable.");
+            Assert.AreEqual("act2", live.Metadata.ActId, "A failed write disturbed the live save.");
+
+            string backupText;
+            Assert.AreEqual(
+                ResultCode.Ok,
+                store.ReadBackup(SlotFileKey, out backupText),
+                "A failed write destroyed the backup.");
+
+            SaveDocument backup;
+            Assert.AreEqual(ResultCode.Ok, _codec.Decode(backupText, out backup), "The surviving backup no longer decodes.");
+            Assert.AreEqual("act1", backup.Metadata.ActId, "The backup is no longer the previous good save.");
+        }
+
+        // ---------------------------------------------------------------- never blank
+
+        /// <summary>
+        /// The never-blank guarantee, at the one hole that defeats it: a key that is PRESENT and EMPTY.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This case is not hypothetical and it is not malformed input. <c>CsvTableParser</c> drops a row
+        /// only when its KEY is empty, so the line <c>ui.menu.continue,</c> — a translator who tabbed past
+        /// a cell, a merge that emptied a column — parses into a real entry whose value is <c>""</c>. A
+        /// lookup that treats presence as a hit returns that empty string, and the Continue button renders
+        /// with no text on it: invisible in a screenshot, which is the only artefact a missing-translation
+        /// bug ever arrives as, and reported nowhere because nothing looked like a miss.
+        /// </para>
+        /// <para>
+        /// It lives in this fixture rather than beside the other localization tests only because of file
+        /// ownership; behaviourally it belongs with them.
+        /// </para>
+        /// </remarks>
+        [Test]
+        public void Localization_KeyPresentWithAnEmptyValue_RendersHashKeyAndIsReportedMissing()
+        {
+            const string key = "ui.menu.continue";
+
+            var loc = new StringTableLocalization(_log, BlankValueLocale);
+            loc.AddTable(BlankValueLocale, new[] { new KeyValuePair<string, string>(key, string.Empty) });
+
+            var result = loc.Get(new LocKey(key));
+
+            Assert.AreEqual("#" + key + "#", result, "A present-but-empty row was accepted as a translation.");
+            Assert.AreNotEqual(string.Empty, result, "The never-blank guarantee was defeated by an empty value.");
+            Assert.IsFalse(loc.Has(new LocKey(key)), "A row with no text must not count as having the key.");
+            Assert.AreEqual(
+                1,
+                _log.CountOf(LogCode.MissingLocKey, key),
+                "An empty value must be reported exactly like an absent one.");
+        }
+
+        /// <summary>
+        /// The other half of the same fix: an empty row in the CURRENT locale must fall THROUGH to the
+        /// fallback locale, not short-circuit there. Stopping at the empty row would hide a perfectly good
+        /// English string behind a blank French one.
+        /// </summary>
+        [Test]
+        public void Localization_EmptyValueInCurrentLocale_FallsThroughToTheFallbackLocale()
+        {
+            const string key = "ui.menu.continue";
+
+            var loc = new StringTableLocalization(_log, BlankValueLocale);
+            loc.AddTable(BlankValueLocale, new[] { new KeyValuePair<string, string>(key, "Continue") });
+            loc.AddTable(TranslatedLocale, new[] { new KeyValuePair<string, string>(key, string.Empty) });
+
+            Assert.IsTrue(loc.SetLocale(TranslatedLocale), "Fixture is broken: the second locale has no table.");
+
+            Assert.AreEqual("Continue", loc.Get(new LocKey(key)), "The blank current-locale row blocked the fallback.");
+            Assert.IsTrue(loc.Has(new LocKey(key)));
+            Assert.AreEqual(0, _log.CountOf(LogCode.MissingLocKey, key), "A key resolved from the fallback is not missing.");
+        }
+
         // ---------------------------------------------------------------- deep copy
 
         /// <summary>
@@ -625,6 +857,37 @@ namespace ForgottenIsle.Tests.EditMode
             }
 
             return service;
+        }
+
+        /// <summary>
+        /// A store rooted at a fresh scratch directory, remembered so <c>TearDown</c> can remove it.
+        /// </summary>
+        /// <remarks>
+        /// The explicit-directory constructor is the reason these tests can exist at all: the default one
+        /// resolves <c>Application.persistentDataPath</c>, and a suite that wrote there would be
+        /// interfering with the editor's own saves and with every other run of itself.
+        /// </remarks>
+        private SaveFileStore NewTempStore()
+        {
+            _tempRoot = Path.Combine(Path.GetTempPath(), "vardholm-saveroundtrip-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_tempRoot);
+            return new SaveFileStore(_tempRoot, _log);
+        }
+
+        /// <summary>
+        /// A complete, writable document for <see cref="Slot"/>, identifiable by its act id and percent so
+        /// a recovery test can say WHICH of two saves it got back.
+        /// </summary>
+        private static SaveDocument NewSlotDocument(string actId, int recordedPercent)
+        {
+            var doc = NewEnvelope();
+            doc.Metadata.Slot = Slot;
+            doc.Metadata.ActId = actId;
+            doc.Metadata.ZoneId = SceneKeys.ZoneRibcage;
+            doc.Metadata.ZoneDisplayKey = SceneKeys.ZoneDisplayKey(SceneKeys.ZoneRibcage);
+            doc.Metadata.RecordedPercent = recordedPercent;
+            doc.PutSection("session", "{\"actId\":\"" + actId + "\"}");
+            return doc;
         }
 
         private static SaveDocument NewEnvelope()

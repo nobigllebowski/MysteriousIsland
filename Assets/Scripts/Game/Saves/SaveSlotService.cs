@@ -259,12 +259,41 @@ namespace ForgottenIsle.Game.Saves
             }
 
             var key = FileKey(slot);
+            var label = slot.ToString(CultureInfo.InvariantCulture);
             var code = ReadAndDecode(key, false, out document);
 
-            if (code == ResultCode.SaveCorrupt && _store.BackupExists(key))
+            // ANY live failure consults the backup, not only SaveCorrupt. The disaster the backup exists
+            // for is a write interrupted by the OS killing the app, and what that leaves behind is a
+            // TRUNCATED OR ZERO-LENGTH live file — which reads fine and then decodes as SlotEmpty, or
+            // fails the read outright. Gating the fallback on SaveCorrupt alone therefore made it
+            // unreachable in exactly the scenario it was written for, and the half-written slot would then
+            // be overwritten by the next save, taking the last good copy with it.
+            //
+            // SaveVersionTooNew is deliberately NOT a trigger: that save is not damaged, it was written by
+            // a later build, and the player has to be told to update rather than shown an older run or an
+            // invented corruption.
+            if (code != ResultCode.Ok && code != ResultCode.SaveVersionTooNew && _store.BackupExists(key))
             {
-                Warn(LogCode.SaveCorrupt, "slot " + slot.ToString(CultureInfo.InvariantCulture) + " falling back to backup");
-                code = ReadAndDecode(key, true, out document);
+                Warn(LogCode.SaveCorrupt, "slot " + label + " live read " + code + ", trying backup");
+
+                SaveDocument backupDocument;
+                var backupCode = ReadAndDecode(key, true, out backupDocument);
+                if (backupCode == ResultCode.Ok)
+                {
+                    Warn(LogCode.SaveCorrupt, "slot " + label + " recovered from backup");
+                    document = backupDocument;
+                    code = ResultCode.Ok;
+                }
+                else
+                {
+                    Warn(LogCode.SaveCorrupt, "slot " + label + " backup read " + backupCode);
+                    document = null;
+
+                    // Report the more specific of the two failures. A backup that is simply absent says
+                    // nothing the live read did not already say, but a backup that is present and damaged
+                    // upgrades an empty-looking slot to what it really is: a slot holding an unusable save.
+                    code = backupCode == ResultCode.SlotEmpty ? code : backupCode;
+                }
             }
 
             if (code != ResultCode.Ok)
@@ -299,10 +328,13 @@ namespace ForgottenIsle.Game.Saves
         /// </summary>
         /// <remarks>
         /// <para>
-        /// On a decode failure the rotated backup is tried before giving up. That is the entire reason the
+        /// On ANY live-file failure — a failed decode, a failed read, or a file that turns out to be empty
+        /// or truncated — the rotated backup is tried before giving up. That is the entire reason the
         /// backup exists: the realistic corruption is a write interrupted by the OS killing the app, which
         /// damages the live file and leaves the previous one — one save older, and intact — sitting beside
-        /// it. Falling back costs the player a few minutes of progress and saves the run.
+        /// it. Falling back costs the player a few minutes of progress and saves the run. Note that the
+        /// damage usually does NOT look like corruption: a kill between the rename and the flush leaves a
+        /// zero-length file, which is why the trigger cannot be <c>SaveCorrupt</c> alone.
         /// </para>
         /// <para>
         /// Participants are restored only after the document has been verified AND migrated, so no
@@ -344,13 +376,25 @@ namespace ForgottenIsle.Game.Saves
         /// Reads a slot's header without deserializing its body.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Reads a bounded prefix of the file first and only falls back to a full read if the header is not
         /// complete within it — so the common case never touches the sections at all. A slot that will not
         /// yield a header is reported, not thrown: the menu lists it as unusable and moves on.
+        /// </para>
+        /// <para>
+        /// THE THIRD ATTEMPT IS THE BACKUP, and it is not a nicety. <see cref="TryFindMostRecent"/>,
+        /// <see cref="ReadAllMetadata"/> and the autosave ring's cursor are all built on this method, so a
+        /// header that cannot be read here is a save that does not exist as far as the whole menu is
+        /// concerned. Without this step a slot whose live file was truncated by a kill mid-write shows as
+        /// empty or unusable with a perfectly good <c>.bak</c> sitting beside it, and CONTINUE silently
+        /// refuses a run that <see cref="Read"/> would have recovered without complaint. The two must agree
+        /// about what is loadable, or the menu lies about the player's progress.
+        /// </para>
         /// </remarks>
         /// <returns>
-        /// <see cref="ResultCode.Ok"/>; <see cref="ResultCode.SlotEmpty"/> when nothing is saved there;
-        /// <see cref="ResultCode.SaveCorrupt"/> when the file exists but has no readable header.
+        /// <see cref="ResultCode.Ok"/> — from the live file or, failing that, from the backup;
+        /// <see cref="ResultCode.SlotEmpty"/> when neither exists;
+        /// <see cref="ResultCode.SaveCorrupt"/> when a file is there but no readable header is.
         /// </returns>
         public ResultCode ReadMetadata(int slot, out SaveMetadata metadata)
         {
@@ -365,7 +409,10 @@ namespace ForgottenIsle.Game.Saves
 
             string prefix;
             var readCode = _store.ReadPrefix(key, MetadataPrefixCharacters, out prefix);
-            if (readCode == ResultCode.SlotEmpty)
+
+            // No live file AND no backup is the one case that is genuinely empty and can answer straight
+            // away. With a backup present there is still a save here, so fall through to the third attempt.
+            if (readCode == ResultCode.SlotEmpty && !_store.BackupExists(key))
             {
                 return ResultCode.SlotEmpty;
             }
@@ -384,7 +431,25 @@ namespace ForgottenIsle.Game.Saves
                 return ResultCode.Ok;
             }
 
+            // Third attempt: the rotated previous save. Same recovery the loader performs, so a slot the
+            // menu offers is a slot the loader can actually open.
+            string backup;
+            if (_store.ReadBackup(key, out backup) == ResultCode.Ok
+                && _codec.DecodeMetadata(backup, out metadata) == ResultCode.Ok)
+            {
+                Warn(LogCode.SaveCorrupt, "slot " + slot.ToString(CultureInfo.InvariantCulture) + " header recovered from backup");
+                return ResultCode.Ok;
+            }
+
             metadata = null;
+
+            if (readCode == ResultCode.SlotEmpty)
+            {
+                // The live file was never there; the backup that kept this slot alive could not be read
+                // either. Nothing is recoverable, so the honest answer is still "empty".
+                return ResultCode.SlotEmpty;
+            }
+
             Warn(LogCode.SaveCorrupt, "unreadable header in slot " + slot.ToString(CultureInfo.InvariantCulture));
             return ResultCode.SaveCorrupt;
         }

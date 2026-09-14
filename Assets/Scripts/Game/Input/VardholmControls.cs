@@ -4,8 +4,8 @@ using UnityEngine.InputSystem;
 namespace ForgottenIsle.Game.Input
 {
     /// <summary>
-    /// Vardholm's entire input surface — Move, Look, Interact, Pause — built in code as one
-    /// <see cref="InputActionMap"/>.
+    /// Vardholm's entire input surface — Move, Look, Interact, Pause — built in code as two
+    /// <see cref="InputActionMap"/>s: one for the world, one for the actions that must outlive it.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -18,11 +18,26 @@ namespace ForgottenIsle.Game.Input
     /// than by compiling, is the difference between a reviewable input layer and an opaque one.
     /// </para>
     /// <para>
+    /// WHY TWO MAPS AND NOT ONE. There used to be one map holding all four actions, enabled only in
+    /// <c>GameStateId.InGame</c>. That made pausing irreversible from the controller: opening the pause
+    /// screen leaves InGame, the whole map goes dark, and the Pause button — sitting inside the map that
+    /// was just disabled — can never be pressed again. The player could open the pause screen with Start
+    /// and then had no way to close it with Start. Splitting the actions is what fixes it. Move, Look and
+    /// Interact live in <see cref="GameplayMapName"/> and stay gated to the world. Pause lives alone in
+    /// <see cref="SystemMapName"/>, which <see cref="InputRouter"/> keeps enabled across both InGame and
+    /// Paused, so the button that opens the screen is the button that closes it.
+    /// </para>
+    /// <para>
+    /// The split does not weaken the blocking guarantee, because the guarantee was about the gameplay
+    /// actions and those are still switched off wholesale. Nothing in the system map can move the
+    /// character or touch the world: it holds exactly one button, and that button asks the mode machine
+    /// to change mode.
+    /// </para>
+    /// <para>
     /// WHY IT IS NOT AN <c>IInputActionCollection</c>. That interface exists to let the generated wrapper
-    /// be handed to <c>PlayerInput</c> and to control-scheme machinery this game does not use. Vardholm has
-    /// one map, always active or entirely disabled, gated by <see cref="InputRouter"/>. Implementing the
-    /// interface would mean implementing device filtering, binding masks and scheme switching in order to
-    /// satisfy callers that do not exist.
+    /// be handed to <c>PlayerInput</c> and to control-scheme machinery this game does not use. Vardholm
+    /// gates its maps from <see cref="InputRouter"/>. Implementing the interface would mean implementing
+    /// device filtering, binding masks and scheme switching in order to satisfy callers that do not exist.
     /// </para>
     /// <para>
     /// A map may only be modified while disabled, so everything is built in the constructor and nothing
@@ -31,8 +46,18 @@ namespace ForgottenIsle.Game.Input
     /// </remarks>
     public sealed class VardholmControls : IDisposable
     {
-        /// <summary>Name of the single map, as it appears in the Input Debugger.</summary>
+        /// <summary>Name of the world map, as it appears in the Input Debugger.</summary>
         public const string GameplayMapName = "Gameplay";
+
+        /// <summary>
+        /// Name of the map holding actions that must remain pressable outside the world.
+        /// </summary>
+        /// <remarks>
+        /// Named for what it is rather than for its single member, because "the map that is not gated to
+        /// InGame" is the property that matters and the next action to earn it (a screenshot key, a
+        /// debug console) belongs beside Pause rather than in a third map.
+        /// </remarks>
+        public const string SystemMapName = "System";
 
         /// <summary>
         /// Deadzone applied to both sticks.
@@ -55,19 +80,20 @@ namespace ForgottenIsle.Game.Input
         /// </remarks>
         public const string MouseLookScale = "scaleVector2(x=0.05,y=0.05)";
 
-        private readonly InputActionMap _map;
+        private readonly InputActionMap _gameplay;
+        private readonly InputActionMap _system;
         private bool _disposed;
 
         /// <summary>
-        /// Builds the map and every binding. Cheap enough to do at boot; the Input System resolves
-        /// bindings lazily when the map is first enabled.
+        /// Builds both maps and every binding. Cheap enough to do at boot; the Input System resolves
+        /// bindings lazily when a map is first enabled.
         /// </summary>
         public VardholmControls()
         {
-            _map = new InputActionMap(GameplayMapName);
+            _gameplay = new InputActionMap(GameplayMapName);
 
             // MOVE — the character's intended direction on the ground plane, as a sustained value.
-            Move = _map.AddAction("Move", InputActionType.Value, expectedControlType: "Vector2");
+            Move = _gameplay.AddAction("Move", InputActionType.Value, expectedControlType: "Vector2");
             Move.AddBinding("<Gamepad>/leftStick", processors: StickDeadzone);
             // mode=2 is "digital normalized": the four keys produce a unit vector, so holding two of them
             // walks diagonally at walking speed rather than at 1.41x walking speed.
@@ -84,19 +110,23 @@ namespace ForgottenIsle.Game.Input
 
             // LOOK — camera aim. Mouse contributes a per-frame delta, the stick a rate; both are read the
             // same way and the scale processors above are what makes that honest.
-            Look = _map.AddAction("Look", InputActionType.Value, expectedControlType: "Vector2");
+            Look = _gameplay.AddAction("Look", InputActionType.Value, expectedControlType: "Vector2");
             Look.AddBinding("<Mouse>/delta", processors: MouseLookScale);
             Look.AddBinding("<Gamepad>/rightStick", processors: StickDeadzone);
 
             // INTERACT — the single context-sensitive verb: pick up, open, read, use.
-            Interact = _map.AddAction("Interact", InputActionType.Button);
+            Interact = _gameplay.AddAction("Interact", InputActionType.Button);
             Interact.AddBinding("<Keyboard>/e");
             Interact.AddBinding("<Gamepad>/buttonSouth");
             Interact.AddBinding("<Touchscreen>/primaryTouch/tap");
 
-            // PAUSE — opens the pause screen. Bound to Escape and Start only; deliberately not to a face
-            // button, where a mistimed press during traversal would throw the player out of the world.
-            Pause = _map.AddAction("Pause", InputActionType.Button);
+            _system = new InputActionMap(SystemMapName);
+
+            // PAUSE — opens the pause screen, and closes it again. Bound to Escape and Start only;
+            // deliberately not to a face button, where a mistimed press during traversal would throw the
+            // player out of the world. It is the only action in this map, and the map is the only reason
+            // the pause screen is escapable without a mouse.
+            Pause = _system.AddAction("Pause", InputActionType.Button);
             Pause.AddBinding("<Keyboard>/escape");
             Pause.AddBinding("<Gamepad>/start");
         }
@@ -110,49 +140,102 @@ namespace ForgottenIsle.Game.Input
         /// <summary>Context-sensitive interaction. Consumed as an event, not polled.</summary>
         public InputAction Interact { get; }
 
-        /// <summary>Request to open the pause screen. Consumed as an event.</summary>
+        /// <summary>Request to open or close the pause screen. Consumed as an event.</summary>
         public InputAction Pause { get; }
 
-        /// <summary>The map itself, exposed so the router can enable and disable all four actions at once.</summary>
-        public InputActionMap Gameplay => _map;
+        /// <summary>
+        /// The world map — Move, Look and Interact — exposed so the router can gate all three at once.
+        /// </summary>
+        public InputActionMap Gameplay => _gameplay;
 
-        /// <summary>True while the map is listening to devices.</summary>
-        public bool IsEnabled => _map != null && _map.enabled;
+        /// <summary>The map holding Pause, gated separately so pausing stays reversible.</summary>
+        public InputActionMap SystemMap => _system;
+
+        /// <summary>True while the world map is listening to devices.</summary>
+        public bool IsGameplayEnabled => _gameplay != null && _gameplay.enabled;
+
+        /// <summary>True while the system map is listening to devices.</summary>
+        public bool IsSystemEnabled => _system != null && _system.enabled;
+
+        /// <summary>True only when both maps are listening.</summary>
+        public bool IsEnabled => IsGameplayEnabled && IsSystemEnabled;
 
         /// <summary>
-        /// Starts listening. Idempotent — enabling an enabled map is a no-op in the Input System, and
-        /// callers should not have to track which state they left it in.
+        /// Starts listening on both maps.
         /// </summary>
+        /// <remarks>
+        /// Kept as a convenience for callers that want everything live at once. The router does not use
+        /// it: the whole point of the split is that the two maps are enabled on different conditions.
+        /// </remarks>
         public void Enable()
         {
-            if (_disposed)
-            {
-                return;
-            }
-
-            _map.Enable();
+            EnableGameplay();
+            EnableSystem();
         }
 
         /// <summary>
-        /// Stops listening.
+        /// Stops listening on both maps.
         /// </summary>
         /// <remarks>
-        /// A disabled action reads as its default value and raises no callbacks, so disabling the map is a
+        /// A disabled action reads as its default value and raises no callbacks, so disabling a map is a
         /// genuine block rather than a flag that every read site has to remember to check. That property is
         /// what <see cref="InputRouter"/>'s gate is built on.
         /// </remarks>
         public void Disable()
         {
+            DisableGameplay();
+            DisableSystem();
+        }
+
+        /// <summary>
+        /// Starts listening for Move, Look and Interact. Idempotent — enabling an enabled map is a no-op
+        /// in the Input System, and callers should not have to track which state they left it in.
+        /// </summary>
+        public void EnableGameplay()
+        {
             if (_disposed)
             {
                 return;
             }
 
-            _map.Disable();
+            _gameplay.Enable();
+        }
+
+        /// <summary>Stops listening for Move, Look and Interact. Idempotent.</summary>
+        public void DisableGameplay()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _gameplay.Disable();
+        }
+
+        /// <summary>Starts listening for Pause. Idempotent.</summary>
+        public void EnableSystem()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _system.Enable();
+        }
+
+        /// <summary>Stops listening for Pause. Idempotent.</summary>
+        public void DisableSystem()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _system.Disable();
         }
 
         /// <summary>
-        /// Releases the map's unmanaged state.
+        /// Releases both maps' unmanaged state.
         /// </summary>
         /// <remarks>
         /// Required, not optional: an undisposed map keeps its action state allocated and its callbacks
@@ -167,8 +250,11 @@ namespace ForgottenIsle.Game.Input
             }
 
             _disposed = true;
-            _map.Disable();
-            _map.Dispose();
+
+            _gameplay.Disable();
+            _system.Disable();
+            _gameplay.Dispose();
+            _system.Dispose();
         }
     }
 }
