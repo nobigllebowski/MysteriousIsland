@@ -183,12 +183,8 @@ namespace ForgottenIsle.Game.Diagnostics
                 var rootRenderers = root.GetComponentsInChildren<Renderer>(true);
 
                 b.Append("    • '").Append(root.name).Append("' at ").Append(root.transform.position.ToString("F1"))
-                 .Append(" · activeSelf ").Append(root.activeSelf)
-                 .Append(" · activeInHierarchy ").Append(root.activeInHierarchy)
-                 .Append(" · children ").Append(root.transform.childCount.ToString(CultureInfo.InvariantCulture))
+                 .Append(" · active ").Append(root.activeInHierarchy)
                  .Append(" · renderers ").Append(rootRenderers.Length.ToString(CultureInfo.InvariantCulture))
-                 .Append(" · meshFilters ").Append(root.GetComponentsInChildren<MeshFilter>(true).Length.ToString(CultureInfo.InvariantCulture))
-                 .Append(" · colliders ").Append(root.GetComponentsInChildren<Collider>(true).Length.ToString(CultureInfo.InvariantCulture))
                  .Append(" · lights ").Append(root.GetComponentsInChildren<Light>(true).Length.ToString(CultureInfo.InvariantCulture))
                  .Append('\n');
 
@@ -275,14 +271,138 @@ namespace ForgottenIsle.Game.Diagnostics
              .Append(nearest <= NearRadius ? "yes" : "NO")
              .Append('\n');
 
-            b.Append("  VERDICT: ").Append(Verdict(totalRenderers, enabledRenderers, inMask, visibleRenderers, nullShaders, camera));
+            // --- lighting, and the number the whole failure came down to -------------------------
+            var sun = FindBrightestDirectionalLight(scene);
+            b.Append("  light ")
+             .Append(sun != null
+                 ? "'" + sun.name + "' intensity " + sun.intensity.ToString("F2", CultureInfo.InvariantCulture)
+                   + " elevation " + sun.transform.eulerAngles.x.ToString("F0", CultureInfo.InvariantCulture) + "°"
+                   + " colour " + Fmt(sun.color) + " enabled " + sun.enabled
+                 : "NONE — nothing is lit")
+             .Append('\n');
+
+            var luminance = EstimateGroundLuminance(scene, sun);
+            b.Append("  ESTIMATED GROUND LUMINANCE ")
+             .Append(luminance >= 0f ? luminance.ToString("F3", CultureInfo.InvariantCulture) : "n/a")
+             .Append(luminance >= 0f && luminance < ReadableLuminance
+                 ? "  ← BELOW " + ReadableLuminance.ToString("F2", CultureInfo.InvariantCulture)
+                   + ": the geometry renders and is shaded to near-black."
+                 : string.Empty)
+             .Append('\n');
+
+            b.Append("  VERDICT: ").Append(Verdict(
+                totalRenderers, enabledRenderers, inMask, visibleRenderers, nullShaders, camera, luminance));
 
             return b.ToString();
         }
 
+        /// <summary>
+        /// Screen luminance below which a surface reads as black rather than as dark.
+        /// </summary>
+        /// <remarks>
+        /// The Ribcage shipped at <b>0.077</b>. Anything under this is not "moody", it is invisible.
+        /// </remarks>
+        private const float ReadableLuminance = 0.18f;
+
+        /// <summary>The brightest enabled directional light in the zone, or null.</summary>
+        private static Light FindBrightestDirectionalLight(Scene scene)
+        {
+            Light best = null;
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var lights = roots[i].GetComponentsInChildren<Light>(true);
+                for (var l = 0; l < lights.Length; l++)
+                {
+                    var light = lights[l];
+                    if (light.type != LightType.Directional || !light.enabled)
+                    {
+                        continue;
+                    }
+
+                    if (best == null || light.intensity > best.intensity)
+                    {
+                        best = light;
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// What the ground's lit colour will look like on screen, 0 (black) to 1 (white).
+        /// </summary>
+        /// <remarks>
+        /// THIS IS THE NUMBER THAT WOULD HAVE ANSWERED IT IN ONE LINE, and none of the earlier
+        /// checks computed anything like it: every one of them asked whether an object existed, and
+        /// the object always did. A surface that renders perfectly and resolves to seven per cent
+        /// grey is indistinguishable, on screen and in every structural test, from no surface.
+        /// <para>
+        /// The model is deliberately the simplest one that predicts the failure: Lambert on a flat
+        /// upward-facing surface, plus flat ambient, with the sRGB→linear conversion that Linear
+        /// colour space applies to a material's colour. That conversion is the trap — an albedo of
+        /// 0.13 is 0.014 once converted, so values that look reasonable in the inspector arrive a
+        /// fifth as bright. Specular, shadows and fog are ignored; all three only subtract, so this
+        /// is an upper bound, and an upper bound that is already too dark settles the question.
+        /// </para>
+        /// </remarks>
+        /// <param name="scene">The zone whose ground material to read.</param>
+        /// <param name="sun">The directional light shading it. Null yields ambient only.</param>
+        /// <returns>Luminance in 0..1, or -1 when no ground material could be found.</returns>
+        public static float EstimateGroundLuminance(Scene scene, Light sun)
+        {
+            var ground = FindGroundMaterial(scene);
+            if (ground == null)
+            {
+                return -1f;
+            }
+
+            var albedo = ground.HasProperty("_BaseColor")
+                ? ground.GetColor("_BaseColor")
+                : ground.HasProperty("_Color") ? ground.GetColor("_Color") : Color.grey;
+
+            var linearSpace = QualitySettings.activeColorSpace == ColorSpace.Linear;
+            var a = linearSpace ? albedo.linear : albedo;
+            var ambient = linearSpace ? RenderSettings.ambientLight.linear : RenderSettings.ambientLight;
+
+            // Elevation from the light's own direction rather than its euler angles, which are only
+            // the same thing while the light has no parent rotation.
+            var ndotl = sun != null ? Mathf.Max(0f, Vector3.Dot(-sun.transform.forward, Vector3.up)) : 0f;
+            var intensity = sun != null ? sun.intensity : 0f;
+            var sunColor = sun != null ? (linearSpace ? sun.color.linear : sun.color) : Color.black;
+
+            var r = a.r * intensity * ndotl * sunColor.r + a.r * ambient.r;
+            var g = a.g * intensity * ndotl * sunColor.g + a.g * ambient.g;
+            var bl = a.b * intensity * ndotl * sunColor.b + a.b * ambient.b;
+
+            var lit = new Color(Mathf.Clamp01(r), Mathf.Clamp01(g), Mathf.Clamp01(bl));
+            var shown = linearSpace ? lit.gamma : lit;
+
+            return 0.2126f * shown.r + 0.7152f * shown.g + 0.0722f * shown.b;
+        }
+
+        private static Material FindGroundMaterial(Scene scene)
+        {
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var renderers = roots[i].GetComponentsInChildren<MeshRenderer>(true);
+                for (var r = 0; r < renderers.Length; r++)
+                {
+                    if (renderers[r].name.IndexOf("Ground", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return renderers[r].sharedMaterial;
+                    }
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>Names the first thing in the chain that is wrong, in the order it breaks.</summary>
         private static string Verdict(
-            int total, int enabled, int inMask, int visible, int nullShaders, Camera camera)
+            int total, int enabled, int inMask, int visible, int nullShaders, Camera camera, float luminance)
         {
             if (camera == null)
             {
@@ -322,9 +442,17 @@ namespace ForgottenIsle.Game.Diagnostics
                 return visible + " renderer(s) in view, but " + nullShaders + " have a null shader.";
             }
 
-            return visible + " renderer(s) in view and drawable. If the screen is still black the "
-                   + "geometry is being lit or tone-mapped to black, not culled — check the colour "
-                   + "space and the light above.";
+            if (luminance >= 0f && luminance < ReadableLuminance)
+            {
+                return visible + " renderer(s) in view and drawable, but the ground resolves to "
+                       + luminance.ToString("F3", CultureInfo.InvariantCulture) + " luminance. Nothing is "
+                       + "culled and nothing is missing — the world is being SHADED TO BLACK. Raise the "
+                       + "albedo, the sun intensity or its elevation in ZoneBuilder's recipe.";
+            }
+
+            return visible + " renderer(s) in view and drawable, ground luminance "
+                   + (luminance >= 0f ? luminance.ToString("F3", CultureInfo.InvariantCulture) : "n/a")
+                   + ". This zone should be visible.";
         }
 
         private static string Fmt(Color c)

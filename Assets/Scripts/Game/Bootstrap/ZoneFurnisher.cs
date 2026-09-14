@@ -537,7 +537,6 @@ namespace ForgottenIsle.Game.Bootstrap
             camera.fieldOfView = 62f;
             camera.nearClipPlane = 0.05f;
             camera.farClipPlane = 500f;
-            camera.backgroundColor = new Color(0.04f, 0.06f, 0.05f);
 
             if (pivot.gameObject.GetComponent<AudioListener>() == null)
             {
@@ -568,6 +567,16 @@ namespace ForgottenIsle.Game.Bootstrap
             }
 
             camera.enabled = true;
+
+            // Clear to the zone's own fog colour rather than to a fixed near-black. With the sky
+            // darker than the lit ground the horizon reads as a hard edge against nothing; matching
+            // the clear to the fog is what makes distance fade into sky instead of into a hole.
+            // ZoneBuilder has already written the atmosphere by the time a camera is commissioned,
+            // so this reads the zone's value instead of duplicating it.
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = RenderSettings.fog
+                ? RenderSettings.fogColor
+                : new Color(0.04f, 0.06f, 0.05f);
 
             // "MainCamera" is one of Unity's built-in tags, so this cannot fail on a fresh project
             // the way a project-defined tag would.

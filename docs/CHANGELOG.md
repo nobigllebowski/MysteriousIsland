@@ -9,6 +9,48 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the world rendered perfectly and was shaded to 7.7% grey
+
+**Phase 2.1.** The geometry was never the problem. 58 renderers, a real `Standard` shader, Built-in
+pipeline, Linear colour space, camera enabled and pointed at the world, nothing culled — and the
+Ribcage's ground resolved to **luminance 0.077**. Seven per cent grey is black on any display.
+
+**The trap is the sRGB→linear conversion.** In Linear colour space Unity converts a material's
+colour before shading, so an albedo of `0.13` is `0.014` linear — near coal. With a sun at 24°
+elevation (N·L = 0.41) and intensity 0.85:
+
+```
+Ribcage ground  screen RGB (0.07, 0.08, 0.07)  luminance 0.077   ← black
+Ribcage stone   screen RGB (0.18, 0.18, 0.17)  luminance 0.178   ← the faint gradient on screen
+Fernmaw ground  screen RGB (0.04, 0.08, 0.05)  luminance 0.070
+```
+
+Those numbers are computed from the shipped values, not estimated. Values that look like a
+reasonable dark palette in an inspector arrive a fifth as bright once converted.
+
+**The recipes now carry physical values.** Ribcage ground **0.406**, stone **0.479**; Fernmaw ground
+**0.308**, stone **0.381** — still cold, desaturated and bleak, and Fernmaw still darker than the
+shore, because that contrast is the zone's character. Darker than the shore, not darker than
+visible. The camera also clears to the zone's fog colour instead of a fixed near-black, so distance
+fades into sky rather than into a hole.
+
+**The earlier Gamma→Linear change was right for the wrong reason.** It is correct on its own merits
+and stays, but it did not make the world brighter — computed properly it moved the ground from
+0.066 to 0.077. The arithmetic I used then omitted the conversion of the albedo itself.
+
+### Added — the one number that settles this class of failure
+
+`ZoneDiagnostics.EstimateGroundLuminance` computes what the ground's lit colour will look like on
+screen, and the dump reports it with the light's intensity and elevation. Every check written
+before it asked whether an object *existed*, and the object always did; a surface that renders
+correctly and resolves to 7% grey is indistinguishable, on screen and in every structural test,
+from no surface at all. The verdict line now says outright when a zone is shaded to black.
+
+Two PlayMode cases cover it: the ground's luminance must exceed 0.18 **and** stay below 0.75 — a
+test that only pushes one way invites the fix of turning everything white — and the camera must be
+within 37° of level and above the ground mesh.
+
+
 ### Fixed — my own regression: `SetActiveScene` on the DontDestroyOnLoad scene
 
 ```

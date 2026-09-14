@@ -64,35 +64,50 @@ namespace ForgottenIsle.Game.World
             }
         }
 
-        // The Ribcage: open black-sand shore under a low grey sky. Sparse, wide, cold-lit, so the
+        // The Ribcage: open dark-sand shore under a low grey sky. Sparse, wide, cold-lit, so the
         // rib arch reads from a distance and the player has an obvious direction to walk.
+        //
+        // THE VALUES ARE PHYSICAL, NOT ARTISTIC PREFERENCE, and the first set was wrong by a factor
+        // of five. In Linear colour space a material colour is converted from sRGB before shading,
+        // so an albedo of 0.13 is 0.014 linear -- near coal. With a sun at 24° elevation
+        // (N·L = 0.41) and intensity 0.85 the shore reached the screen at luminance 0.077: seven
+        // per cent grey, which is black on any display. The geometry was rendering correctly the
+        // whole time and being shaded to nothing.
+        //
+        // These land the ground at ~0.41 and the stone at ~0.48 screen luminance — still cold,
+        // desaturated and bleak, but readable. Changing any of them changes that number; the
+        // arithmetic is in ZoneDiagnostics.EstimateGroundLuminance, which reports it every entry.
         private static readonly Recipe RibcageRecipe = new Recipe(
             seed: 20260914,
             amplitude: 3.2f,
-            ground: new Color(0.13f, 0.15f, 0.14f),
-            stone: new Color(0.30f, 0.30f, 0.28f),
-            fog: new Color(0.16f, 0.20f, 0.21f),
+            ground: new Color(0.40f, 0.43f, 0.41f),
+            stone: new Color(0.50f, 0.50f, 0.47f),
+            fog: new Color(0.44f, 0.49f, 0.52f),
             fogDensity: 0.012f,
-            sun: new Color(0.78f, 0.82f, 0.85f),
-            sunIntensity: 0.85f,
-            sunAngles: new Vector3(24f, 35f, 0f),
-            ambient: new Color(0.13f, 0.16f, 0.17f),
+            sun: new Color(0.82f, 0.86f, 0.90f),
+            sunIntensity: 1.30f,
+            sunAngles: new Vector3(38f, 35f, 0f),
+            ambient: new Color(0.34f, 0.39f, 0.42f),
             rockCount: 26,
             floraCount: 10);
 
         // Fernmaw: a sunken green channel. Higher relief and much denser fog to make it feel narrow
         // and enclosed, which is the whole point of the contrast with the shore.
+        //
+        // Deliberately darker than the Ribcage — ground ~0.31 against the shore's ~0.41 — because
+        // the contrast between open shore and sunken channel is the zone's entire character. Darker
+        // than the shore, not darker than visible.
         private static readonly Recipe FernmawRecipe = new Recipe(
             seed: 71104,
             amplitude: 6.4f,
-            ground: new Color(0.09f, 0.14f, 0.10f),
-            stone: new Color(0.20f, 0.24f, 0.19f),
-            fog: new Color(0.07f, 0.11f, 0.09f),
+            ground: new Color(0.26f, 0.34f, 0.27f),
+            stone: new Color(0.36f, 0.41f, 0.33f),
+            fog: new Color(0.20f, 0.28f, 0.22f),
             fogDensity: 0.045f,
-            sun: new Color(0.55f, 0.70f, 0.52f),
-            sunIntensity: 0.45f,
-            sunAngles: new Vector3(62f, 200f, 0f),
-            ambient: new Color(0.06f, 0.10f, 0.08f),
+            sun: new Color(0.72f, 0.86f, 0.68f),
+            sunIntensity: 1.05f,
+            sunAngles: new Vector3(55f, 200f, 0f),
+            ambient: new Color(0.24f, 0.32f, 0.26f),
             rockCount: 18,
             floraCount: 46);
 

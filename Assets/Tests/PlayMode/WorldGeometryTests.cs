@@ -41,6 +41,9 @@ namespace ForgottenIsle.Tests.PlayMode
         /// <summary>The Ribcage's recipe is 1 ground + 26 rocks + 10 flora + a 6-rib arch + props.</summary>
         private const int MinimumExpectedRenderers = 30;
 
+        /// <summary>Screen luminance below which a surface reads as black rather than as dark.</summary>
+        private const float MinimumReadableLuminance = 0.18f;
+
         [UnitySetUp]
         public IEnumerator SetUp()
         {
@@ -207,7 +210,100 @@ namespace ForgottenIsle.Tests.PlayMode
                 + "player is standing in.");
         }
 
+        /// <summary>The world is shaded bright enough to actually be seen.</summary>
+        /// <remarks>
+        /// THIS IS THE TEST THAT WOULD HAVE CAUGHT THE FAILURE, and the reason it is worth having:
+        /// every other assertion in this file passed while the screen was black. The zone had 58
+        /// renderers, a real Standard shader, a camera looking straight at it and nothing culled —
+        /// and resolved to 0.077 luminance, seven per cent grey.
+        /// <para>
+        /// A structural test cannot tell "dark by design" from "invisible", so this asserts the one
+        /// quantity that can: the ground's lit colour as it reaches the screen.
+        /// </para>
+        /// </remarks>
+        [UnityTest]
+        public IEnumerator TheGround_IsShadedBrightEnoughToSee()
+        {
+            var context = RequireContext();
+            yield return StartRun(context);
+
+            var zone = SceneManager.GetSceneByName(ContentIds.ZoneRibcage);
+            Assert.That(zone.IsValid() && zone.isLoaded, Is.True, "ZoneRibcage is not loaded.");
+
+            var sun = FindDirectionalLight(zone);
+            Assert.That(sun, Is.Not.Null, "The zone has no directional light, so nothing is lit.");
+            Assert.That(sun.enabled, Is.True, "The zone's directional light is disabled.");
+
+            var luminance = ZoneDiagnostics.EstimateGroundLuminance(zone, sun);
+            Assert.That(luminance, Is.GreaterThanOrEqualTo(0f), "No ground material was found to measure.");
+
+            Assert.That(luminance, Is.GreaterThan(MinimumReadableLuminance),
+                "The ground resolves to " + luminance.ToString("F3") + " screen luminance. Nothing is "
+                + "culled and nothing is missing -- the world is shaded to black. The shipped Ribcage "
+                + "was 0.077, which is what an entirely black screen looks like from a zone that "
+                + "renders perfectly.");
+
+            // An upper bound too: this is a bleak northern shore, not a beach at noon. A test that
+            // only pushes one way invites the fix of turning everything white.
+            Assert.That(luminance, Is.LessThan(0.75f),
+                "The ground is washed out at " + luminance.ToString("F3") + " luminance.");
+        }
+
+        /// <summary>The camera is pointed at the world, not past it or into the ground.</summary>
+        [UnityTest]
+        public IEnumerator TheCamera_PointsAcrossTheGroundNotIntoIt()
+        {
+            var context = RequireContext();
+            yield return StartRun(context);
+
+            var camera = Camera.main;
+            Assert.That(camera, Is.Not.Null, "No main camera.");
+
+            var forward = camera.transform.forward;
+
+            // Straight down or straight up both fill the screen with one surface or with sky, and
+            // both look like a broken world. The rig spawns level, so this should be near zero.
+            Assert.That(Mathf.Abs(forward.y), Is.LessThan(0.6f),
+                "The camera is pitched "
+                + (Mathf.Asin(forward.y) * Mathf.Rad2Deg).ToString("F0")
+                + "° from level, so it is looking at the sky or at its own feet.");
+
+            var zone = SceneManager.GetSceneByName(ContentIds.ZoneRibcage);
+            var ground = FindGround(zone);
+            Assert.That(ground, Is.Not.Null, "No ground renderer in the zone.");
+            Assert.That(camera.transform.position.y, Is.GreaterThan(ground.bounds.min.y),
+                "The camera is below the ground mesh entirely.");
+        }
+
         // --- helpers ---------------------------------------------------------------------------
+
+        private static Light FindDirectionalLight(Scene scene)
+        {
+            var lights = FindAll<Light>(scene);
+            for (var i = 0; i < lights.Count; i++)
+            {
+                if (lights[i].type == LightType.Directional)
+                {
+                    return lights[i];
+                }
+            }
+
+            return null;
+        }
+
+        private static Renderer FindGround(Scene scene)
+        {
+            var renderers = FindAll<MeshRenderer>(scene);
+            for (var i = 0; i < renderers.Count; i++)
+            {
+                if (renderers[i].name.IndexOf("Ground", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return renderers[i];
+                }
+            }
+
+            return null;
+        }
 
         private static System.Collections.Generic.List<T> FindAll<T>(Scene scene) where T : Component
         {
