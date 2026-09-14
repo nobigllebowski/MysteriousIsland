@@ -299,6 +299,15 @@ namespace ForgottenIsle.Game.Scenes
 
             if (op == null)
             {
+                // The single most likely cause, by a wide margin, and the one whose default message
+                // explains nothing: the scene assets have never been generated in this clone, so
+                // Build Settings is empty and NEW GAME appears to do nothing at all. Naming the fix
+                // here is the difference between a dead button and a one-line instruction.
+                Debug.LogError(
+                    "[Vardholm] scene '" + sceneKey + "' is not in Build Settings, so it cannot be " +
+                    "loaded. In a fresh clone the scene assets do not exist yet — run " +
+                    "'Vardholm > Setup Project' from the editor menu, then press Play again.");
+
                 Finish(sceneKey, ResultCode.SceneNotFound, onComplete);
                 yield break;
             }

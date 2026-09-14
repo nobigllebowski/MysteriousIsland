@@ -8,15 +8,21 @@ namespace ForgottenIsle.Editor
     /// and offers to run <see cref="VardholmProjectSetup.SetupProject"/>.
     /// </summary>
     /// <remarks>
-    /// WHY A PROMPT RATHER THAN SILENT AUTO-SETUP: creating and saving asset files behind
-    /// someone's back on project open is the kind of surprise that makes a toolchain untrustworthy,
-    /// and it would fight source control the moment two people opened the project at once. The
-    /// prompt is offered once per editor session, only when setup is genuinely missing, and
-    /// declining it costs nothing — the menu item is always there.
+    /// THIS USED TO ASK, AND ASKING FAILED. The original reasoning was that creating asset files on
+    /// project open is a surprise, so a dialog offered the choice. Two things broke it in practice.
+    /// A project that opens in Safe Mode never runs <c>[InitializeOnLoadMethod]</c> from its own
+    /// assemblies at all, so through every compile-error round the dialog never appeared once. And a
+    /// dialog dismissed with "Later" leaves a project whose NEW GAME button silently does nothing,
+    /// because the zone it loads is not in Build Settings — which is exactly what happened.
+    /// <para>
+    /// Phase 1.5's whole goal was <c>clone → open → Play</c>. A prompt that can be missed or
+    /// declined is not that. Setup now runs on its own and says what it did. It is safe to do
+    /// unattended: it creates only files that do not exist, and never overwrites one that does.
+    /// </para>
     /// <para>
     /// The delay call matters: <c>[InitializeOnLoadMethod]</c> runs while the asset database is
-    /// still settling, and showing a modal dialog in that window can deadlock the import. Deferring
-    /// to the first editor update tick sidesteps it.
+    /// still settling, and creating scenes in that window can deadlock the import. Deferring to the
+    /// first editor update tick sidesteps it.
     /// </para>
     /// </remarks>
     internal static class VardholmFirstRunCheck
@@ -44,23 +50,13 @@ namespace ForgottenIsle.Editor
                 return;
             }
 
-            Debug.LogWarning(
-                "VARDHOLM: project setup has not been run in this clone — the scene assets do not exist yet.\n" +
-                "Run  Vardholm > Setup Project  (or click Set up now on the dialog).");
+            Debug.Log(
+                "[Vardholm] first run in this clone: the scene assets do not exist yet. " +
+                "Creating them now — four scenes, Build Settings in load order, and the " +
+                "localization resource. Nothing that already exists is overwritten. " +
+                "Re-run any time from  Vardholm > Setup Project.");
 
-            var setUpNow = EditorUtility.DisplayDialog(
-                "Vardholm — first-time setup",
-                "This clone has no scene assets yet.\n\n" +
-                "Setup creates the four scenes, writes Build Settings in the right order, and " +
-                "verifies the localization resource. It does not overwrite anything that already exists.\n\n" +
-                "You can also run it any time from the Vardholm menu.",
-                "Set up now",
-                "Later");
-
-            if (setUpNow)
-            {
-                VardholmProjectSetup.SetupProject();
-            }
+            VardholmProjectSetup.SetupProject();
         }
     }
 }

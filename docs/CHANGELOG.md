@@ -9,6 +9,26 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — NEW GAME did nothing: the scenes had never been created
+
+Not a bug in the button, the controller, the command or the handler. `Assets/Scenes/` holds only a
+README, and `ProjectSettings/EditorBuildSettings.asset` has `m_Scenes: []`. `ZoneRibcage` is not in
+the build, `LoadSceneAsync` throws, the loader returns `SceneNotFound`, and the menu stays exactly
+where it was. The button worked perfectly; there was nowhere to go.
+
+**Why setup never ran.** `VardholmFirstRunCheck` offered a dialog on editor load. A project that
+opens in **Safe Mode never runs `[InitializeOnLoadMethod]` from its own assemblies**, so through
+every compile-error round the dialog did not appear once. And a dialog answered "Later" leaves a
+project whose NEW GAME silently does nothing.
+
+Setup now runs **automatically and unattended** on first load, and logs what it created. It is safe
+to do so: it creates only files that do not exist and overwrites nothing. Phase 1.5's goal was
+`clone → open → Play`; a prompt that can be missed or declined was never that.
+
+`SceneLoader` also names the cause now instead of returning a bare code: *"scene 'X' is not in
+Build Settings … run Vardholm > Setup Project, then press Play again."*
+
+
 ### Fixed — first runtime failure: "Display 1 - No cameras rendering"
 
 The menu rendered and the game did not. Two separate facts, only one of them a bug.
