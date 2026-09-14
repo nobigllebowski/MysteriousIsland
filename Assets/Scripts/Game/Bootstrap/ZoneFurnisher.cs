@@ -388,8 +388,12 @@ namespace ForgottenIsle.Game.Bootstrap
                 {
                     // Bounds rather than a raycast: a raycast needs physics to have ticked at least
                     // once, and this runs in the frame the scene finished loading.
+                    // bounds.MIN.y, not max. The old test asked whether the collider lay ENTIRELY
+                    // below the spawn, which a rolling terrain never does — its peaks rise well
+                    // above the player, so the check failed on every zone and a redundant 120 x 1 x
+                    // 120 cube was built under the real ground every single time.
                     var bounds = colliders[c].bounds;
-                    if (bounds.max.y <= origin.y + 0.01f &&
+                    if (bounds.min.y <= origin.y + 0.01f &&
                         bounds.min.x <= origin.x && bounds.max.x >= origin.x &&
                         bounds.min.z <= origin.z && bounds.max.z >= origin.z)
                     {

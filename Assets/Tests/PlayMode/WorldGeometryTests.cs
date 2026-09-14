@@ -158,10 +158,11 @@ namespace ForgottenIsle.Tests.PlayMode
 
             var position = rig.transform.position;
 
-            // The ground mesh is 60 m square centred on the origin, so anything beyond half of that
-            // is standing off the edge of the world.
-            Assert.That(Mathf.Abs(position.x), Is.LessThan(30f), "Player is outside the ground in X.");
-            Assert.That(Mathf.Abs(position.z), Is.LessThan(30f), "Player is outside the ground in Z.");
+            // The ground mesh is 120 m square centred on the origin (ZoneBuilder.GroundSize), so
+            // half of that is the edge of the world. The first version of this test said 60 m
+            // because I assumed the size rather than reading it.
+            Assert.That(Mathf.Abs(position.x), Is.LessThan(60f), "Player is outside the ground in X.");
+            Assert.That(Mathf.Abs(position.z), Is.LessThan(60f), "Player is outside the ground in Z.");
             Assert.That(position.y, Is.GreaterThan(-2f).And.LessThan(40f),
                 "Player is under the terrain or far above it: y = " + position.y.ToString("F1"));
         }
@@ -273,6 +274,37 @@ namespace ForgottenIsle.Tests.PlayMode
             Assert.That(ground, Is.Not.Null, "No ground renderer in the zone.");
             Assert.That(camera.transform.position.y, Is.GreaterThan(ground.bounds.min.y),
                 "The camera is below the ground mesh entirely.");
+        }
+
+        /// <summary>The first thing the player is told about is in front of them.</summary>
+        /// <remarks>
+        /// The Standing Stone sat at z = -1.5 with the rig spawning at the origin facing +Z: 2.45 m
+        /// away at 128° from forward, squarely behind the head. Proximity does not care about
+        /// facing, so INSPECT was up from the first frame while the stone was never on screen —
+        /// which is precisely the difference between a logical object existing and a visible mesh
+        /// existing, and the reason this assertion is about an angle rather than about a component.
+        /// </remarks>
+        [UnityTest]
+        public IEnumerator TheStandingStone_IsInFrontOfTheSpawn()
+        {
+            var context = RequireContext();
+            yield return StartRun(context);
+
+            var camera = Camera.main;
+            Assert.That(camera, Is.Not.Null, "No main camera.");
+
+            var marker = UnityEngine.Object.FindAnyObjectByType<AncientMarker>(FindObjectsInactive.Include);
+            Assert.That(marker, Is.Not.Null, "No AncientMarker in the Ribcage.");
+
+            var renderer = marker.GetComponentInChildren<MeshRenderer>(true);
+            Assert.That(renderer, Is.Not.Null, "The Standing Stone has no MeshRenderer.");
+
+            var toStone = renderer.bounds.center - camera.transform.position;
+            var angle = Vector3.Angle(camera.transform.forward, toStone);
+
+            Assert.That(angle, Is.LessThan(75f),
+                "The Standing Stone is " + angle.ToString("F0") + "° off the camera's forward vector, "
+                + "so the player spawns with it behind them. It shipped at 128°.");
         }
 
         // --- helpers ---------------------------------------------------------------------------

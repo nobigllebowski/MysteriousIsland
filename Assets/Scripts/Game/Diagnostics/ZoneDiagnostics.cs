@@ -271,6 +271,11 @@ namespace ForgottenIsle.Game.Diagnostics
              .Append(nearest <= NearRadius ? "yes" : "NO")
              .Append('\n');
 
+            // --- the three objects that decide whether the zone reads at all ---------------------
+            AppendKeyObject(b, scene, camera, "ground", "Ground");
+            AppendKeyObject(b, scene, camera, "standing stone", "Marker");
+            AppendKeyObject(b, scene, camera, "landmark", "Rib");
+
             // --- lighting, and the number the whole failure came down to -------------------------
             var sun = FindBrightestDirectionalLight(scene);
             b.Append("  light ")
@@ -294,6 +299,108 @@ namespace ForgottenIsle.Game.Diagnostics
                 totalRenderers, enabledRenderers, inMask, visibleRenderers, nullShaders, camera, luminance));
 
             return b.ToString();
+        }
+
+        /// <summary>
+        /// Reports one named object in full: mesh, material, bounds, distance, and whether it is
+        /// actually in view.
+        /// </summary>
+        /// <remarks>
+        /// THE DISTINCTION THIS EXISTS FOR: a proximity prompt reading "Standing Stone" proves that
+        /// a component registered itself with the interaction system at a distance. It proves
+        /// nothing about whether the object has a mesh, whether that mesh has triangles, or whether
+        /// it is in front of the camera rather than behind the player's head — and the stone was
+        /// behind the player's head, 2.45 m away at 128° from forward, which is why the prompt was
+        /// up from the first frame and the stone was never once on screen.
+        /// <para>
+        /// The angle to camera forward is the line that separates those two facts, so it is printed
+        /// for every object here.
+        /// </para>
+        /// </remarks>
+        private static void AppendKeyObject(
+            StringBuilder b, Scene scene, Camera camera, string label, string nameFragment)
+        {
+            var renderer = FindRendererByName(scene, nameFragment);
+            b.Append("  ").Append(label).Append(": ");
+
+            if (renderer == null)
+            {
+                b.Append("NOT FOUND (searched for a renderer whose name contains '")
+                 .Append(nameFragment).Append("')\n");
+                return;
+            }
+
+            var t = renderer.transform;
+            var filter = renderer.GetComponent<MeshFilter>();
+            var mesh = filter != null ? filter.sharedMesh : null;
+            var material = renderer.sharedMaterial;
+
+            b.Append('\'').Append(renderer.name).Append('\'')
+             .Append(" pos ").Append(t.position.ToString("F2"))
+             .Append(" scale ").Append(t.lossyScale.ToString("F2"))
+             .Append(" activeInHierarchy ").Append(renderer.gameObject.activeInHierarchy)
+             .Append(" enabled ").Append(renderer.enabled)
+             .Append(" isVisible ").Append(renderer.isVisible)
+             .Append('\n');
+
+            b.Append("      mesh ")
+             .Append(mesh != null
+                 ? "verts " + mesh.vertexCount.ToString(CultureInfo.InvariantCulture)
+                   + " tris " + (mesh.triangles.Length / 3).ToString(CultureInfo.InvariantCulture)
+                   + " localBounds c" + mesh.bounds.center.ToString("F1") + " s" + mesh.bounds.size.ToString("F1")
+                 : "NONE")
+             .Append(" · worldBounds c").Append(renderer.bounds.center.ToString("F1"))
+             .Append(" s").Append(renderer.bounds.size.ToString("F1"))
+             .Append('\n');
+
+            b.Append("      material ")
+             .Append(material != null ? material.name : "NONE")
+             .Append(" · shader ").Append(material != null && material.shader != null ? material.shader.name : "NULL")
+             .Append(" · colour ").Append(material != null && material.HasProperty("_Color")
+                 ? Fmt(material.GetColor("_Color"))
+                 : "n/a")
+             .Append(" · queue ").Append(material != null
+                 ? material.renderQueue.ToString(CultureInfo.InvariantCulture)
+                 : "n/a")
+             .Append('\n');
+
+            if (camera == null)
+            {
+                return;
+            }
+
+            var toObject = renderer.bounds.center - camera.transform.position;
+            var distance = toObject.magnitude;
+            var angle = distance > 0.001f
+                ? Vector3.Angle(camera.transform.forward, toObject)
+                : 0f;
+
+            var planes = GeometryUtility.CalculateFrustumPlanes(camera);
+            var inFrustum = GeometryUtility.TestPlanesAABB(planes, renderer.bounds);
+
+            b.Append("      distance ").Append(distance.ToString("F1", CultureInfo.InvariantCulture))
+             .Append(" m · angle off camera forward ").Append(angle.ToString("F0", CultureInfo.InvariantCulture))
+             .Append("° (").Append(angle > 90f ? "BEHIND THE CAMERA" : "in front")
+             .Append(") · in frustum ").Append(inFrustum ? "YES" : "NO")
+             .Append('\n');
+        }
+
+        private static Renderer FindRendererByName(Scene scene, string fragment)
+        {
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var renderers = roots[i].GetComponentsInChildren<Renderer>(true);
+                for (var r = 0; r < renderers.Length; r++)
+                {
+                    if (renderers[r].name.IndexOf(fragment, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return renderers[r];
+                    }
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

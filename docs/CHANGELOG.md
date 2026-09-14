@@ -9,6 +9,50 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the Standing Stone was 2.45 m behind the player's head
+
+This is the defect that made the symptom so confusing, and it is exactly the distinction between
+*a logical object existing* and *a visible mesh existing*.
+
+The rig spawns at the origin facing **+Z** with no yaw. The marker was placed at `(1.5, ·, -1.5)`:
+
+```
+camera        (0.00, 2.80, 0.00)  forward (0, 0, 1)
+stone         (1.50, 1.58, -1.50)
+camera→stone  (1.50, -1.22, -1.50)   length 2.45 m
+dot with forward = -1.50            → BEHIND THE CAMERA
+angle = 128°
+```
+
+Proximity does not care about facing, so `INSPECT` was up from the first frame while the stone was
+never once on screen. The code comment above it read *"the reason to walk into it"* — describing
+something the player could not walk toward, because they were never shown it. Now at
+`(2.5, ·, 7.5)`: ahead, far enough to be approached rather than auto-prompted, inside the arch's
+z range so it reads against the ribs.
+
+### Fixed — a redundant 120 × 1 × 120 ground cube under every zone
+
+`HasColliderBelow` tested `bounds.max.y <= spawn.y` — whether the collider lay **entirely** below
+the spawn point. A rolling terrain never does; its peaks rise well above the player. So the check
+failed on every zone and `EnsureGround` built a second, flat ground under the real one every time.
+Now tested against `bounds.min.y`.
+
+### Fixed — my own test asserted the wrong world size
+
+`WorldGeometryTests` bounded the player to ±30 m because I assumed the ground was 60 m square.
+`ZoneBuilder.GroundSize` is **120**. Corrected to ±60 — read, not assumed.
+
+### Added — the per-object dump
+
+The zone dump now reports the ground, the Standing Stone and the landmark individually: position,
+scale, `activeInHierarchy`, `enabled`, `isVisible`, vertex and triangle counts, local and world
+bounds, material, shader, colour, render queue, distance from the camera, **angle off camera
+forward** (naming "BEHIND THE CAMERA" outright), and the frustum test. The angle is the line that
+separates the two facts above, so every object carries it.
+
+A PlayMode case asserts the stone is within 75° of forward. It shipped at 128°.
+
+
 ### Fixed — the world rendered perfectly and was shaded to 7.7% grey
 
 **Phase 2.1.** The geometry was never the problem. 58 renderers, a real `Standard` shader, Built-in

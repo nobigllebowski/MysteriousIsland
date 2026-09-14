@@ -295,8 +295,17 @@ namespace ForgottenIsle.Game.World
                 rib.AddComponent<MeshRenderer>().sharedMaterial = boneMaterial;
             }
 
-            // THE MARKER, at the centre of the arch: the reason to walk into it.
-            var markerPos = new Vector3(1.5f, 0f, -1.5f);
+            // THE MARKER. IT WAS BEHIND THE PLAYER, and that is the whole reason the stone was
+            // never seen. The rig spawns at the origin facing +Z with no yaw, and the marker sat at
+            // z = -1.5 — 2.45 m away at 128° from the camera's forward vector, which is to say
+            // squarely behind the head. Proximity does not care about facing, so INSPECT appeared
+            // the instant the run began while the stone itself was never once on screen. A comment
+            // reading "the reason to walk into it" described something the player could not walk
+            // toward because they were never shown it.
+            //
+            // Now placed ahead and slightly right, far enough to be approached rather than
+            // auto-prompted, and inside the arch's z range so it reads against the ribs.
+            var markerPos = new Vector3(2.5f, 0f, 7.5f);
             markerPos.y = Height(markerPos.x, markerPos.z, recipe);
             CreateMarker(
                 root, stone, interactions,
