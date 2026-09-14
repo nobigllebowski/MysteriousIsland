@@ -18,12 +18,21 @@
 | 4 | [`design/03-world-structure.md`](design/03-world-structure.md) | All 9 zones, the gating graph, the capability table, the 25-beat critical path, the anti-softlock rules. |
 | 5 | [`design/04-first-30-minutes.md`](design/04-first-30-minutes.md) | The prologue shooting script, minute by minute. The free product. |
 | 6 | [`design/05-mobile-ux-plan.md`](design/05-mobile-ux-plan.md) | Camera decision, controls, HUD, inventory, the combine flow, accessibility. ASCII wireframes throughout. |
+| 6.5 | [`architecture/00-decisions.md`](architecture/00-decisions.md) | **BINDING.** 13 ADRs reconciling the contradictions an adversarial review found between the three architecture documents. Read before the three documents it governs. |
 | 7 | [`architecture/01-technical-architecture.md`](architecture/01-technical-architecture.md) | Assemblies, layering, commands, events, DI, streaming, performance, localization, CI. **Starts with a verification ledger.** |
 | 8 | [`architecture/02-core-systems.md`](architecture/02-core-systems.md) | All 17 systems: API, owned state, dependencies, algorithms, failure modes, test matrix. |
 | 9 | [`architecture/03-data-and-save-architecture.md`](architecture/03-data-and-save-architecture.md) | SO-vs-JSON decision, the 10 definition types, runtime state, the versioned save envelope and migration framework. |
 | 10 | [`production/01-title-evaluation.md`](production/01-title-evaluation.md) | Five candidates scored, with live store searches and a clearance checklist. |
 | 11 | [`production/02-mvp-scope-and-roadmap.md`](production/02-mvp-scope-and-roadmap.md) | MVP content manifest, what is excluded, risks, and Phases 0–16. |
 | 12 | [`production/03-phase-1-plan.md`](production/03-phase-1-plan.md) | The executable Phase 1 plan: file manifest, code sketches, tests, acceptance criteria. |
+
+## Read this first
+
+`architecture/00-decisions.md` is **binding**. The three architecture documents were authored in
+parallel and were never reconciled; a review pass found they specified three different assembly
+layouts, two streaming models, two `SurvivalStat` enums and an incomplete save participant list.
+The ADR set resolves all of it. Where a document contradicts an ADR, **the ADR wins and the
+document is wrong.** Applying the ADRs to the documents they govern is Phase 1 Task 0.
 
 ## Standing rules
 

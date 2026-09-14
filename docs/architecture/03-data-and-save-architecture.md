@@ -588,7 +588,7 @@ public sealed record DiscoveryDefinition : IDefinition
     public string LogSfxAddress          { get; init; } = "";
 }
 
-public enum DiscoveryCategory { Geology, Acoustics, TooloVardh, Cormorant, Ferrier, Wellhead, Mercator, Personal }
+public enum DiscoveryCategory { Geology, Acoustics, TooloVardh, Cormorant, Ferrier, Wellhead, Orrimond, Personal }
 public enum DiscoveryTriggerKind { ItemPickup, ItemExamine, InteractionComplete, PuzzleSolved, LocationEnter, DocumentRead, ReelPlayed, Composite }
 ```
 
@@ -990,7 +990,7 @@ new StoryDefinition {
         new StoryLine("",      "vo.silence.hold",   "",                     4.5f, ""),
         new StoryLine("nadia", "vo.nadia.act5.002", "vo/en/nadia_act5_002", 0f, "sub.internal")),
 
-    RequiredDiscoveryIds = ImmutableArray.Create("disc.forty_hours_a_month", "disc.mercator_letter_unopened"),
+    RequiredDiscoveryIds = ImmutableArray.Create("disc.forty_hours_a_month", "disc.orrimond_letter_unopened"),
     RequiredFlagIds      = ImmutableArray.Create("flag.damper_balanced_once"),
     RequiredLocationId   = "loc.quiet_room",
 

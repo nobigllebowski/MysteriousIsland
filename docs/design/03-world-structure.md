@@ -46,7 +46,7 @@ Black volcanic sand, wet and mirror-flat at low tide so the whole beach doubles 
 
 **STORY CLUES**
 1. **The ketch's transom, 60 m offshore, visible at low tide only.** Nadia's own boat. Reveals the EPIRB housing is torn open and empty — establishing, physically rather than by narration, that no one is coming.
-2. **A brass shipping tag wired to the trawler's net drum**, stamped `MERCATOR TRUST — STN. VARDHOLM — 11.04.97 — H.L.` Reveals that someone was doing inventory on a wreck in 1997, twenty-one years after the last dated document anyone will find in Act 3. The player cannot interpret it yet. It is the first thread.
+2. **A brass shipping tag wired to the trawler's net drum**, stamped `ORRIMOND TRUST — STN. VARDHOLM — 11.04.97 — H.L.` Reveals that someone was doing inventory on a wreck in 1997, twenty-one years after the last dated document anyone will find in Act 3. The player cannot interpret it yet. It is the first thread.
 3. **The hull spacing itself, once the player has walked the full arc.** The Field Slate auto-logs a sketch; the intervals are 34 m, 34 m, 34 m, 34 m, 34 m. Reveals: this is a constructed structure, not a graveyard.
 
 **DANGER**
@@ -129,7 +129,7 @@ Eleven orange fibreglass huts on galvanised stilts, standing two metres above a 
 1. **Ruben Castellar's load calculations** (Hut 5, graph paper, Portuguese and English, weighted under a rock). Reveals that his 1974 structural loads *cite datum surfaces that predate the camp by 3,900 years* — Wellhead were copying, not building. The exact fact: his safe working load table for "Cell 6 upper lip" assumes a stone section he did not cut and could not have measured without accepting it was engineered.
 2. **The radio in Hut 2** — a 1970s HF set, dead since 1989, with **new alkaline batteries in the tray, corrosion-free, installed within the last two years.** Reveals: someone is still maintaining a radio they know is dead. It is not a communication device. It is a ritual.
 3. **Tomas Ré's grave**, 60 m up the shore path — carved marker, dated 1989, and *fresh shore flowers with the stems cut square*. Reveals the caretaker rotation existed, that one caretaker died here, and that another one is tending him. This is the Act 3 gut-drop.
-4. **The Mercator mail tray** (Hut 1, only reachable in Act 4) — hundreds of stamped, addressed, unmailed cassette letters in Ré's hand, and on top of them one **unopened** 1994 envelope from the Mercator Trust's solicitors. Reveals the dissolution — and that Lorvik chose not to read it.
+4. **The Orrimond mail tray** (Hut 1, only reachable in Act 4) — hundreds of stamped, addressed, unmailed cassette letters in Ré's hand, and on top of them one **unopened** 1994 envelope from the Orrimond Trust's solicitors. Reveals the dissolution — and that Lorvik chose not to read it.
 
 **DANGER**
 The tidal flat. Fold Camp floods to 1.4 m twice daily and the mud has soft patches that will hold a boot and take twenty minutes to escape. Mitigation: the **boardwalk network**, which the player extends with marine ply across the game, and Lorvik's chalked tide tables once found. Secondary: fibreglass dust and 1970s chemistry in Hut 9 — the darkroom needs ventilation opened before use, and a player who ignores it loses an hour to a headache, not a life. Third: diesel is finite. Burning it carelessly on lighting costs Act 4 capability. That is a resource-discipline pressure, not a death threat, and it is the only true scarcity economy in the game.
@@ -311,7 +311,7 @@ The seam. A poured-concrete 1960s facility driven *into* a Tolo Vardh chamber, a
 1. **Sabo's complete log set.** *"Log fourteen. Ferrier's 'anomaly' is a loose gland nut on Line Three. I have now fixed it twice."* And later: *"The gates are not instrumentation. They are a splint. I have told him in writing. He has filed it."* Reveals that the truth was known, documented, and administratively buried in 1968.
 2. **The Sump door, sealed from inside**, with Castellar's chalk on the concrete: a date, `03.76`, and a torque figure for the dogs. Reveals that the Sump was sealed *by* a man who was inside it, deliberately, to stop the others making things worse — and that he did the calculation first.
 3. **Solheim's final variance report**, unsigned. Reveals, in cost-benefit prose, that Wellhead modelled the harm from forced apertures, priced it, and proceeded. This is the institutional horror the bible calls for, stated in the register of a funding document rather than a confession.
-4. **The Mercator Trust operations manual**, 1976, which specifies the caretaker rotation as three-year terms with mandatory relief — a document that proves Lorvik's thirty-one years is not duty but *administrative abandonment*.
+4. **The Orrimond Trust operations manual**, 1976, which specifies the caretaker rotation as three-year terms with mandatory relief — a document that proves Lorvik's thirty-one years is not duty but *administrative abandonment*.
 
 **DANGER**
 Confined space, water and electricity. The Sump level floods on a cycle and the pumps are 1960s; a player who ignores the level gauge loses equipment and a long walk, never a life. The switchgear is live, unguarded and 1960s — the mitigation is procedural (isolate, tag, test, work), which the game teaches as a genuine safe-isolation ritual and which is far more tense than any monster. Confined-air pockets in the lower galleries require the mask. No fauna, no threat, no chase.
@@ -342,7 +342,7 @@ A perfect circular chamber, 18 m across, at the caldera's geometric acoustic foc
 
 **STORY CLUES**
 1. **The chalk floor itself** — as above. The single most important artifact in the game and it is a floor.
-2. **The unopened 1994 Mercator envelope**, which Lorvik produces from her oilskin. She has carried it for thirty-one years. She knows what it says. She explains why she never opened it, and the explanation is the game's thesis: an unopened letter is not an instruction, and as long as it is not an instruction she is still employed, and as long as she is still employed the work is legitimate rather than madness.
+2. **The unopened 1994 Orrimond envelope**, which Lorvik produces from her oilskin. She has carried it for thirty-one years. She knows what it says. She explains why she never opened it, and the explanation is the game's thesis: an unopened letter is not an instruction, and as long as it is not an instruction she is still employed, and as long as she is still employed the work is legitimate rather than madness.
 3. **The 11,000th logbook entry**, which she is writing when Nadia enters. *"Day 11,4— "* and then she stops, because for the first time since 1994 the next word is not `No vessel.`
 
 **DANGER**

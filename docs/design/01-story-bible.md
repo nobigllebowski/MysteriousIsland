@@ -29,7 +29,7 @@ An eroded stratovolcanic caldera in the deep South Atlantic, ~11 km across, rim 
 | **I — The Tolo Vardh** | c. 2100–1380 BCE | Ocean-going settlers on an island with rain but no aquifer. Cut the mountain into condensation and damper architecture over six centuries. | Tool marks, wear patterns, a notch-and-crescent tally notation, six generational maintenance registers. Non-verbal. No mysticism. |
 | **II — The Cormorant Trust** | 1883–1891 | British phosphate venture. Misread the terraces as burial works and quarried a third of them out. | Rev. Silas Poulter's journal — the document that, reprinted in 1969, brought everyone else here. |
 | **III — Ferrier–Oleander Consortium / Project Wellhead** | 1961–1976 | Private infrasound programme, then a Dutch-Brazilian hydrological consortium that came to reverse-engineer the ancient system. Built Substation Oleander and Fold Camp. | Journals, reel-to-reel logs, load calculations, contact sheets, variance reports. |
-| **IV — The Mercator Trust and the tender** | 1976–1994, then 1994–present | A liability-holding foundation that staffed the site with rotating caretakers, dissolved in 1994 when its endowment was absorbed by a bank that never read the file. One caretaker never left. | Brass maintenance tags, chalked tide tables, 11,000+ logbook entries, a wall of unmailed letters. |
+| **IV — The Orrimond Trust and the tender** | 1976–1994, then 1994–present | A liability-holding foundation that staffed the site with rotating caretakers, dissolved in 1994 when its endowment was absorbed by a bank that never read the file. One caretaker never left. | Brass maintenance tags, chalked tide tables, 11,000+ logbook entries, a wall of unmailed letters. |
 
 **The nine zones — one sensory identity each:**
 
@@ -75,7 +75,7 @@ An eroded stratovolcanic caldera in the deep South Atlantic, ~11 km across, rim 
 **Dr. Margit Solheim** — principal investigator, Project Wellhead, 1971–1976. Precise, funny, counting aloud, and unable to revise a conclusion. *Sample:* "Day one hundred four. Yield down nine percent. I am not going to write the word *sabotage* again."
 **The player learns:** the mechanism of the damage. She bored new apertures into the ancient chambers to force output, destabilised the balance, and kept going because being wrong in public had already cost her once.
 
-**Hanne Lorvik** — third-term Mercator caretaker, arrived 1994 aged 29, now 66. **Alive. Present. On the island.** Her medium is not journal but *work*: dated brass tags, inventory cards, chalked tide tables, 11,000+ logbook entries in handwriting that degrades across decades while the wording never changes. *Sample:* "Day 11,204. Lantern 7 replaced. Bridge 2 re-roped. No vessel."
+**Hanne Lorvik** — third-term Orrimond caretaker, arrived 1994 aged 29, now 66. **Alive. Present. On the island.** Her medium is not journal but *work*: dated brass tags, inventory cards, chalked tide tables, 11,000+ logbook entries in handwriting that degrades across decades while the wording never changes. *Sample:* "Day 11,204. Lantern 7 replaced. Bridge 2 re-roped. No vessel."
 **The player learns:** everything, last — and only in person.
 
 ---
@@ -86,7 +86,7 @@ An eroded stratovolcanic caldera in the deep South Atlantic, ~11 km across, rim 
 
 The caldera is a natural acoustic lens. Under certain tidal and thermal states it re-radiates ambient ocean infrasound as a coherent, focused low-frequency beam down the deep sound channel — loud enough at range to wreck the navigation and the biology of anything in that corridor. The **Tolo Vardh** spent six centuries carving the mountain to detune it: fin-cut condensation halls, thermal chimneys, cut-stone baffles and gravity-fed water ballast that together damp the resonance and, as a by-product, condense fresh water on an island with no aquifer. Water was how they *paid* for the work. Quiet was the work. Their society was organised around maintenance, and the notch-and-crescent mark is a title — **Weir-Keeper** — held by six generations, not one person.
 
-**Ferrier** found the acoustic effect and misread it as reception. **Sabo** worked out it was emission, and built Substation Oleander's damper gates as a modern prosthesis for the failing ancient ones. **Project Wellhead** came for the water design and could not abstract it — the geometry is locked to Vardholm's specific thermal gradient — and Solheim's forced modifications broke the balance in both functions at once: the Combs dried, and the caldera got louder. Wellhead did not die of monsters. They argued, they thirsted, and the last of them sealed the Sump to stop the others making it worse. The Mercator Trust inherited the liability, hired caretakers, then ceased to exist. **Nobody ever told Hanne Lorvik she could stop.** It needs roughly forty hours of physical labour a month, forever, by a human on site. There is no automation that survives salt air.
+**Ferrier** found the acoustic effect and misread it as reception. **Sabo** worked out it was emission, and built Substation Oleander's damper gates as a modern prosthesis for the failing ancient ones. **Project Wellhead** came for the water design and could not abstract it — the geometry is locked to Vardholm's specific thermal gradient — and Solheim's forced modifications broke the balance in both functions at once: the Combs dried, and the caldera got louder. Wellhead did not die of monsters. They argued, they thirsted, and the last of them sealed the Sump to stop the others making it worse. The Orrimond Trust inherited the liability, hired caretakers, then ceased to exist. **Nobody ever told Hanne Lorvik she could stop.** It needs roughly forty hours of physical labour a month, forever, by a human on site. There is no automation that survives salt air.
 
 **Belief ladder:**
 - **Hour 1:** *"I'm shipwrecked on a rock that isn't on the chart. Water, shelter, signal."*
@@ -118,7 +118,7 @@ The caldera is a natural acoustic lens. Under certain tidal and thermal states i
 **ACT 4 — THE RUINS** *(The Combs, Substation Oleander)*
 **Goal:** Learn to read Tolo Vardh notation, restart one cell, and get inside Oleander.
 **New capability:** **The Register** (carvings convert into legible flow and damping schematics) and **the damper console** — ballast, vent and tension across four gates, tuned live against a tide table. The player learns to *do the job*.
-**Revelation:** Weir-Keeper is a title across six generations. Poulter quarried a third of the system; Solheim bored into the rest. And the Mercator Trust's 1994 dissolution letter sits unopened in the mail tray beside 11,000 logbook entries.
+**Revelation:** Weir-Keeper is a title across six generations. Poulter quarried a third of the system; Solheim bored into the rest. And the Orrimond Trust's 1994 dissolution letter sits unopened in the mail tray beside 11,000 logbook entries.
 **Open question:** She read the envelope and never opened it. Why?
 
 **ACT 5 — THE TRUTH** *(The Quiet Room)*
@@ -165,7 +165,7 @@ Nearest comparables, and the concrete separation:
 
 **The load-bearing originality:** the mystery is a *maintenance problem*. The ancients were competent rather than wise; the antagonist is a good scientist who could not revise a conclusion; and the final antagonistic pressure is an employment contract with a dead foundation.
 
-**Unverified assumption flagged for clearance:** "THE FORGOTTEN ISLE", "Vardholm", "Pellamar", "Tolo Vardh", "Substation Oleander", "Mercator Trust", "Ferrier–Oleander Consortium", "Project Wellhead", "Cormorant Trust" and all character names have **not** been trademark- or title-searched by me. Run a full clearance pass before any public use.
+**Unverified assumption flagged for clearance:** "THE FORGOTTEN ISLE", "Vardholm", "Pellamar", "Tolo Vardh", "Substation Oleander", "Orrimond Trust", "Ferrier–Oleander Consortium", "Project Wellhead", "Cormorant Trust" and all character names have **not** been trademark- or title-searched by me. Run a full clearance pass before any public use.
 
 ---
 
@@ -186,7 +186,7 @@ Nearest comparables, and the concrete separation:
 - **Dr. Margit Solheim** — Wellhead principal investigator. Forced the modifications that broke the balance.
 - **Ruben Castellar** — Wellhead structural engineer. Sealed the Sump from inside. Graph-paper load calcs in Portuguese and English.
 - **Nell Obuya, 24** — Wellhead photographer. Annotated contact sheets and unsent letters; the 1972 photographs of the Combs running wet.
-- **The Mercator Trust** — 1976–1994 foundation that inherited the site and staffed the caretaker rotation. Dissolved 1994.
+- **The Orrimond Trust** — 1976–1994 foundation that inherited the site and staffed the caretaker rotation. Dissolved 1994.
 - **Tomas Ré** — second-term caretaker, 1979–1989. Hundreds of stamped, addressed, unmailed cassette letters. Buried and maintained on the island.
 - **Hanne Lorvik, 66** — third-term caretaker, 1994–present. The only other living person on Vardholm.
 - **The Ribcage** — shore zone; six towed hulls set as a breakwater.

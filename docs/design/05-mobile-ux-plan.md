@@ -737,7 +737,7 @@ Justification: the whole game is "read the object, find the date, find the tool 
 │  ‹ BACK                ▁▁▁▁▁▁▁                      ✕    │  y=127
 │                                                          │
 │  BRASS MAINTENANCE TAG                                   │  y=162  20pt
-│  Mercator Trust · caretaker rotation                     │  y=184  12pt, 62%
+│  Orrimond Trust · caretaker rotation                     │  y=184  12pt, 62%
 │                                                          │
 │   ╭────────────────────────────────────────────────╮     │  y=212
 │   │                                                │     │

@@ -1,4 +1,6 @@
 # TITLE EVALUATION — Mobile Store Positioning
+
+**v1.1** — corrects a factual error in v1.0 about "The Forgotten Isle" store collisions (§1.A). The recommendation is unchanged and is now better supported.
 **Project:** *The Forgotten Isle* (working) · Premium narrative survival-mystery · iOS + Android, portrait, paid or premium-with-demo
 
 ---
@@ -26,17 +28,23 @@
 - *Adventure Pinball: Forgotten Island* — 2001 retail game ([Wikipedia](https://en.wikipedia.org/wiki/Adventure_Pinball:_Forgotten_Island))
 - *Forgotten Places Collection* — hidden-object adventure bundle on the App Store ([listing](https://apps.apple.com/jo/app-bundle/forgotten-places-collection/id1064940929))
 - The adjacent mobile shelf is saturated free-to-play: *Hidden Objects: Mystery Island*, *Secret Island: Hidden Objects*, *Hidden Escape: Lost Island*, *Lost Island: Blast Adventure*.
-- I found **no exact "The Forgotten Isle" app** on either store via web search. That is the only good news here.
+- **CORRECTION (v1.1) — the original draft of this document claimed "I found no exact 'The Forgotten Isle' app." That was wrong.** A follow-up search found **at least five** games using this exact title, several on a near-identical premise:
+  - *The Forgotten Isle* by **HughesStudio** — "a mysterious survival-exploration experience where your choices shape the island's fate", **$4.99**, Windows/macOS ([itch.io](https://hughesstudio.itch.io/the-forgotten-isle))
+  - *The Forgotten Isle* by **Trimurdev** — "a simple survival game, where you are stranded on an island and your goal is to escape" ([itch.io](https://trimurdev.itch.io/the-forgotten-isle))
+  - *The Forgotten Isle* by **Zero_link** — deserted-island game in Unreal ([itch.io](https://zero-link.itch.io/the-forgotten-isle))
+  - *The Forgotten Isle Demo* by **Benjamin T. Nelson** — isometric world-jumping ([itch.io](https://eggzbenedict.itch.io/the-forgotten-isle-demo))
+  - *Echoes of the Forgotten Isle* by **Gamingsoft** — "a third-person action-adventure experience centered around **immersive sound**" ([itch.io](https://gamingsoft.itch.io/echoes-of-the-forgotten-isle)) — note this one converges on our acoustic thesis as well as our title.
+- The HughesStudio title in particular is documented common-law use on an almost identical premise **at almost identical price point**. This is not a theoretical collision.
 
 | Axis | Score | Justification |
 |---|---|---|
 | Memorability | **2** | It is the default naming grammar of the casual-adventure shelf; nothing in it is specific to a caldera, a hydrophone or a 66-year-old caretaker. |
 | Discoverability | **2** | "Forgotten island" is a high-volume term already owned by platformers, hidden-object bundles and a Poptropica SKU; you'd be buying traffic to rank on a phrase you can never dominate. Truncates to "The Forgott…" on the home screen, which reads as nothing. |
 | Commercial appeal | **2** | It pre-classifies you as free hidden-object to exactly the premium buyer you need, and $6.99 on a title that looks free is a conversion tax. |
-| TM/collision risk | **2** | Descriptive and crowded; two dictionary words plus a near-identical Steam plural in the same goods class. Weak, expensive to protect. (Heuristic only.) |
+| TM/collision risk | **1** | *(Lowered from 2 in v1.1.)* Descriptive, crowded, **and now with documented prior common-law use of the exact title on a near-identical premise at a near-identical price.** Weak, expensive to protect, and contested before we start. (Heuristic only.) |
 | Genre clarity | **2** | Communicates "island adventure" but codes the wrong genre and the wrong price tier. |
 
-**Verdict: the working title is the weakest of the five.** It is not dangerous, it is *invisible* — and invisible in a way that actively mis-sells the tone the bible spent ten sections protecting.
+**Verdict: the working title is the weakest of the five, and after the v1.1 correction it is the only candidate that is also actively contested.** It is invisible in a way that mis-sells the tone the bible spent ten sections protecting — and it is invisible *behind five other games with the same name*, one of which is selling a shipwreck-survival-mystery for $4.99 today. **Retire it.**
 
 ---
 
@@ -117,9 +125,9 @@
 | **Sound Shadow** | Two-word punchy | 4 | 3 | 4 | 3 | 3 | **17** |
 | **A Machine for Quiet** | Evocative-abstract | 4 | 2 | 4 | 4 | 2 | **16** |
 | **Survival Mystery: Vardholm** | Genre-keyword front-load | 2 | 5 | 2 | 4 | 5 | **18** |
-| **The Forgotten Isle** | Current working title | 2 | 2 | 2 | 2 | 2 | **10** |
+| **The Forgotten Isle** | Current working title | 2 | 2 | 2 | 1 | 2 | **9** |
 
-**Do not read the totals as a ranking.** The axes are not equally weighted for a premium paid mobile SKU. Genre clarity and discoverability are recoverable through the subtitle, icon and screenshot set — those are cheap, editable fields you can A/B. Memorability, appeal and collision risk live in the title and are effectively permanent: renaming after launch forfeits review history, press links, existing installs' icon labels and every backlink you earned. **Weight the permanent axes roughly double the recoverable ones**, and the order becomes: Vardholm 4.0, Sound Shadow 3.9, A Machine for Quiet 3.8, Survival Mystery: Vardholm 3.3, The Forgotten Isle 2.0.
+**Do not read the totals as a ranking.** The axes are not equally weighted for a premium paid mobile SKU. Genre clarity and discoverability are recoverable through the subtitle, icon and screenshot set — those are cheap, editable fields you can A/B. Memorability, appeal and collision risk live in the title and are effectively permanent: renaming after launch forfeits review history, press links, existing installs' icon labels and every backlink you earned. **Weight the permanent axes roughly double the recoverable ones**, and the order becomes: Vardholm 4.0, Sound Shadow 3.9, A Machine for Quiet 3.8, Survival Mystery: Vardholm 3.3, The Forgotten Isle 1.8.
 
 ---
 
@@ -181,7 +189,7 @@ Nothing in this document is clearance. Complete all of the following before art,
 2. Ask counsel specifically about **geographic significance** for "Vardholm" given Vardøya and Vardholmen in Norway.
 3. Common-law and unregistered-use search: itch.io, Game Jolt, Steam (including unreleased "Coming Soon" pages), Kickstarter, IMDb, Amazon/Goodreads, Bandcamp, YouTube series.
 4. Decide on filing strategy and file intent-to-use early — before any public announcement.
-5. Separately clear **every other proper noun that appears in shipped text or marketing**: Pellamar, Tolo Vardh, Substation Oleander, Mercator Trust, Ferrier–Oleander, Project Wellhead, Cormorant Trust, and all character names. The bible itself flags these as uncleared (§9), and a title clearance does not cover them.
+5. Separately clear **every other proper noun that appears in shipped text or marketing**: Pellamar, Tolo Vardh, Substation Oleander, Orrimond Trust, Ferrier–Oleander, Project Wellhead, Cormorant Trust, and all character names. The bible itself flags these as uncleared (§9), and a title clearance does not cover them.
 
 **Store and platform (blocking)**
 6. Manual in-store search for the exact and near-exact name on **both stores across at least US, UK, DE, JP, BR, KR** storefronts — web search does not see everything the store search does.

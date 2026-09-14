@@ -1,0 +1,267 @@
+# ARCHITECTURE DECISION RECORD
+
+**Status: BINDING.** Where any other document in this repository contradicts a decision here,
+**this document wins** and the other document is wrong and must be amended.
+
+## Why this file exists
+
+The three architecture documents (`01-technical-architecture.md`, `02-core-systems.md`,
+`03-data-and-save-architecture.md`) were authored in parallel against the Story Bible and were
+never reconciled with each other. An adversarial review pass found that they specify **three
+different assembly layouts, two incompatible streaming models, two `SurvivalStat` enums, two
+inventory models, two world-clock scales and an incomplete save participant list.**
+
+Each document is internally disciplined. Together they were not executable. This ADR set is the
+reconciliation pass. **Phase 1 does not open until every decision below is reflected in the
+documents it governs** — that is Phase 1 Task 0.
+
+---
+
+## ADR-0001 — Assembly layout
+
+**Decision.** Five assemblies, exactly as named in `01-technical-architecture.md` §1.1:
+`ForgottenIsle.Core`, `.Game`, `.UI`, `.Editor`, `.Tests.EditMode`, `.Tests.PlayMode`.
+
+**Rejected.** `Isle.Domain` (Core Systems §0.2) and `Isle.Core`/`Isle.Unity`/`Isle.Authoring`
+(Data & Save Part 0).
+
+**Why.** The Technical Architecture naming is the only one that already carries the asmdef JSON
+skeletons, the `AssemblyGraphTests` allowed-reference dictionary and the `ci/check-layering.sh`
+gate. The other two would require rewriting a working enforcement mechanism to gain nothing.
+
+**Consequence.** `02-core-systems.md` §0.2 and `03-data-and-save-architecture.md` Part 0 are
+amended to use these names. A global rename is mechanical and must happen before any `.asmdef`
+is created.
+
+---
+
+## ADR-0002 — `ForgottenIsle.Core` is engine-free without exception
+
+**Decision.** `"noEngineReferences": true`. Core references **no** `UnityEngine` type. Not
+`Vector3`, not `Quaternion`, not `ScriptableObject`.
+
+**Rejected.** Core Systems §0.2's "does not reference `UnityEngine` except for `Vector3`/
+`Quaternion` math types and `ScriptableObject` for authoring data." This is self-contradictory:
+those types *are* `UnityEngine`, and `noEngineReferences` makes the assembly fail to compile the
+moment one appears. §9.3's `PuzzleDefinition : ScriptableObject` in domain code is the same bug.
+
+**Why.** The engine-free property is load-bearing for four things the project has already
+committed to: a sub-10-second EditMode suite, assertable determinism, CI fuzzing of command
+sequences, and the structural guarantee that UI cannot mutate state. "Engine-free except for the
+convenient bits" buys none of them — a single `UnityEngine` reference costs the whole property.
+
+**Consequence.** Core defines `readonly struct Vec3` and `Vec3Math` (~200 lines, per Technical
+Architecture §1.2). Definitions in Core are immutable POCOs produced by the bake (ADR-0005);
+`ScriptableObject` exists only in `ForgottenIsle.Game`/`.Editor` as the *authoring* surface.
+`PuzzleDefinition` in Core is a plain record, not a `ScriptableObject`.
+
+---
+
+## ADR-0003 — C# language level and the `record` / `init` / `required` question
+
+**Decision.** `record` and `init` are permitted in Core, unlocked by a one-line polyfill:
+
+```csharp
+// ForgottenIsle.Core/Compat/IsExternalInit.cs
+namespace System.Runtime.CompilerServices { internal static class IsExternalInit {} }
+```
+
+`required` members are **banned** — use constructor parameters or a validated factory.
+`ImmutableArray<T>` is **banned** in Core's public surface — use `IReadOnlyList<T>` backed by a
+defensively-copied array at construction.
+
+**Why.** `03-data-and-save-architecture.md` Parts 2–4 are written almost entirely in `record` +
+`init` + `required` + `ImmutableArray<T>`. As shipped that is a **hard compile failure on day
+one**, not a style question. The polyfill is standard and recovers the two features that carry
+most of the value; the other two are not worth vendoring `System.Collections.Immutable` into a
+mobile build.
+
+**Action.** `⚠ VERIFY` the exact default C# language version of the pinned Unity 6 LTS build as
+**Phase 1 Task 1**, before any definition type is written. If `record` is unavailable even with
+the polyfill, Part 2 falls back to sealed classes with read-only properties and a constructor —
+a mechanical transform, but one we must know about on day one rather than day thirty.
+
+---
+
+## ADR-0004 — Zone streaming: the curtain model
+
+**Decision.** Adopt `01-technical-architecture.md` §6.3 — hard transitions through a loading
+curtain, never more than two zones resident, outgoing zone hard-unloaded.
+
+**Rejected.** The seamless proxy-LOD streaming described in Core Systems §12.3.
+
+**Why.** The caldera geography gives natural chokepoints; the Field Slate entry at a zone boundary
+is *content* that makes a short load read as a deliberate beat rather than a stall; and the proxy
+model costs authoring on every zone boundary in the game for a benefit this structure does not
+need. The two models also imply different memory budgets, and only one of them was costed.
+
+**Consequence.** Core Systems §12.3's proxy-LOD paragraph is deleted. If seamless transitions are
+ever wanted, they return as a scoped Phase 14 investigation with their own memory budget.
+
+---
+
+## ADR-0005 — Definition authoring and the bake
+
+**Decision.** As `03-data-and-save-architecture.md` §1.4: author in ScriptableObjects, bake to
+immutable Core records, ship a versioned binary catalog, consume through `IDefinitionRepository`.
+
+**Amendment (blocking).** The catalog **must ship inside the player build**. As written,
+`Assets/Data/Baked/isle.catalog` is outside `StreamingAssets`, `Resources` and any Addressables
+group, so it would not be included in a build at all — and even inside `StreamingAssets`, Android
+serves it from inside the APK where direct file reads fail.
+
+**Resolution.** The baked catalog is an **Addressable**, loaded asynchronously as step 1 of boot.
+The composition root awaits the catalog before registering `IDefinitionRepository`. This avoids
+the `jar:` path problem entirely and gives us patchability for free.
+
+---
+
+## ADR-0006 — `SurvivalStat` is the Core Systems set
+
+**Decision.** `enum SurvivalStat : byte { Health, Energy, Hydration, Satiation, CoreTemp }`,
+values `0..100` (CoreTemp in °C, 30.0–40.0).
+
+**Rejected.** Data & Save §3.3's `{ Hydration, Warmth, Fatigue, Morale, RecorderCharge }`.
+
+**Why.** The Core Systems set is the one with tick formulas, band thresholds, collapse handling,
+stat-interaction coupling and CI balance guardrails attached. The other is a bare enum.
+
+**Note.** `RecorderCharge` is a real thing the game needs — the field recorder starts at 9%
+battery — but it is **not a survival stat**. It belongs to `PlayerState` as equipment condition.
+`Morale` is cut; the Story Bible has no sanity mechanic and §8 forbids one in spirit.
+
+---
+
+## ADR-0007 — One inventory model: items, not resources
+
+**Decision.** Delete `ResourceDefinition`, `ResourceKind`, `InventoryState.Resources`,
+`InventoryState.Vessels` and `VesselContents`. Water is a **stacking consumable item** held in a
+vessel item with a charge count (`item.pouch_water` with `Charges: 0..4`), not a float quantity.
+
+**Rejected.** The dual item/slot + resource/vessel model in Data & Save §2.3/§3.2.
+
+**Why.** Two inventory models is one too many, and the resource model exists to serve exactly one
+case — water in litres. A charge count on a vessel item expresses that adequately, keeps a single
+capacity rule, and is the smaller system by a wide margin. `InventorySystem`'s 36 slots plus a
+gram budget stand unchanged.
+
+---
+
+## ADR-0008 — Locomotion: floating joystick, not tap-to-move
+
+**Decision.** `05-mobile-ux-plan.md` §2.3 wins. A floating dynamic joystick is the primary
+locomotion control. Tap-to-move remains an **accessibility assist only**.
+
+**Rejected.** The tap-to-move primary specified in the prologue script's 2:00 beat and in the
+roadmap's Phase 2.
+
+**Why.** The UX rationale is a comfort and core-loop argument, not a preference: tap-to-move
+induces involuntary camera yaw, which is the documented sickness trigger this game has already
+committed to designing against, and it breaks the hydrophone sweep — the signature verb.
+
+**Consequence — this one costs content.** The prologue beat at 2:00 teaches movement "by there
+being exactly one thing worth walking to", which is a teaching moment that **only works for
+tap-to-move**. `04-first-30-minutes.md` beat 2:00 must be re-authored for a joystick-first
+tutorial. This is a real rewrite, not a find-and-replace, and it is scheduled as a Phase 2 design
+task rather than being quietly dropped.
+
+---
+
+## ADR-0009 — The save participant list is 14, and `GameState` must match
+
+**Decision.** `GameState` gains `CraftingState` (jobs + reservations), `CombinationState` (known
+recipe set) and `AudioState` (played-once set, mix snapshot), and the equipped-tool lease moves
+explicitly to `PlayerState.EquippedToolInstanceId`.
+
+**Why.** Core Systems §15.3 enumerates 14 save participants and asserts
+`_participants.Count == 14` at boot. Data & Save §3.13's `GameState` has 11 fields. The gap is not
+cosmetic: **craft inputs are removed from inventory at reservation time**, so with no
+`CraftingState` a reload destroys every item reserved by an in-flight craft. That is a data-loss
+bug, discoverable only by a player who saves mid-craft.
+
+**Consequence.** The `_participants.Count == 14` assertion stays, and a round-trip test asserting
+that a mid-craft save restores its reservations is a **Phase 4 gating test**.
+
+---
+
+## ADR-0010 — The anti-softlock rule set has two holes; both are closed here
+
+**Decision.**
+1. **Diesel is no longer the finite exception.** World Structure declares diesel the one
+   non-renewable resource and then requires it for the Act 3 generator solve on the critical path.
+   A player who burns it is softlocked. Diesel becomes **renewable via a slow Fold Camp
+   condensate-and-filter loop** (≈1 jerrycan per 6 in-game hours) once the camp is powered — slow
+   enough to stay precious, impossible to exhaust.
+2. **The Ash Throat valve order cannot depend on the Register.** Rule R10 guarantees two
+   independent hint sources per puzzle, but for the valve order one of the two is the Register
+   capability, which the player cannot obtain until Act 4 — and the valve puzzle is in Act 3.
+   A second Act-3-reachable source is added: **Sabo's wire-taped valve diagram** in the Ash Throat
+   pipe run, physically present and readable with no capability at all.
+
+**Why.** A softlock in a game with no combat and no fail state is the single worst bug class this
+product can ship, because the player has no way to recognise it as a bug.
+
+---
+
+## ADR-0011 — The save spine lands in Phase 1, not Phase 11
+
+**Decision.** `SaveSystem` ships complete in Phase 1 with two participants. Every subsequent phase
+adds its own `ISaveParticipant` in the **same PR** that adds its system. Phase 11 survives as
+*Save Hardening* — the adversarial corruption, migration and out-of-space pass.
+
+**Why.** Ten phases of systems written without `ISaveParticipant` means ten systems whose owned
+state is scattered and partly implicit in scene-object positions. Retrofitting persistence into
+that is a re-architecture wearing a feature's clothes. It is also fatal to the MVP specifically:
+the MVP's Definition of Done requires resume-from-any-point and kill-during-write recovery, so as
+the brief orders the phases, the MVP is not shippable until Phase 11.
+
+**Consequence.** Adding a participant costs ~1 day per phase and forces every system to answer
+"what do you own?" on the day it is written — which is exactly the question that keeps systems
+from growing God-class state. See `../production/02-mvp-scope-and-roadmap.md` §2.18 Problem 1.
+
+---
+
+## ADR-0012 — Composition is hand-wired in Phase 1; VContainer is a Phase 2 go/no-go
+
+**Decision.** `AppCompositionRoot.Build()` is one static method with one line per constructed
+object. No DI container in Phase 1.
+
+**Why.** Phase 1 constructs about a dozen objects. A container buys nothing at that size and costs
+a dependency, a learning curve and a layer of indirection between a reviewer and the object graph
+— during the exact phase whose purpose is to make the object graph legible.
+
+**Consequence.** Every class takes its dependencies through its constructor, with no service
+locator and no `FindObjectOfType`. That is the actual discipline; the container is just one way to
+automate it. Because the discipline holds, adopting VContainer later changes
+`AppCompositionRoot.cs` and nothing else. The spike is a scheduled Phase 2 task with a written
+go/no-go.
+
+---
+
+## ADR-0013 — Save codec: Newtonsoft if Core can reference it, hand-rolled if not
+
+**Decision.** Attempt `com.unity.nuget.newtonsoft-json` as a precompiled reference from
+`ForgottenIsle.Core`. If it is not engine-free, fall back to a hand-rolled
+`SaveWriter`/`SaveReader` over `Span<byte>` (~250 lines).
+
+**Why.** ADR-0002 makes Core engine-free without exception, and a serializer that transitively
+references `UnityEngine` would break that — the one property the architecture is least willing to
+trade. Reflection-based serializers are also the classic IL2CPP + managed-stripping failure, which
+is why acceptance item 27 tests deserialization at the shipped stripping level.
+
+**Note.** The hand-rolled writer is the shape this eventually migrates to anyway: MessagePack-style
+explicit integer keys, which is what makes the migration framework tractable. Resolving this is the
+**first sub-task of Phase 1 Task 8**, not a discovery mid-sprint. See risk R1.
+
+---
+
+## Open items — tracked, not resolved
+
+| # | Item | Owner | Due |
+|---|---|---|---|
+| O-1 | **LOST / DHARMA convergence.** The review flagged a dense structural convergence (an isolated island, a secretive mid-century research programme with station branding, a sealed installation, a lone caretaker performing an endless maintenance duty). The Originality Statement omits it while listing three weaker comparables. This is genre convergence rather than copying — but the statement is weaker for not naming it. | Narrative Director | Before any public pitch |
+| O-2 | **Proper-noun clearance.** No trademark register has been searched for any name in this project. "Orrimond" (replacing "Mercator", which collided with a live Guernsey trust company portrayed negatively) returned no web collisions but is **not cleared**. | Counsel | Before announce |
+| O-3 | **Foliage overdraw is unbudgeted.** Alpha-tested foliage is the dominant fragment cost in Fernmaw and appears in no performance budget. The "native resolution, 60 fps, iPhone 12" High tier is the least-supported number in the package. | Tech Director | Phase 0 spike, before Phase 7 |
+| O-4 | **Three zone specs promise volumetric-looking effects** the URP renderer budget does not fund. Either the budget grows or the specs change. | Tech Director + Art | Before Phase 7 |
+| O-5 | **No privacy-manifest plan**, while the package calls two required-reason APIs. | Tech Director | Before Phase 16 |
+| O-6 | **World clock scale** is stated as two different values across documents. Pick one and assert it in a test. | Lead Gameplay | Phase 1 Task 0 |

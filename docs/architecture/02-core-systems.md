@@ -548,10 +548,16 @@ Cold raises hunger drain by up to +0.9/hr — the explicit stat-interaction the 
 **CoreTemp** — stored as °C, 30.0..40.0, displayed as a band not a number:
 ```
 dCoreTemp/dh = (ambientEffectiveC - coreTempC) * k
-k = 0.34 (base) ; ×2.1 if Wetness01 > 0.5 ; ×0.55 if sheltered ; ×0.35 if near a HeatSource
+k = 0.0187 (base) ; ×2.1 if Wetness01 > 0.5 ; ×0.55 if sheltered ; ×0.35 if near a HeatSource
+// CORRECTED v1.1: was 0.34, which is an exponential rate that reaches hypothermia in ~3 MINUTES,
+// not the ~55 minutes this section's prose claims. k = 0.0187 satisfies the stated design intent.
+// Derivation: c(t) = amb + (c0-amb)*e^(-k*t). For 36.6 -> 36.0 at amb 1.2 in 0.9167 h:
+//   k = ln(35.4/34.8) / 0.9167 = 0.0187 /h  ->  36.0 at 54.8 min, 35.0 at 2.47 h. Verified numerically.
 ambientEffectiveC = ambientC - windChillC(weather) + 3.2 * E     // exertion warms you
 ```
-Rime Shoulder ambient is 4 °C with up to −6 °C wind chill. Dry and walking: `ambientEffective = 4 - 6 + 3.2 = 1.2`, so core falls toward 1.2 °C at 0.34/hr — from 36.6 it takes ~**55 minutes** to reach 36.0 (`Low`) and ~**2.6 hours** to reach 35.0 (`Critical`). Wet, it is 2.1× faster: ~26 minutes to `Low`. That is a real reason to dry off before climbing and a real reason to build the fire, expressed in minutes the player can feel, not in an opaque meter.
+Rime Shoulder ambient is 4 °C with up to −6 °C wind chill. Dry and walking: `ambientEffective = 4 - 6 + 3.2 = 1.2`, so core decays exponentially toward 1.2 °C at k = 0.0187/hr — from 36.6 it takes ~**55 minutes** to reach 36.0 (`Low`) and ~**2.5 hours** to reach 35.0 (`Critical`). Wet (k × 2.1 = 0.0393), it is 2.1× faster: ~**26 minutes** to `Low`.
+
+> **Balance test (required, CI-enforced):** assert these three durations to ±10%. A designer who changes `k` without changing the prose breaks the build. This formula shipped wrong once already — see the correction note above. That is a real reason to dry off before climbing and a real reason to build the fire, expressed in minutes the player can feel, not in an opaque meter.
 
 **Energy**:
 ```
