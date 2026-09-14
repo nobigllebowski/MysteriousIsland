@@ -9,6 +9,38 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — runtime geometry was asking for baked lighting data that cannot exist
+
+Three Built-in-pipeline defaults, none of them set anywhere in this project, and all three wrong for
+a world that is generated at runtime in a scene that is itself created empty:
+
+- **`Renderer.lightProbeUsage` defaults to `BlendProbes`** and **`reflectionProbeUsage` likewise**.
+  Every generated object was asking for probe data that does not exist and, for a procedural world,
+  can never exist. Both are now `Off`, so shading depends on exactly the two things this code
+  controls — the ambient colour and the directional light — and on nothing that would have to be
+  baked.
+- **Ambient set at runtime does not reach the shaders until the environment is rebuilt.**
+  `DynamicGI.UpdateEnvironment()` is now called after the atmosphere is applied. Without it the zone
+  was lit by whatever the scene asset carried, which for a scene the editor script creates empty is
+  nothing at all. `ambientIntensity` is also set explicitly rather than inherited.
+
+### Changed — ambient now carries the world on its own
+
+The previous values needed the directional light to work. If a runtime-created light contributes
+nothing — and under Built-in with no baked data there are several ways for that to happen — the
+world goes black again with every structural check still passing.
+
+Ambient is now strong enough that the zone is readable with **no sun at all**:
+
+| | sun working | sun contributing nothing |
+|---|---:|---:|
+| Ribcage ground | 0.395 | **0.238** |
+| Fernmaw ground | 0.301 | **0.183** |
+
+Both floors are above the 0.18 readability threshold, so the failure mode that has cost this many
+rounds cannot recur silently: the worst case is flatter and duller, not invisible.
+
+
 ### Added — `docs/PHASE_3_REPORT.md`
 
 The full account of the invisible-world investigation: both root causes with their arithmetic, the

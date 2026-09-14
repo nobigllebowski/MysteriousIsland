@@ -87,7 +87,7 @@ namespace ForgottenIsle.Game.World
             sun: new Color(0.82f, 0.86f, 0.90f),
             sunIntensity: 1.30f,
             sunAngles: new Vector3(38f, 35f, 0f),
-            ambient: new Color(0.34f, 0.39f, 0.42f),
+            ambient: new Color(0.55f, 0.60f, 0.64f),
             rockCount: 26,
             floraCount: 10);
 
@@ -107,7 +107,7 @@ namespace ForgottenIsle.Game.World
             sun: new Color(0.72f, 0.86f, 0.68f),
             sunIntensity: 1.05f,
             sunAngles: new Vector3(55f, 200f, 0f),
-            ambient: new Color(0.24f, 0.32f, 0.26f),
+            ambient: new Color(0.54f, 0.64f, 0.56f),
             rockCount: 18,
             floraCount: 46);
 
@@ -152,7 +152,7 @@ namespace ForgottenIsle.Game.World
 
             var mesh = ZoneMeshes.BuildGround(GroundSize, recipe.Amplitude, recipe.Seed, SpawnApron);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            go.AddComponent<MeshRenderer>().sharedMaterial = material;
+            Dress(go.AddComponent<MeshRenderer>(), material);
 
             // A MeshCollider on a 2k-triangle mesh is acceptable here because there is exactly one
             // of them and the character controller needs real ground to follow. Rocks and flora get
@@ -170,6 +170,12 @@ namespace ForgottenIsle.Game.World
             RenderSettings.fogDensity = recipe.FogDensity;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = recipe.Ambient;
+            RenderSettings.ambientIntensity = 1f;
+
+            // Ambient set at runtime does not reach the shaders until the environment is rebuilt.
+            // Without this the zone is lit by whatever the scene asset was saved with, which for a
+            // scene created empty by the editor script is nothing at all.
+            DynamicGI.UpdateEnvironment();
 
             var sunGo = new GameObject("Sun");
             sunGo.transform.SetParent(root, false);
@@ -220,7 +226,7 @@ namespace ForgottenIsle.Game.World
                 go.transform.localScale = Vector3.one * scale;
 
                 go.AddComponent<MeshFilter>().sharedMesh = meshes[i % meshes.Length];
-                go.AddComponent<MeshRenderer>().sharedMaterial = material;
+                Dress(go.AddComponent<MeshRenderer>(), material);
             }
         }
 
@@ -264,7 +270,7 @@ namespace ForgottenIsle.Game.World
                     quad.transform.localPosition = new Vector3(0f, height * 0.5f, 0f);
                     quad.transform.localRotation = Quaternion.Euler(0f, blade * 90f, 0f);
                     quad.transform.localScale = new Vector3(height * 0.55f, height, 1f);
-                    quad.GetComponent<MeshRenderer>().sharedMaterial = material;
+                    Dress(quad.GetComponent<MeshRenderer>(), material);
                 }
             }
         }
@@ -292,7 +298,7 @@ namespace ForgottenIsle.Game.World
                 rib.transform.position = new Vector3(lean * 6.5f, Height(lean * 6.5f, z, recipe) - 0.4f, z);
                 rib.transform.rotation = Quaternion.Euler(0f, lean > 0f ? 0f : 180f, lean > 0f ? -8f : 8f);
                 rib.AddComponent<MeshFilter>().sharedMesh = ribMesh;
-                rib.AddComponent<MeshRenderer>().sharedMaterial = boneMaterial;
+                Dress(rib.AddComponent<MeshRenderer>(), boneMaterial);
             }
 
             // THE MARKER. IT WAS BEHIND THE PLAYER, and that is the whole reason the stone was
@@ -360,7 +366,7 @@ namespace ForgottenIsle.Game.World
                         Height(7.5f, z, recipe) + 0.6f + course * 1.15f,
                         z);
                     block.transform.localScale = new Vector3(1.6f, 1.1f, 2.7f);
-                    block.GetComponent<MeshRenderer>().sharedMaterial = blockMaterial;
+                    Dress(block.GetComponent<MeshRenderer>(), blockMaterial);
                 }
             }
 
@@ -404,7 +410,7 @@ namespace ForgottenIsle.Game.World
             go.transform.position = position + new Vector3(0f, 1.1f, 0f);
             go.transform.localScale = new Vector3(0.7f, 2.2f, 0.45f);
             go.transform.rotation = Quaternion.Euler(0f, 18f, 3f);
-            go.GetComponent<MeshRenderer>().sharedMaterial = stone;
+            Dress(go.GetComponent<MeshRenderer>(), stone);
 
             var marker = go.AddComponent<AncientMarker>();
             marker.Configure(contentId, nameKey, "narration." + contentId);
@@ -428,7 +434,7 @@ namespace ForgottenIsle.Game.World
             go.transform.rotation = Quaternion.Euler(72f, 24f, 0f);
 
             // Emissive-ish flat colour: the one warm thing in a cold zone, so the eye finds it.
-            go.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial(tint, "Discovery");
+            Dress(go.GetComponent<MeshRenderer>(), CreateMaterial(tint, "Discovery"));
 
             var pickup = go.AddComponent<DiscoveryPickup>();
             pickup.Configure(contentId, nameKey, "narration." + contentId);
@@ -458,7 +464,7 @@ namespace ForgottenIsle.Game.World
                 pillar.transform.localPosition = new Vector3(side * 1.9f, 1.9f, 0f);
                 pillar.transform.localScale = new Vector3(0.75f, 3.8f, 0.75f);
                 pillar.transform.localRotation = Quaternion.Euler(0f, side * 6f, side * -2f);
-                pillar.GetComponent<MeshRenderer>().sharedMaterial = stone;
+                Dress(pillar.GetComponent<MeshRenderer>(), stone);
             }
 
             var gate = parent.gameObject.AddComponent<ZoneGate>();
@@ -550,6 +556,33 @@ namespace ForgottenIsle.Game.World
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Assigns a material and detaches the renderer from everything this project never bakes.
+        /// </summary>
+        /// <remarks>
+        /// A renderer created at runtime, in a scene created at runtime, has no baked lighting data
+        /// of any kind — no lightmaps, no light probes, no reflection probes. Unity's defaults
+        /// assume it does: <c>lightProbeUsage</c> is <c>BlendProbes</c> and
+        /// <c>reflectionProbeUsage</c> is <c>BlendProbes</c> out of the box, so every object here
+        /// was asking for probe data that does not exist and can never exist for this world.
+        /// <para>
+        /// Setting both to <c>Off</c> makes the shading depend on exactly two things this code does
+        /// control — the ambient colour and the directional light — instead of on a baking step the
+        /// project does not have and, for a procedurally generated world, cannot have.
+        /// </para>
+        /// </remarks>
+        private static void Dress(MeshRenderer renderer, Material material)
+        {
+            if (renderer == null)
+            {
+                return;
+            }
+
+            renderer.sharedMaterial = material;
+            renderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
         }
 
         private static Material CreateMaterial(Color color, string name)
