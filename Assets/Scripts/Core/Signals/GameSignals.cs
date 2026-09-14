@@ -178,4 +178,40 @@ namespace ForgottenIsle.Core.Signals
             LineKey = lineKey;
         }
     }
+
+    /// <summary>What changed in the player's hands.</summary>
+    public enum InventoryChangeKind : byte
+    {
+        /// <summary>An item was picked up.</summary>
+        Added = 0,
+
+        /// <summary>An item left the inventory, consumed by a combination or a use.</summary>
+        Removed = 1,
+
+        /// <summary>The whole inventory was replaced — a load, or a new run.</summary>
+        Replaced = 2
+    }
+
+    /// <summary>Raised whenever the inventory changes.</summary>
+    /// <remarks>
+    /// Carries the kind and the item rather than the whole list, because every listener either
+    /// wants to re-read the inventory anyway (the panel) or wants to react to one specific item
+    /// (audio, narration). A snapshot in the signal would be a second copy of the truth.
+    /// </remarks>
+    public readonly struct InventoryChangedSignal : ISignal
+    {
+        /// <summary>What happened.</summary>
+        public readonly InventoryChangeKind Kind;
+
+        /// <summary>The item involved. Empty for <see cref="InventoryChangeKind.Replaced"/>.</summary>
+        public readonly string ItemId;
+
+        /// <param name="kind">What happened.</param>
+        /// <param name="itemId">The item involved.</param>
+        public InventoryChangedSignal(InventoryChangeKind kind, string itemId)
+        {
+            Kind = kind;
+            ItemId = itemId;
+        }
+    }
 }

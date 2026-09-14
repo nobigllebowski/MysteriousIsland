@@ -219,3 +219,38 @@ narration.gate.fernmaw_to_ribcage,"The channel falls back toward the shore."
 # --- Phase 2: HUD ------------------------------------------------------------
 ui.hud.pause,Pause
 ui.hud.objective_label,OBJECTIVE
+
+# --- Phase 3: items ----------------------------------------------------------
+# An item's name is what a person would call it holding it, not what a catalogue would.
+item.brass_tag,Brass Tag
+item.dry_spindle,Dry Spindle
+item.waterlogged_reel,Waterlogged Reel
+item.sluice_key,Sluice Key
+item.rebound_reel,Rebound Reel
+
+# --- Phase 3: interaction verbs ----------------------------------------------
+interact.use,USE
+interact.combine,COMBINE
+
+# --- Phase 3: mechanisms ------------------------------------------------------
+interactable.channel_sluice,Channel Sluice
+interactable.tape_deck,Tape Deck
+
+# --- Phase 3: narration -------------------------------------------------------
+# Nadia's voice. Observation, then the caveat. The clue is always in what she notices,
+# never in what she concludes.
+narration.item.dry_spindle,"Hardwood, turned, and dry right through. Someone kept it out of the weather on purpose."
+narration.item.sluice_key,"A flat steel key, still in its bracket. Not hidden. Left — the way you leave a thing you mean to come back to."
+narration.item.rebound_reel,"Off the swollen core and onto the spindle. It runs free now. It will play."
+narration.mechanism.channel_sluice.idle,"A sluice, shut. The channel below it is dry, and the gate has not moved in a long time. There is a keyway."
+narration.mechanism.channel_sluice.solved,"Three turns and it gives. Water finds the channel before the gate is fully open, as if it had been waiting."
+narration.mechanism.tape_deck.idle,"A deck, wired into the wall. Powered. The capstan turns when I touch it — someone has kept the mains alive out here."
+narration.mechanism.tape_deck.solved,"It threads, and it plays. A woman counting. Not numbers — pressures, read aloud, one every hour, for as long as the tape runs."
+narration.combine.nothing,"Those two have nothing to do with each other."
+narration.use.nothing,"That does nothing here."
+
+# --- Phase 3: inventory UI ----------------------------------------------------
+ui.hud.inventory,CARRYING
+ui.hud.inventory_empty,Nothing yet.
+ui.hud.inventory_open,Items
+ui.hud.combine_hint,Tap two to put them together.

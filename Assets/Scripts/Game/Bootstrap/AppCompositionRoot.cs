@@ -9,6 +9,7 @@ using ForgottenIsle.Game.Diagnostics;
 using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Localization;
 using ForgottenIsle.Game.Interaction;
+using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
@@ -60,7 +61,8 @@ namespace ForgottenIsle.Game.Bootstrap
             var zones = new ZoneRegistry(sceneLoader, log, ZoneRegistry.DefaultMaxResident);
             var dispatcher = new CommandDispatcher(log);
             var progress = new ProgressService(signals, log);
-            var interactions = new InteractionSystem(progress, dispatcher, signals, log);
+            var inventory = new InventoryService(signals, log);
+            var interactions = new InteractionSystem(progress, inventory, dispatcher, signals, log);
 
             // ADR-0011: every phase adds its participant in the same pull
             // request that adds its system. Registration order is capture and restore order, and the
@@ -68,7 +70,12 @@ namespace ForgottenIsle.Game.Bootstrap
             // gives its coordinates a zone to be in.
             // Phase 2 adds the third: progression. It is registered after the player because a
             // restored discovery only means anything once the run and its position exist.
-            var participants = new List<ISaveParticipant>(3) { session, session.PlayerParticipant, progress };
+            // Phase 3 adds the fourth: the inventory, last, because what the player carries is only
+            // meaningful once the run, the position and the progression it was earned against exist.
+            var participants = new List<ISaveParticipant>(4)
+            {
+                session, session.PlayerParticipant, progress, inventory
+            };
             for (var i = 0; i < participants.Count; i++)
             {
                 slots.RegisterParticipant(participants[i]);
@@ -85,8 +92,11 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<SaveGameCommand>(new SaveGameHandler(slots, session, states, signals, log));
             dispatcher.Register<QuitToMenuCommand>(new QuitToMenuHandler(states, zones, session, log));
             dispatcher.Register<TravelToZoneCommand>(new TravelToZoneHandler(states, zones, session, sceneLoader, progress, log));
+            dispatcher.Register<TakeItemCommand>(new TakeItemHandler(states, inventory, signals));
+            dispatcher.Register<CombineItemsCommand>(new CombineItemsHandler(states, inventory, signals));
+            dispatcher.Register<UseItemCommand>(new UseItemHandler(states, inventory, interactions, signals));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, participants);
         }
 
         /// <summary>

@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using ForgottenIsle.Core.Commands;
+using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.Primitives;
 using ForgottenIsle.Core.Signals;
+using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Progress;
 using UnityEngine;
 
@@ -29,6 +31,14 @@ namespace ForgottenIsle.Game.Interaction
         /// <summary>True when this zone may be travelled to.</summary>
         /// <param name="zoneId">A scene key.</param>
         bool IsZoneUnlocked(string zoneId);
+
+        /// <summary>True when the player is carrying this item.</summary>
+        /// <remarks>
+        /// An interactable needs this to answer for itself: a sluice with no key in the player's
+        /// hands should say so in its prompt rather than accept the press and refuse afterwards.
+        /// </remarks>
+        /// <param name="itemId">An <c>ItemIds</c> id.</param>
+        bool HasItem(string itemId);
     }
 
     /// <summary>
@@ -44,7 +54,7 @@ namespace ForgottenIsle.Game.Interaction
     /// allocation and layer-mask setup a physics query drags in.
     /// </para>
     /// </remarks>
-    public sealed class InteractionSystem : IInteractionServices
+    public sealed class InteractionSystem : IInteractionServices, IUseTargetResolver
     {
         private readonly List<Interactable> _registered = new List<Interactable>(16);
         private readonly ProgressService _progress;
@@ -53,6 +63,7 @@ namespace ForgottenIsle.Game.Interaction
         private readonly ICoreLog _log;
 
         private Interactable _current;
+        private readonly InventoryService _inventory;
         private bool _suppressed;
 
         /// <param name="progress">Progression state, consulted by interactables and by unlock rules.</param>
@@ -64,11 +75,60 @@ namespace ForgottenIsle.Game.Interaction
             CommandDispatcher commands,
             SignalBus signals,
             ICoreLog log)
+            : this(progress, null, commands, signals, log)
+        {
+        }
+
+        /// <param name="progress">Progression state, consulted by interactables and by unlock rules.</param>
+        /// <param name="inventory">What the player carries. Null tolerated; nothing is then held.</param>
+        /// <param name="commands">Dispatcher every interaction routes through.</param>
+        /// <param name="signals">Bus the prompt signal is published on. Null tolerated.</param>
+        /// <param name="log">Diagnostics sink. Null tolerated.</param>
+        public InteractionSystem(
+            ProgressService progress,
+            InventoryService inventory,
+            CommandDispatcher commands,
+            SignalBus signals,
+            ICoreLog log)
         {
             _progress = progress;
+            _inventory = inventory;
             _commands = commands;
             _signals = signals;
             _log = log;
+        }
+
+        /// <inheritdoc />
+        public bool HasItem(string itemId)
+        {
+            return _inventory != null && _inventory.Has(itemId);
+        }
+
+        /// <summary>
+        /// Asks the registered interactable with this id what it does with the item.
+        /// </summary>
+        /// <remarks>
+        /// The registry is already the authority on what is in the zone, so it is also the natural
+        /// place to answer "what is this thing, and does it want this object". No separate table of
+        /// item-to-target pairings exists, and none should: the target decides.
+        /// </remarks>
+        public UseOutcome Use(string itemId, string targetId)
+        {
+            if (string.IsNullOrEmpty(targetId))
+            {
+                return UseOutcome.Nothing;
+            }
+
+            for (var i = 0; i < _registered.Count; i++)
+            {
+                var candidate = _registered[i];
+                if (candidate != null && candidate.ContentId == targetId)
+                {
+                    return candidate.Use(itemId, this);
+                }
+            }
+
+            return UseOutcome.Nothing;
         }
 
         /// <summary>What the player would act on if they pressed the button now. Null when nothing.</summary>

@@ -1,3 +1,4 @@
+using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Game.Interaction;
 using UnityEngine;
@@ -354,6 +355,19 @@ namespace ForgottenIsle.Game.World
                 tagPos,
                 new Color(0.68f, 0.56f, 0.24f));
 
+            // THE TOOL. A spindle off the net drum, lying where the drum stands — which is the
+            // point: it is not hidden, it is where a person working the drum would have left it.
+            // The player will not know what it is for until they find tape that will not play.
+            var spindlePos = new Vector3(-6.5f, 0f, 3f);
+            spindlePos.y = Height(spindlePos.x, spindlePos.z, recipe) + 0.22f;
+            CreateItem(
+                root, interactions,
+                ItemIds.DrySpindle,
+                "item.dry_spindle",
+                spindlePos,
+                new Color(0.46f, 0.38f, 0.26f),
+                new Vector3(0.16f, 0.16f, 0.52f));
+
             // THE EXIT, at the far edge, framed by two standing stones so it reads as a way through.
             var gatePos = new Vector3(0f, 0f, 30f);
             gatePos.y = Height(gatePos.x, gatePos.z, recipe);
@@ -411,6 +425,42 @@ namespace ForgottenIsle.Game.World
                 reelPos,
                 new Color(0.30f, 0.26f, 0.22f));
 
+            // THE KEY, still in its bracket beside the housing. Left, not hidden: whoever serviced
+            // this expected to come back.
+            var keyPos = new Vector3(6.2f, 0f, -6.5f);
+            keyPos.y = Height(keyPos.x, keyPos.z, recipe) + 0.2f;
+            CreateItem(
+                root, interactions,
+                ItemIds.SluiceKey,
+                "item.sluice_key",
+                keyPos,
+                new Color(0.52f, 0.50f, 0.46f),
+                new Vector3(0.1f, 0.34f, 0.1f));
+
+            // THE SEIZED SLUICE. The channel is dry because this is shut, and it is shut because
+            // nobody has turned it in a long time. Opening it is the act the zone is built around.
+            var sluicePos = new Vector3(6.4f, 0f, 0f);
+            sluicePos.y = Height(sluicePos.x, sluicePos.z, recipe);
+            CreateMechanism(
+                root, stone, interactions,
+                ContentIds.MechanismSluice,
+                "interactable.channel_sluice",
+                ItemIds.SluiceKey,
+                sluicePos,
+                new Color(0.44f, 0.30f, 0.20f));
+
+            // THE DECK, inside the housing, still wired to the island's mains. It will not read a
+            // reel that has been in water, which is the puzzle the spindle on the shore answers.
+            var deckPos = new Vector3(4.4f, 0f, -2.6f);
+            deckPos.y = Height(deckPos.x, deckPos.z, recipe);
+            CreateMechanism(
+                root, stone, interactions,
+                ContentIds.MechanismTapeDeck,
+                "interactable.tape_deck",
+                ItemIds.ReboundReel,
+                deckPos,
+                new Color(0.22f, 0.24f, 0.26f));
+
             var backPos = new Vector3(0f, 0f, -30f);
             backPos.y = Height(backPos.x, backPos.z, recipe);
             CreateGate(
@@ -466,6 +516,72 @@ namespace ForgottenIsle.Game.World
             if (interactions != null)
             {
                 interactions.Register(pickup);
+            }
+        }
+
+        /// <summary>A carryable object lying where a person would have set it down.</summary>
+        private static void CreateItem(
+            Transform root, InteractionSystem interactions,
+            string itemId, string nameKey, Vector3 position, Color tint, Vector3 scale)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "Item " + itemId;
+            Object.Destroy(go.GetComponent<Collider>());
+            go.transform.SetParent(root, false);
+            go.transform.position = position;
+            go.transform.localScale = scale;
+            go.transform.rotation = Quaternion.Euler(0f, itemId.Length * 23f % 360f, 6f);
+            Dress(go.GetComponent<MeshRenderer>(), CreateMaterial(tint, "Item"));
+
+            var pickup = go.AddComponent<ItemPickup>();
+            pickup.Configure(itemId, nameKey);
+
+            if (interactions != null)
+            {
+                interactions.Register(pickup);
+            }
+        }
+
+        /// <summary>
+        /// A built thing that does not work, with one moving part that swings clear when it does.
+        /// </summary>
+        /// <remarks>
+        /// The moving part is a child named "Moving" rather than a serialized reference, because
+        /// this is built at runtime and has no Inspector. <c>Mechanism</c> looks it up by that name;
+        /// the convention is the contract, and it is written down in both places.
+        /// </remarks>
+        private static void CreateMechanism(
+            Transform root, Material stone, InteractionSystem interactions,
+            string contentId, string nameKey, string requiredItemId, Vector3 position, Color tint)
+        {
+            var housing = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            housing.name = "Mechanism " + contentId;
+            Object.Destroy(housing.GetComponent<Collider>());
+            housing.transform.SetParent(root, false);
+            housing.transform.position = position + new Vector3(0f, 0.9f, 0f);
+            housing.transform.localScale = new Vector3(1.3f, 1.8f, 0.9f);
+            Dress(housing.GetComponent<MeshRenderer>(), stone);
+
+            var moving = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            moving.name = "Moving";
+            Object.Destroy(moving.GetComponent<Collider>());
+            moving.transform.SetParent(housing.transform, false);
+            moving.transform.localPosition = new Vector3(0.62f, 0.15f, 0f);
+            moving.transform.localScale = new Vector3(0.9f, 0.16f, 0.22f);
+            Dress(moving.GetComponent<MeshRenderer>(), CreateMaterial(tint, "MechanismPart"));
+
+            var mechanism = housing.AddComponent<Mechanism>();
+            mechanism.Configure(
+                contentId,
+                nameKey,
+                "narration." + contentId + ".idle",
+                "narration." + contentId + ".solved",
+                requiredItemId,
+                consumesItem: false);
+
+            if (interactions != null)
+            {
+                interactions.Register(mechanism);
             }
         }
 

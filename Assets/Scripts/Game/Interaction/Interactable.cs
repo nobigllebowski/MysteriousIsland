@@ -1,4 +1,5 @@
 using ForgottenIsle.Core.Commands;
+using ForgottenIsle.Core.Items;
 using UnityEngine;
 
 namespace ForgottenIsle.Game.Interaction
@@ -90,6 +91,21 @@ namespace ForgottenIsle.Game.Interaction
         /// this is the hook that re-applies what the player already did to it.
         /// </remarks>
         /// <param name="services">Read-only access to progression.</param>
+        /// <summary>
+        /// What this object does when the player applies a carried item to it.
+        /// </summary>
+        /// <remarks>
+        /// Default is nothing, because most things in the world are not machines. Overriding this
+        /// is how a mechanism declares what it wants without any central table knowing about it.
+        /// </remarks>
+        /// <param name="itemId">The carried item being applied.</param>
+        /// <param name="services">Read-only view of progression and inventory.</param>
+        /// <returns>What happened.</returns>
+        public virtual UseOutcome Use(string itemId, IInteractionServices services)
+        {
+            return UseOutcome.Nothing;
+        }
+
         public virtual void ApplyRestoredState(IInteractionServices services)
         {
         }

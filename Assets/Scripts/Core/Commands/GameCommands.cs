@@ -121,4 +121,58 @@ namespace ForgottenIsle.Core.Commands
             DiscoveryId = discoveryId;
         }
     }
+
+    /// <summary>Put a found object in the player's hands.</summary>
+    public readonly struct TakeItemCommand : ICommand
+    {
+        /// <summary>An <c>ItemIds</c> id.</summary>
+        public readonly string ItemId;
+
+        /// <param name="itemId">An <c>ItemIds</c> id.</param>
+        public TakeItemCommand(string itemId)
+        {
+            ItemId = itemId;
+        }
+    }
+
+    /// <summary>Put two carried items together.</summary>
+    /// <remarks>
+    /// Refused rather than ignored when the two do not go together, because "nothing happened" is
+    /// indistinguishable from a broken button. The handler answers with a line of narration saying
+    /// what was tried, which is the only feedback an adventure game owes a wrong guess.
+    /// </remarks>
+    public readonly struct CombineItemsCommand : ICommand
+    {
+        /// <summary>One carried item.</summary>
+        public readonly string First;
+
+        /// <summary>The other carried item.</summary>
+        public readonly string Second;
+
+        /// <param name="first">One carried item.</param>
+        /// <param name="second">The other carried item.</param>
+        public CombineItemsCommand(string first, string second)
+        {
+            First = first;
+            Second = second;
+        }
+    }
+
+    /// <summary>Use a carried item on something in the world.</summary>
+    public readonly struct UseItemCommand : ICommand
+    {
+        /// <summary>The carried item being applied.</summary>
+        public readonly string ItemId;
+
+        /// <summary>A <c>ContentIds</c> id for the thing it is being used on.</summary>
+        public readonly string TargetId;
+
+        /// <param name="itemId">The carried item being applied.</param>
+        /// <param name="targetId">What it is being used on.</param>
+        public UseItemCommand(string itemId, string targetId)
+        {
+            ItemId = itemId;
+            TargetId = targetId;
+        }
+    }
 }

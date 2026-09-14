@@ -6,6 +6,8 @@ using ForgottenIsle.Core.Save;
 using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Core.State;
 using ForgottenIsle.Core.Progress;
+using ForgottenIsle.Core.Items;
+using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
@@ -683,6 +685,181 @@ namespace ForgottenIsle.Game.Bootstrap
             {
                 _signals.Publish(new NarrationSignal(InspectHandler.NarrationPrefix + command.DiscoveryId));
             }
+        }
+    }
+
+    /// <summary>Puts a found object in the player's hands.</summary>
+    public sealed class TakeItemHandler : ICommandHandler<TakeItemCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly InventoryService _inventory;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine; taking is an in-world act only.</param>
+        /// <param name="inventory">Where the item goes.</param>
+        /// <param name="signals">Bus the narration line is published on. Null tolerated.</param>
+        public TakeItemHandler(GameStateMachine states, InventoryService inventory, SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in TakeItemCommand command)
+        {
+            if (string.IsNullOrEmpty(command.ItemId))
+            {
+                return ResultCode.InvalidArgument;
+            }
+
+            if (_states.Current != GameStateId.InGame)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            // Already carried. Refused with a reason rather than silently doing nothing, so a
+            // double tap on a pickup reads as "you have this" instead of as a dead button.
+            return _inventory.Has(command.ItemId) ? ResultCode.NotAllowedInState : ResultCode.Ok;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in TakeItemCommand command)
+        {
+            if (!_inventory.Take(command.ItemId) || _signals == null)
+            {
+                return;
+            }
+
+            _signals.Publish(new NarrationSignal(InspectHandler.NarrationPrefix + command.ItemId));
+        }
+    }
+
+    /// <summary>Puts two carried items together.</summary>
+    public sealed class CombineItemsHandler : ICommandHandler<CombineItemsCommand>
+    {
+        /// <summary>Key of the line shown when two items do not go together.</summary>
+        public const string NoCombinationKey = "narration.combine.nothing";
+
+        private readonly GameStateMachine _states;
+        private readonly InventoryService _inventory;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine.</param>
+        /// <param name="inventory">Holds both inputs and receives the result.</param>
+        /// <param name="signals">Bus the narration line is published on. Null tolerated.</param>
+        public CombineItemsHandler(GameStateMachine states, InventoryService inventory, SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in CombineItemsCommand command)
+        {
+            if (string.IsNullOrEmpty(command.First) || string.IsNullOrEmpty(command.Second)
+                || command.First == command.Second)
+            {
+                return ResultCode.InvalidArgument;
+            }
+
+            if (_states.Current != GameStateId.InGame)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            return _inventory.Has(command.First) && _inventory.Has(command.Second)
+                ? ResultCode.Ok
+                : ResultCode.InvalidArgument;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in CombineItemsCommand command)
+        {
+            string result;
+            var combined = _inventory.Combine(command.First, command.Second, out result);
+
+            if (_signals == null)
+            {
+                return;
+            }
+
+            // A wrong pairing still answers. Silence is the one response an adventure game must
+            // never give: the player cannot tell it apart from a broken control, and starts
+            // distrusting every combination they have not already seen work.
+            _signals.Publish(new NarrationSignal(
+                combined ? InspectHandler.NarrationPrefix + result : NoCombinationKey));
+        }
+    }
+
+    /// <summary>Uses a carried item on something in the world.</summary>
+    /// <remarks>
+    /// The handler owns no knowledge of which item fits which target — that is the target's, and it
+    /// answers through <see cref="UseOutcome"/>. This class only enforces that the player is holding
+    /// the thing they claim to be holding, and consumes it when the target says it was used up.
+    /// </remarks>
+    public sealed class UseItemHandler : ICommandHandler<UseItemCommand>
+    {
+        /// <summary>Key of the line shown when an item does nothing to a target.</summary>
+        public const string NoEffectKey = "narration.use.nothing";
+
+        private readonly GameStateMachine _states;
+        private readonly InventoryService _inventory;
+        private readonly IUseTargetResolver _targets;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine.</param>
+        /// <param name="inventory">Proves the item is carried, and consumes it when spent.</param>
+        /// <param name="targets">Resolves what the target does with the item. Null means nothing does.</param>
+        /// <param name="signals">Bus the narration line is published on. Null tolerated.</param>
+        public UseItemHandler(
+            GameStateMachine states,
+            InventoryService inventory,
+            IUseTargetResolver targets,
+            SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
+            _targets = targets;
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in UseItemCommand command)
+        {
+            if (string.IsNullOrEmpty(command.ItemId) || string.IsNullOrEmpty(command.TargetId))
+            {
+                return ResultCode.InvalidArgument;
+            }
+
+            if (_states.Current != GameStateId.InGame)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            return _inventory.Has(command.ItemId) ? ResultCode.Ok : ResultCode.InvalidArgument;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in UseItemCommand command)
+        {
+            var outcome = _targets != null
+                ? _targets.Use(command.ItemId, command.TargetId)
+                : UseOutcome.Nothing;
+
+            if (outcome.ConsumesItem)
+            {
+                _inventory.Consume(command.ItemId);
+            }
+
+            if (_signals == null)
+            {
+                return;
+            }
+
+            _signals.Publish(new NarrationSignal(
+                string.IsNullOrEmpty(outcome.NarrationKey) ? NoEffectKey : outcome.NarrationKey));
         }
     }
 }

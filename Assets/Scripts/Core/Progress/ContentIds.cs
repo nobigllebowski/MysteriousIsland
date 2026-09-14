@@ -42,6 +42,18 @@ namespace ForgottenIsle.Core.Progress
         /// <summary>A waterlogged reel in the Fernmaw sill. The Act 2 hook.</summary>
         public const string DiscoveryWaterloggedReel = "discovery.waterlogged_reel";
 
+        // --- Mechanisms (built things that stopped working) ---------------------------------
+
+        /// <summary>
+        /// The sluice in the Fernmaw channel wall. Seized, and the reason the channel runs dry.
+        /// </summary>
+        public const string MechanismSluice = "mechanism.channel_sluice";
+
+        /// <summary>
+        /// The tape deck in the sluice housing, left wired to the island's mains.
+        /// </summary>
+        public const string MechanismTapeDeck = "mechanism.tape_deck";
+
         // --- Gates (travel points) ----------------------------------------------------------
 
         /// <summary>The gully mouth in the Ribcage that leads inland.</summary>

@@ -20,5 +20,8 @@ namespace ForgottenIsle.Core.Save
 
         /// <summary>Section owned by the progress service: markers read, discoveries taken, zones open.</summary>
         public const string Progress = "progress";
+
+        /// <summary>Section owned by the inventory service: what the player is carrying.</summary>
+        public const string Inventory = "inventory";
     }
 }
