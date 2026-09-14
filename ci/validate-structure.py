@@ -1380,6 +1380,88 @@ def check_accidental_nesting(report, files):
                 % (declaration.name, outer, nesting))
 
 
+LOCAL_DECL_RE = re.compile(
+    r"(?<![\w.])(?:var|foreach\s*\(\s*var|out\s+var)\s+(?P<name>[a-z_]\w*)\s*(?:=|\bin\b|[,)])")
+
+
+def check_shadowed_locals(report, files):
+    """A local declared inside a block whose name is already a local outside it (C# CS0136).
+
+    WHY THIS EXISTS: C# forbids a nested local from reusing an enclosing local's name EVEN WHEN THE
+    TWO BLOCKS DO NOT OVERLAP -- a name used anywhere in a method's scope is off limits to every
+    block inside it. That rule surprises people, and it surprised this project: a diagnostic block
+    declared `var eye` while a loop further down the same method already had one, and the file
+    compiled nowhere.
+
+    Ancestry is tracked by block identity rather than by depth, because two locals of the same name
+    in SIBLING blocks are perfectly legal and a depth-only test would report every one of them.
+    """
+    for rel_path, scan, _namespaces, _declarations in files:
+        code = scan.code
+
+        # (block id chain, name, offset) for every local, plus the block structure to compare them.
+        declarations = []
+        chain = [0]
+        next_block = 1
+        method_roots = {}
+
+        index = 0
+        length = len(code)
+        while index < length:
+            ch = code[index]
+            if ch == "{":
+                chain.append(next_block)
+                next_block += 1
+                index += 1
+                continue
+
+            if ch == "}":
+                if len(chain) > 1:
+                    chain.pop()
+                index += 1
+                continue
+
+            match = LOCAL_DECL_RE.match(code, index)
+            if match:
+                declarations.append((tuple(chain), match.group("name"), match.start("name")))
+                index = match.end()
+                continue
+
+            index += 1
+
+        by_name = {}
+        for block_chain, name, offset in declarations:
+            by_name.setdefault(name, []).append((block_chain, offset))
+
+        for name, entries in sorted(by_name.items()):
+            if len(entries) < 2:
+                continue
+
+            for i in range(len(entries)):
+                for j in range(i + 1, len(entries)):
+                    outer, outer_offset = entries[i]
+                    inner, inner_offset = entries[j]
+
+                    # One is an ancestor of the other only when its chain is a prefix of the other's.
+                    if len(outer) < len(inner) and inner[: len(outer)] == outer:
+                        pass
+                    elif len(inner) < len(outer) and outer[: len(inner)] == inner:
+                        outer, outer_offset, inner, inner_offset = inner, inner_offset, outer, outer_offset
+                    else:
+                        continue
+
+                    report.error(
+                        "SHADOW", rel_path, scan.line_of(inner_offset),
+                        "local '%s' is declared inside a block while a local of the same name exists "
+                        "in an enclosing scope at line %d; C# refuses this even when the two never "
+                        "overlap (CS0136)"
+                        % (name, scan.line_of(outer_offset)))
+                    break
+                else:
+                    continue
+                break
+
+
 def check_phantom_usings(report, files):
     """A `using` naming a project namespace that does not exist (C# CS0234).
 
@@ -1684,6 +1766,9 @@ def main(argv=None):
     report.checks_run += 1
 
     check_phantom_usings(report, files)
+    report.checks_run += 1
+
+    check_shadowed_locals(report, files)
 
     # --- Output ------------------------------------------------------------
     report.emit()
@@ -1703,7 +1788,7 @@ def main(argv=None):
     print("                                 contract drift, lockeys, duplicate types,")
     print("                                 missing usings, member/type collisions,")
     print("                                 deprecated Unity APIs, accidental nesting,")
-    print("                                 phantom usings)")
+    print("                                 phantom usings, shadowed locals)")
     print("  errors .................... %d" % len(report.errors))
     print("  warnings .................. %d%s" % (len(report.warnings), " (hidden by --quiet)" if args.quiet and report.warnings else ""))
     print("")

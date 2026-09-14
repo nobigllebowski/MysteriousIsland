@@ -9,6 +9,28 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — CS0136 in my own diagnostic, and the validator now catches that class
+
+```
+ZoneDiagnostics.cs(184,21): error CS0136: A local or parameter named 'eye' cannot be
+declared in this scope because that name is used in an enclosing local scope
+```
+
+The ground-probe block I added declared `var eye` while the renderer loop further down the same
+method already had one. **C# forbids this even though the two blocks never overlap** — a name used
+anywhere in a method's scope is off limits to every block inside it. Renamed to `probeOrigin`, with
+the reason written where the next person will hit it.
+
+**Validator gained a `SHADOW` check** (now 13). Ancestry is tracked by block identity rather than by
+depth, because two locals of the same name in *sibling* blocks are perfectly legal and a depth-only
+test would report every one of them. Regression-tested by reintroducing the exact line: it names the
+file, both line numbers and the rule. Clean across all 106 files.
+
+That is the third class of compile error this session that only Unity caught. Each one is now a
+check, which is the only way this environment — no compiler, no runtime — gets less expensive to
+work in over time.
+
+
 ### Fixed — runtime geometry was asking for baked lighting data that cannot exist
 
 Three Built-in-pipeline defaults, none of them set anywhere in this project, and all three wrong for

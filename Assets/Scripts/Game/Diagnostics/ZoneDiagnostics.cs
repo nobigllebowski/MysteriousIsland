@@ -181,15 +181,21 @@ namespace ForgottenIsle.Game.Diagnostics
             if (camera != null)
             {
                 Physics.SyncTransforms();
-                var eye = camera.transform.position;
+
+                // Named for this block, not 'eye': the renderer loop further down declares its own
+                // 'eye' in the enclosing method scope, and C# forbids the two (CS0136) even though
+                // the blocks never overlap.
+                var probeOrigin = camera.transform.position;
                 RaycastHit hit;
-                if (Physics.Raycast(new Vector3(eye.x, eye.y + 250f, eye.z), Vector3.down, out hit, 500f))
+                if (Physics.Raycast(
+                    new Vector3(probeOrigin.x, probeOrigin.y + 250f, probeOrigin.z),
+                    Vector3.down, out hit, 500f))
                 {
                     b.Append("  ground under the camera: y=")
                      .Append(hit.point.y.ToString("F2", CultureInfo.InvariantCulture))
                      .Append(" on '").Append(hit.collider.name).Append("' · eye y=")
-                     .Append(eye.y.ToString("F2", CultureInfo.InvariantCulture))
-                     .Append(eye.y < hit.point.y
+                     .Append(probeOrigin.y.ToString("F2", CultureInfo.InvariantCulture))
+                     .Append(probeOrigin.y < hit.point.y
                          ? "  ← CAMERA IS UNDER THE TERRAIN. Everything above it is back-facing and culled."
                          : "  (above ground)")
                      .Append('\n');
