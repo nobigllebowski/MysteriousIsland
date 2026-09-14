@@ -25,48 +25,74 @@ namespace ForgottenIsle.Game.World
     /// </remarks>
     public static class ZoneBuilder
     {
-        /// <summary>Metres across. Big enough to walk, small enough to hold in memory.</summary>
-        private const float GroundSize = 120f;
-
         /// <summary>Radius kept level around the spawn so the player never starts inside a hill.</summary>
         private const float SpawnApron = 7f;
 
-        /// <summary>Per-zone look and content.</summary>
-        private readonly struct Recipe
-        {
-            public readonly int Seed;
-            public readonly float Amplitude;
-            public readonly Color Ground;
-            public readonly Color Stone;
-            public readonly Color Fog;
-            public readonly float FogDensity;
-            public readonly Color Sun;
-            public readonly float SunIntensity;
-            public readonly Vector3 SunAngles;
-            public readonly Color Ambient;
-            public readonly int RockCount;
-            public readonly int FloraCount;
+        /// <summary>
+        /// How far the sea reaches.
+        /// </summary>
+        /// <remarks>
+        /// Sized to the camera's far plane, not to the horizon. Water drawn past 260 m would be
+        /// clipped away and leave a visible arc where the sea simply stops; at 240 m the fog has
+        /// already taken it to about two per cent visibility, so the edge is gone before the far
+        /// plane could cut it. Reaching further would mean pushing the far plane out, and the
+        /// near/far ratio is exactly what caused the depth-buffer flicker that took a day to find.
+        /// </remarks>
+        private const float SeaRadius = 240f;
 
-            public Recipe(int seed, float amplitude, Color ground, Color stone, Color fog, float fogDensity,
-                Color sun, float sunIntensity, Vector3 sunAngles, Color ambient, int rockCount, int floraCount)
-            {
-                Seed = seed;
-                Amplitude = amplitude;
-                Ground = ground;
-                Stone = stone;
-                Fog = fog;
-                FogDensity = fogDensity;
-                Sun = sun;
-                SunIntensity = sunIntensity;
-                SunAngles = sunAngles;
-                Ambient = ambient;
-                RockCount = rockCount;
-                FloraCount = floraCount;
-            }
+        /// <summary>
+        /// Per-zone look and content.
+        /// </summary>
+        /// <remarks>
+        /// A class with named fields rather than the positional struct this used to be. The recipe
+        /// grew from twelve values to twenty-four when the island got a sky, a sea and a shoreline,
+        /// and a twenty-four-argument constructor call is a row of unlabelled colours where one
+        /// transposed pair is a bug nobody can see by reading.
+        /// </remarks>
+        private sealed class Recipe
+        {
+            public int Seed;
+            public float Amplitude;
+
+            // Ground
+            public Color Ground;
+            public Color Rock;
+            public Color Sand;
+            public Color WetSand;
+            public Color Stone;
+
+            // Sky
+            public Color SkyZenith;
+            public Color SkyHorizon;
+            public Color SkyGround;
+            public Color SunDisc;
+            public float CloudCover;
+
+            // Sea
+            public Color WaterDeep;
+            public Color WaterShallow;
+
+            // Light
+            public Color Fog;
+            public float FogDensity;
+            public Color Sun;
+            public float SunIntensity;
+            public Vector3 SunAngles;
+            public Color AmbientSky;
+            public Color AmbientEquator;
+            public Color AmbientGround;
+
+            // Content
+            public int RockCount;
+            public int FloraCount;
+            public Color FoliageBase;
+            public Color FoliageTip;
+            public float Broadleaf;
         }
 
-        // The Ribcage: open dark-sand shore under a low grey sky. Sparse, wide, cold-lit, so the
-        // rib arch reads from a distance and the player has an obvious direction to walk.
+        // The Ribcage: an open shore under a high overcast, seen across water. Sparse, wide and
+        // cold-lit, so the rib arch reads from a distance and the player has an obvious direction
+        // to walk.
         //
         // THE VALUES ARE PHYSICAL, NOT ARTISTIC PREFERENCE, and the first set was wrong by a factor
         // of five. In Linear colour space a material colour is converted from sRGB before shading,
@@ -75,42 +101,87 @@ namespace ForgottenIsle.Game.World
         // per cent grey, which is black on any display. The geometry was rendering correctly the
         // whole time and being shaded to nothing.
         //
-        // These land the ground at ~0.41 and the stone at ~0.48 screen luminance — still cold,
-        // desaturated and bleak, but readable. Changing any of them changes that number; the
-        // arithmetic is in ZoneDiagnostics.EstimateGroundLuminance, which reports it every entry.
-        private static readonly Recipe RibcageRecipe = new Recipe(
-            seed: 20260914,
-            amplitude: 3.2f,
-            ground: new Color(0.40f, 0.43f, 0.41f),
-            stone: new Color(0.50f, 0.50f, 0.47f),
-            fog: new Color(0.44f, 0.49f, 0.52f),
-            fogDensity: 0.012f,
-            sun: new Color(0.82f, 0.86f, 0.90f),
-            sunIntensity: 1.30f,
-            sunAngles: new Vector3(38f, 35f, 0f),
-            ambient: new Color(0.55f, 0.60f, 0.64f),
-            rockCount: 26,
-            floraCount: 10);
+        // The ground colour is now a TINT applied over the mesh's vertex colours, which sit around
+        // 0.9, so the product is what ZoneDiagnostics.EstimateGroundLuminance reports every entry.
+        private static readonly Recipe RibcageRecipe = new Recipe
+        {
+            Seed = 20260914,
+            Amplitude = 4.2f,
 
-        // Fernmaw: a sunken green channel. Higher relief and much denser fog to make it feel narrow
+            Ground = new Color(0.46f, 0.47f, 0.42f),
+            Rock = new Color(0.44f, 0.43f, 0.40f),
+            Sand = new Color(0.66f, 0.61f, 0.50f),
+            WetSand = new Color(0.36f, 0.33f, 0.28f),
+            Stone = new Color(0.52f, 0.52f, 0.49f),
+
+            SkyZenith = new Color(0.34f, 0.46f, 0.60f),
+            SkyHorizon = new Color(0.76f, 0.79f, 0.80f),
+            SkyGround = new Color(0.66f, 0.70f, 0.72f),
+            SunDisc = new Color(1.00f, 0.97f, 0.90f),
+            CloudCover = 0.52f,
+
+            WaterDeep = new Color(0.05f, 0.12f, 0.17f),
+            WaterShallow = new Color(0.17f, 0.32f, 0.35f),
+
+            // Thinner than it was. Fog dense enough to hide a missing horizon is not needed once
+            // there is a horizon, and the island only reads as an island if its far shore is
+            // visible from the near one.
+            Fog = new Color(0.70f, 0.74f, 0.76f),
+            FogDensity = 0.0072f,
+            Sun = new Color(0.96f, 0.93f, 0.86f),
+            SunIntensity = 1.25f,
+            SunAngles = new Vector3(38f, 35f, 0f),
+            AmbientSky = new Color(0.52f, 0.60f, 0.70f),
+            AmbientEquator = new Color(0.48f, 0.50f, 0.50f),
+            AmbientGround = new Color(0.26f, 0.25f, 0.22f),
+
+            RockCount = 44,
+            FloraCount = 150,
+            FoliageBase = new Color(0.16f, 0.19f, 0.12f),
+            FoliageTip = new Color(0.44f, 0.46f, 0.28f),
+            Broadleaf = 0f
+        };
+
+        // Fernmaw: a sunken green channel. Higher relief and much denser air to make it feel narrow
         // and enclosed, which is the whole point of the contrast with the shore.
         //
-        // Deliberately darker than the Ribcage — ground ~0.31 against the shore's ~0.41 — because
-        // the contrast between open shore and sunken channel is the zone's entire character. Darker
-        // than the shore, not darker than visible.
-        private static readonly Recipe FernmawRecipe = new Recipe(
-            seed: 71104,
-            amplitude: 6.4f,
-            ground: new Color(0.26f, 0.34f, 0.27f),
-            stone: new Color(0.36f, 0.41f, 0.33f),
-            fog: new Color(0.20f, 0.28f, 0.22f),
-            fogDensity: 0.045f,
-            sun: new Color(0.72f, 0.86f, 0.68f),
-            sunIntensity: 1.05f,
-            sunAngles: new Vector3(55f, 200f, 0f),
-            ambient: new Color(0.54f, 0.64f, 0.56f),
-            rockCount: 18,
-            floraCount: 46);
+        // Deliberately darker than the Ribcage because the contrast between open shore and sunken
+        // channel is the zone's entire character. Darker than the shore, not darker than visible.
+        private static readonly Recipe FernmawRecipe = new Recipe
+        {
+            Seed = 71104,
+            Amplitude = 7.4f,
+
+            Ground = new Color(0.30f, 0.37f, 0.27f),
+            Rock = new Color(0.31f, 0.33f, 0.28f),
+            Sand = new Color(0.44f, 0.43f, 0.34f),
+            WetSand = new Color(0.22f, 0.24f, 0.19f),
+            Stone = new Color(0.38f, 0.42f, 0.34f),
+
+            SkyZenith = new Color(0.30f, 0.40f, 0.36f),
+            SkyHorizon = new Color(0.58f, 0.66f, 0.54f),
+            SkyGround = new Color(0.40f, 0.48f, 0.38f),
+            SunDisc = new Color(0.92f, 0.96f, 0.80f),
+            CloudCover = 0.72f,
+
+            WaterDeep = new Color(0.04f, 0.10f, 0.08f),
+            WaterShallow = new Color(0.14f, 0.26f, 0.19f),
+
+            Fog = new Color(0.44f, 0.52f, 0.42f),
+            FogDensity = 0.021f,
+            Sun = new Color(0.82f, 0.92f, 0.74f),
+            SunIntensity = 1.05f,
+            SunAngles = new Vector3(55f, 200f, 0f),
+            AmbientSky = new Color(0.46f, 0.58f, 0.46f),
+            AmbientEquator = new Color(0.40f, 0.48f, 0.38f),
+            AmbientGround = new Color(0.18f, 0.22f, 0.16f),
+
+            RockCount = 30,
+            FloraCount = 260,
+            FoliageBase = new Color(0.08f, 0.16f, 0.09f),
+            FoliageTip = new Color(0.26f, 0.40f, 0.20f),
+            Broadleaf = 1f
+        };
 
         /// <summary>
         /// Builds a zone's content under <paramref name="root"/> and registers its interactables.
@@ -124,13 +195,14 @@ namespace ForgottenIsle.Game.World
             var fernmaw = zoneKey == ContentIds.ZoneFernmaw;
             var recipe = fernmaw ? FernmawRecipe : RibcageRecipe;
 
-            var groundMaterial = CreateMaterial(recipe.Ground, "ZoneGround");
-            var stoneMaterial = CreateMaterial(recipe.Stone, "ZoneStone");
+            var groundMaterial = CreateTerrainMaterial(recipe);
+            var stoneMaterial = CreatePropMaterial(recipe.Stone, "ZoneStone");
 
             BuildGround(root, recipe, groundMaterial);
             ApplyAtmosphere(root, recipe);
-            ScatterRocks(root, recipe, stoneMaterial);
-            ScatterFlora(root, recipe, fernmaw);
+            BuildSea(root, recipe);
+            ScatterRocks(root, recipe);
+            ScatterFlora(root, recipe);
 
             if (fernmaw)
             {
@@ -151,13 +223,16 @@ namespace ForgottenIsle.Game.World
             var go = new GameObject("Ground");
             go.transform.SetParent(root, false);
 
-            var mesh = ZoneMeshes.BuildGround(GroundSize, recipe.Amplitude, recipe.Seed, SpawnApron);
+            var mesh = ZoneMeshes.BuildGround(recipe.Amplitude, recipe.Seed, SpawnApron);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             Dress(go.AddComponent<MeshRenderer>(), material);
 
-            // A MeshCollider on a 2k-triangle mesh is acceptable here because there is exactly one
-            // of them and the character controller needs real ground to follow. Rocks and flora get
-            // no colliders at all -- walking through a fern is a better failure than 70 colliders.
+            // A MeshCollider on an 18k-triangle mesh, and the same mesh the eye sees rather than a
+            // coarse stand-in. A separate collision mesh is the usual advice and is wrong here: any
+            // simplification puts the surface the player walks on somewhere other than the surface
+            // they can see, and on a 1.8 m grid that gap is visible. There is exactly one of these
+            // per zone and it never moves, so Unity bakes it once. Rocks and flora get no colliders
+            // at all -- walking through a fern is a better failure than 200 colliders.
             go.AddComponent<MeshCollider>().sharedMesh = mesh;
         }
 
@@ -169,9 +244,22 @@ namespace ForgottenIsle.Game.World
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = recipe.Fog;
             RenderSettings.fogDensity = recipe.FogDensity;
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = recipe.Ambient;
+
+            // Trilight rather than Flat. Flat ambient lights the underside of every rock exactly
+            // as brightly as its top, which is the single most reliable way to make a lit scene
+            // look like an untextured mock-up: real outdoor ambient comes mostly from the sky, so
+            // upward faces get sky colour, downward faces get bounced ground colour, and the
+            // difference between them is most of what reads as "outdoors".
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = recipe.AmbientSky;
+            RenderSettings.ambientEquatorColor = recipe.AmbientEquator;
+            RenderSettings.ambientGroundColor = recipe.AmbientGround;
             RenderSettings.ambientIntensity = 1f;
+
+            // The sky itself. Without one the camera cleared to the fog colour and the world had no
+            // horizon at all -- and a world with no horizon is a diorama, whatever is standing in
+            // it. Set before UpdateEnvironment so the environment rebuild sees it.
+            RenderSettings.skybox = CreateSkyMaterial(recipe);
 
             // Ambient set at runtime does not reach the shaders until the environment is rebuilt.
             // Without this the zone is lit by whatever the scene asset was saved with, which for a
@@ -193,7 +281,7 @@ namespace ForgottenIsle.Game.World
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.65f;
 
-            // Shadow bias, set rather than left at the default. A 120 m ground mesh shaded by one
+            // Shadow bias, set rather than left at the default. A 170 m ground mesh shaded by one
             // directional light is the case the defaults are worst at: too little bias and the
             // terrain shadows itself in moving bands, which is the other half of the flicker.
             sun.shadowBias = 0.03f;
@@ -205,73 +293,193 @@ namespace ForgottenIsle.Game.World
             // shadows past 80 m are invisible anyway and the cascade split is pure waste — and a
             // coarse cascade near the camera is what makes shadow edges crawl as you walk.
             QualitySettings.shadowDistance = 80f;
+            QualitySettings.shadowCascades = 2;
+
+            // The sun disc in the sky has to be in the same place as the light, or the scene is lit
+            // from one direction and the glare comes from another. The shader takes a direction
+            // pointing AT the sun, which is the reverse of the direction the light shines in.
+            var skybox = RenderSettings.skybox;
+            if (skybox != null && skybox.HasProperty("_SunDirection"))
+            {
+                var toSun = -sunGo.transform.forward;
+                skybox.SetVector("_SunDirection", new Vector4(toSun.x, toSun.y, toSun.z, 0f));
+            }
         }
 
-        private static void ScatterRocks(Transform root, Recipe recipe, Material material)
+        /// <summary>
+        /// Lays the sea around the island and sinks it to the waterline.
+        /// </summary>
+        /// <remarks>
+        /// One mesh, one material, no collider — the shore is walkable ground that happens to go
+        /// under water, and a swimming system is not a thing this game has or wants. A player who
+        /// wades out finds the ground keeps going down; the water does not stop them, the slope
+        /// does, and the character controller already refuses gradients that steep.
+        /// </remarks>
+        private static void BuildSea(Transform root, Recipe recipe)
+        {
+            var go = new GameObject("Sea");
+            go.transform.SetParent(root, false);
+            go.transform.localPosition = new Vector3(0f, ZoneMeshes.SeaLevel, 0f);
+
+            go.AddComponent<MeshFilter>().sharedMesh = ZoneMeshes.BuildWater(SeaRadius, 64, 48);
+
+            var renderer = go.AddComponent<MeshRenderer>();
+            Dress(renderer, CreateWaterMaterial(recipe));
+
+            // Water neither casts nor receives shadows. A shadow falling on a transparent sheet is
+            // wrong twice over: the sheet is not a surface light stops at, and the receive pass on
+            // a 900 m plane is the most expensive shadow in the zone for no visible return.
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+        }
+
+        /// <summary>
+        /// Strews rock over the island, clustered rather than sprinkled.
+        /// </summary>
+        /// <remarks>
+        /// Even scatter is the tell of a generator. Stone in the real world arrives in groups —
+        /// what fell off one cliff, what one glacier dropped — so most rocks here are placed as a
+        /// small companion to another rock, and only every third one starts a new cluster. The
+        /// difference costs nothing and is the first thing that stops a landscape looking sown.
+        /// </remarks>
+        private static void ScatterRocks(Transform root, Recipe recipe)
         {
             var parent = new GameObject("Rocks").transform;
             parent.SetParent(root, false);
 
             var random = new System.Random(recipe.Seed + 17);
 
-            // Four rock meshes reused across every instance: 26 rocks, 4 meshes, 1 material. The
-            // variety comes from scale and rotation, which cost nothing.
-            var meshes = new Mesh[4];
+            // Two materials so a boulder and the shingle around it are not the same stone, and six
+            // meshes rather than four now that there are more rocks than meshes by a wide margin.
+            var boulder = CreatePropMaterial(recipe.Stone, "ZoneStone");
+            var shingle = CreatePropMaterial(recipe.Rock, "ZoneShingle");
+
+            var meshes = new Mesh[6];
             for (var i = 0; i < meshes.Length; i++)
             {
                 meshes[i] = ZoneMeshes.BuildRock(recipe.Seed + i * 31);
             }
 
+            var clusterX = 0f;
+            var clusterZ = 0f;
+            var inCluster = 0;
+
             for (var i = 0; i < recipe.RockCount; i++)
             {
-                var angle = (float)random.NextDouble() * Mathf.PI * 2f;
-                var radius = 11f + (float)random.NextDouble() * (GroundSize * 0.42f);
-                var x = Mathf.Cos(angle) * radius;
-                var z = Mathf.Sin(angle) * radius;
-                var scale = 0.8f + (float)random.NextDouble() * 2.6f;
+                float x, z;
+                if (inCluster <= 0)
+                {
+                    var angle = (float)random.NextDouble() * Mathf.PI * 2f;
+                    var radius = 11f + (float)random.NextDouble() * (ZoneMeshes.GroundSize * 0.34f);
+                    clusterX = Mathf.Cos(angle) * radius;
+                    clusterZ = Mathf.Sin(angle) * radius;
+                    inCluster = 1 + (int)(random.NextDouble() * 3.0);
+                    x = clusterX;
+                    z = clusterZ;
+                }
+                else
+                {
+                    x = clusterX + (float)(random.NextDouble() - 0.5) * 9f;
+                    z = clusterZ + (float)(random.NextDouble() - 0.5) * 9f;
+                }
+
+                inCluster--;
+
+                var ground = Height(x, z, recipe);
+
+                // Nothing is placed on the seabed. A boulder standing under the water with its top
+                // poking through is a thing the player will walk to and find is not there.
+                if (ground < ZoneMeshes.SeaLevel + 0.3f)
+                {
+                    continue;
+                }
+
+                var scale = 0.7f + (float)random.NextDouble() * 2.8f;
 
                 var go = new GameObject("Rock");
                 go.transform.SetParent(parent, false);
-                go.transform.position = new Vector3(x, Height(x, z, recipe) - scale * 0.25f, z);
+
+                // Sunk by a third rather than a quarter: a rock resting exactly on the surface
+                // reads as placed on the ground, and a rock bedded into it reads as part of it.
+                go.transform.position = new Vector3(x, ground - scale * 0.34f, z);
                 go.transform.rotation = Quaternion.Euler(
                     (float)random.NextDouble() * 24f,
                     (float)random.NextDouble() * 360f,
                     (float)random.NextDouble() * 24f);
-                go.transform.localScale = Vector3.one * scale;
+
+                // Non-uniform scale. Identical proportions at six different sizes still reads as
+                // six copies of one rock; squashing each one differently does not.
+                go.transform.localScale = new Vector3(
+                    scale * (0.8f + (float)random.NextDouble() * 0.5f),
+                    scale * (0.6f + (float)random.NextDouble() * 0.6f),
+                    scale * (0.8f + (float)random.NextDouble() * 0.5f));
 
                 go.AddComponent<MeshFilter>().sharedMesh = meshes[i % meshes.Length];
-                Dress(go.AddComponent<MeshRenderer>(), material);
+                Dress(go.AddComponent<MeshRenderer>(), scale > 1.8f ? boulder : shingle);
             }
         }
 
-        private static void ScatterFlora(Transform root, Recipe recipe, bool fernmaw)
+        /// <summary>
+        /// Plants the zone's vegetation, thick where it would be thick and absent where it would be.
+        /// </summary>
+        /// <remarks>
+        /// Density is driven by the ground rather than uniform: nothing grows below the waterline,
+        /// little grows on the exposed high ground, and the belt between them is where it gathers.
+        /// The shader does the rest — the quads are cut into blades and moved by the wind there, so
+        /// what this method places is position, scale and colour, not shape.
+        /// </remarks>
+        private static void ScatterFlora(Transform root, Recipe recipe)
         {
             var parent = new GameObject("Flora").transform;
             parent.SetParent(root, false);
 
             var random = new System.Random(recipe.Seed + 91);
-            var material = CreateMaterial(
-                fernmaw ? new Color(0.10f, 0.20f, 0.12f) : new Color(0.16f, 0.17f, 0.13f),
-                "ZoneFlora");
+            var material = CreateFoliageMaterial(recipe);
 
-            // Quads, not meshes: flora is silhouette and density, and two crossed quads per plant
-            // reads as vegetation at a fraction of the cost of any actual plant model.
+            // Quads, not meshes: flora is silhouette and density, and crossed quads read as
+            // vegetation at a fraction of the cost of any actual plant model.
             for (var i = 0; i < recipe.FloraCount; i++)
             {
                 var angle = (float)random.NextDouble() * Mathf.PI * 2f;
-                var radius = 6f + (float)random.NextDouble() * (GroundSize * 0.45f);
+                var radius = 6f + (float)random.NextDouble() * (ZoneMeshes.GroundSize * 0.36f);
                 var x = Mathf.Cos(angle) * radius;
                 var z = Mathf.Sin(angle) * radius;
-                var height = fernmaw
-                    ? 1.4f + (float)random.NextDouble() * 2.4f
-                    : 0.6f + (float)random.NextDouble() * 1.0f;
+                var ground = Height(x, z, recipe);
+
+                // The shoreline. Plants stop at the tideline, and the bare band of sand that leaves
+                // is what makes the water look like it belongs to the land it touches.
+                if (ground < ZoneMeshes.SeaLevel + 0.9f)
+                {
+                    continue;
+                }
+
+                // Thinning with altitude: the exposed top of the island is wind-scoured, and a
+                // ridge as green as the sheltered ground below it looks painted on.
+                var exposure = Mathf.InverseLerp(recipe.Amplitude * 1.2f, recipe.Amplitude * 3.0f, ground);
+                if (random.NextDouble() < exposure * 0.75)
+                {
+                    continue;
+                }
+
+                var height = recipe.Broadleaf > 0.5f
+                    ? 1.1f + (float)random.NextDouble() * 2.6f
+                    : 0.45f + (float)random.NextDouble() * 1.15f;
 
                 var plant = new GameObject("Flora");
                 plant.transform.SetParent(parent, false);
-                plant.transform.position = new Vector3(x, Height(x, z, recipe), z);
-                plant.transform.rotation = Quaternion.Euler(0f, (float)random.NextDouble() * 360f, 0f);
 
-                for (var blade = 0; blade < 2; blade++)
+                // Set a little into the ground so no plant floats on a slope: the quad's pivot is
+                // its base, and a base exactly on the surface hangs in the air on any gradient.
+                plant.transform.position = new Vector3(x, ground - 0.12f, z);
+                plant.transform.rotation = Quaternion.Euler(
+                    (float)(random.NextDouble() - 0.5) * 10f,
+                    (float)random.NextDouble() * 360f,
+                    (float)(random.NextDouble() - 0.5) * 10f);
+
+                // Three quads rather than two. The third breaks the X that two crossed quads draw
+                // when the player looks straight down at them, which is the angle a first-person
+                // camera spends most of its time at with something growing at its feet.
+                for (var blade = 0; blade < 3; blade++)
                 {
                     var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
                     quad.name = "Blade";
@@ -282,9 +490,15 @@ namespace ForgottenIsle.Game.World
 
                     quad.transform.SetParent(plant.transform, false);
                     quad.transform.localPosition = new Vector3(0f, height * 0.5f, 0f);
-                    quad.transform.localRotation = Quaternion.Euler(0f, blade * 90f, 0f);
-                    quad.transform.localScale = new Vector3(height * 0.55f, height, 1f);
-                    Dress(quad.GetComponent<MeshRenderer>(), material);
+                    quad.transform.localRotation = Quaternion.Euler(0f, blade * 60f, 0f);
+                    quad.transform.localScale = new Vector3(height * 0.7f, height, 1f);
+
+                    var quadRenderer = quad.GetComponent<MeshRenderer>();
+                    Dress(quadRenderer, material);
+
+                    // Grass does not cast a shadow worth the draw call, and 150 plants × 3 quads
+                    // in the shadow pass is the most expensive nothing in the zone.
+                    quadRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 }
             }
         }
@@ -723,6 +937,141 @@ namespace ForgottenIsle.Game.World
             renderer.sharedMaterial = material;
             renderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
             renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+        }
+
+        /// <summary>
+        /// Loads one of this project's own shaders, or null if it is not in the build.
+        /// </summary>
+        /// <remarks>
+        /// Resources.Load first and Shader.Find second, and the order is the whole point.
+        /// Shader.Find resolves anything in the project while running in the editor and resolves
+        /// only what the build actually included once the game is on a phone — so a shader found
+        /// this way in the editor can be missing at runtime, which is the classic "it worked in
+        /// Play mode" failure. Everything here lives under Assets/Resources/Shaders, which is a
+        /// guarantee of inclusion rather than a hope.
+        /// <para>
+        /// Null is a supported answer. Every caller falls back to the stock lit shader, so a
+        /// missing custom shader costs the island its looks and not its playability.
+        /// </para>
+        /// </remarks>
+        /// <param name="resourcePath">Path under Resources, without the extension.</param>
+        /// <param name="shaderName">The shader's declared name, for the editor-side lookup.</param>
+        /// <returns>The shader, or null.</returns>
+        private static Shader LoadShader(string resourcePath, string shaderName)
+        {
+            var shader = Resources.Load<Shader>(resourcePath);
+
+            // `== null` and not `is null`, for the same reason documented on FindShader: Unity
+            // overloads the operator and a destroyed or unloadable asset is only null through it.
+            if (shader != null)
+            {
+                return shader;
+            }
+
+            shader = Shader.Find(shaderName);
+            return shader != null ? shader : null;
+        }
+
+        /// <summary>The ground material: vertex colours, slope rock and a shoreline.</summary>
+        private static Material CreateTerrainMaterial(Recipe recipe)
+        {
+            var shader = LoadShader("Shaders/VardholmTerrain", "Vardholm/Terrain");
+            if (shader == null)
+            {
+                // The stock shader ignores vertex colours, so the fallback is flat — but visible,
+                // and at the right brightness, which is the property that actually matters.
+                return CreateMaterial(recipe.Ground, "ZoneGround");
+            }
+
+            var material = new Material(shader) { name = "ZoneGround" };
+            material.SetColor("_Color", recipe.Ground);
+            material.SetColor("_RockColor", recipe.Rock);
+            material.SetColor("_SandColor", recipe.Sand);
+            material.SetColor("_WetColor", recipe.WetSand);
+            material.SetFloat("_SeaLevel", ZoneMeshes.SeaLevel);
+            return material;
+        }
+
+        /// <summary>A solid prop material: one colour, mottled by where the object stands.</summary>
+        private static Material CreatePropMaterial(Color color, string name)
+        {
+            var shader = LoadShader("Shaders/VardholmProp", "Vardholm/Prop");
+            if (shader == null)
+            {
+                return CreateMaterial(color, name);
+            }
+
+            var material = new Material(shader) { name = name };
+            material.SetColor("_Color", color);
+
+            // The crevice colour is derived rather than authored. Every caller would otherwise
+            // have to pass a second colour that is always the first one darkened, and the pair
+            // would drift apart the first time somebody edited only one of them.
+            material.SetColor("_DarkColor", new Color(color.r * 0.42f, color.g * 0.44f, color.b * 0.44f, 1f));
+            return material;
+        }
+
+        /// <summary>The vegetation material: cut-out blades that move in the wind.</summary>
+        private static Material CreateFoliageMaterial(Recipe recipe)
+        {
+            var shader = LoadShader("Shaders/VardholmFoliage", "Vardholm/Foliage");
+            if (shader == null)
+            {
+                return CreateMaterial(recipe.FoliageBase, "ZoneFlora");
+            }
+
+            var material = new Material(shader) { name = "ZoneFlora" };
+            material.SetColor("_BaseColor", recipe.FoliageBase);
+            material.SetColor("_TipColor", recipe.FoliageTip);
+            material.SetFloat("_Broadleaf", recipe.Broadleaf);
+
+            // Ferns are broad and few; grass is narrow and many. One number, two plants.
+            material.SetFloat("_Blades", recipe.Broadleaf > 0.5f ? 2f : 4f);
+            material.SetFloat("_Width", recipe.Broadleaf > 0.5f ? 0.62f : 0.34f);
+            return material;
+        }
+
+        /// <summary>The sea.</summary>
+        private static Material CreateWaterMaterial(Recipe recipe)
+        {
+            var shader = LoadShader("Shaders/VardholmWater", "Vardholm/Water");
+            if (shader == null)
+            {
+                // Opaque and flat, but still a sheet of water-coloured something at the right
+                // height, which is what makes the island read as an island.
+                return CreateMaterial(recipe.WaterDeep, "Sea");
+            }
+
+            var material = new Material(shader) { name = "Sea" };
+            material.SetColor("_DeepColor", recipe.WaterDeep);
+            material.SetColor("_ShallowColor", recipe.WaterShallow);
+
+            // The water reflects the sky it is under, so the reflection colour comes from the sky
+            // recipe rather than being a colour of its own that somebody has to keep in step.
+            material.SetColor("_SkyColor", recipe.SkyHorizon);
+            return material;
+        }
+
+        /// <summary>The sky: gradient, cloud deck and a sun that agrees with the light.</summary>
+        private static Material CreateSkyMaterial(Recipe recipe)
+        {
+            var shader = LoadShader("Shaders/VardholmSky", "Vardholm/Sky");
+            if (shader == null)
+            {
+                // No sky rather than a wrong one. RenderSettings.skybox = null leaves the camera
+                // clearing to the fog colour, which is exactly what this zone did before and is a
+                // defensible flat horizon rather than a magenta dome.
+                return null;
+            }
+
+            var material = new Material(shader) { name = "ZoneSky" };
+            material.SetColor("_ZenithColor", recipe.SkyZenith);
+            material.SetColor("_HorizonColor", recipe.SkyHorizon);
+            material.SetColor("_GroundColor", recipe.SkyGround);
+            material.SetColor("_SunColor", recipe.SunDisc);
+            material.SetColor("_CloudColor", recipe.SkyHorizon);
+            material.SetFloat("_CloudCover", recipe.CloudCover);
+            return material;
         }
 
         private static Material CreateMaterial(Color color, string name)

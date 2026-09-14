@@ -9,6 +9,7 @@ using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Player;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
+using ForgottenIsle.Game.World;
 using ForgottenIsle.UI.Bootstrap;
 using NUnit.Framework;
 using UnityEngine;
@@ -160,13 +161,14 @@ namespace ForgottenIsle.Tests.PlayMode
 
             var position = rig.transform.position;
 
-            // The ground mesh is 120 m square centred on the origin (ZoneBuilder.GroundSize), so
-            // half of that is the edge of the world. The first version of this test said 60 m
-            // because I assumed the size rather than reading it.
-            Assert.That(Mathf.Abs(position.x), Is.LessThan(60f), "Player is outside the ground in X.");
-            Assert.That(Mathf.Abs(position.z), Is.LessThan(60f), "Player is outside the ground in Z.");
-            Assert.That(position.y, Is.GreaterThan(-2f).And.LessThan(40f),
-                "Player is under the terrain or far above it: y = " + position.y.ToString("F1"));
+            // The ground mesh is square, centred on the origin, and ZoneMeshes owns how big it is.
+            // Asked rather than assumed: the first version of this test said 60 m because I
+            // guessed the size, and the second said 120 because that is what it was that week.
+            var edge = ZoneMeshes.GroundSize * 0.5f;
+            Assert.That(Mathf.Abs(position.x), Is.LessThan(edge), "Player is outside the ground in X.");
+            Assert.That(Mathf.Abs(position.z), Is.LessThan(edge), "Player is outside the ground in Z.");
+            Assert.That(position.y, Is.GreaterThan(ZoneMeshes.SeaLevel).And.LessThan(40f),
+                "Player spawned below the waterline or far above the island: y = " + position.y.ToString("F1"));
         }
 
         /// <summary>The Standing Stone exists as drawable geometry, not only as a registration.</summary>

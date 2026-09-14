@@ -9,6 +9,82 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the island looks like an island: sky, sea, shore and five shaders
+
+The world was geometrically correct and visually a greybox. Four things were missing, and each one
+was load-bearing rather than decorative.
+
+**There was no sky.** The camera cleared to the fog colour, so there was no horizon — and a world
+without a horizon is a diorama, whatever is standing in it. `Vardholm/Sky` draws a zenith-to-horizon
+gradient, a cloud deck projected through the dome so it foreshortens toward the horizon the way a
+real one does, and a sun disc with a glow around it. The disc direction is written from the
+directional light's own transform, so the scene is never lit from one direction and glared at from
+another.
+
+**There was no sea, so it was not an island.** The ground was a square of noise ending at a hard
+edge with nothing past it — the player was standing on a tile. The height field now multiplies the
+land by a noise-perturbed radial falloff, so there is a coastline with bays and headlands, the land
+drops to a seabed outside it, and `Vardholm/Water` lays a radial sheet at the waterline: three
+crossing sine waves displacing the vertices, the surface normal derived analytically from the same
+expression (so highlights track the swell instead of sliding over it), ripples, Fresnel and crest
+foam. The rings are spaced by a cubed parameter — metre-scale quads underfoot, one huge ring at the
+horizon. No `Update()` is involved anywhere: the animation is `_Time` in the vertex shader.
+
+**`Standard` throws vertex colours away.** `ZoneMeshes` has always written a height gradient into
+every ground vertex, and the stock shader has always ignored it — the terrain was one flat tint and
+the entire gradient was computed and discarded. `Vardholm/Terrain` uses it, and adds the three cues
+that make ground read as ground: rock breaking through where the slope is too steep to hold soil,
+sand where the land meets the water, darkening to wet sand at the tideline, and two octaves of
+world-space noise so no two square metres are the same shade. The noise is also mixed into the slope
+term, which breaks the clean contour ring that a pure slope threshold draws across a hillside — the
+single most recognisable tell of procedural terrain.
+
+**Every rock was the same grey and nothing moved.** `Vardholm/Prop` mottles by world position, so
+two rocks side by side differ for free and upward faces weather; rocks are now placed in clusters
+rather than sprinkled evenly, scaled non-uniformly, and bedded into the ground rather than resting
+on it. `Vardholm/Foliage` cuts blade and frond shapes out of the quads procedurally and moves them
+in the wind, with the phase taken from world position so a field does not sway in unison. Its
+lighting model is wrap rather than Lambert, which is both how thin leaves behave and the only way
+two-sided quads with one set of normals can be lit from both faces.
+
+Supporting changes: ambient is **Trilight**, not Flat — flat ambient lights the underside of a rock
+as brightly as its top, which is the most reliable way to make a lit scene look like a mock-up. The
+ground grid went from 33 to 97 vertices a side (5 m quads to 1.8 m; at 5 m every hillside was a
+visible staircase and no shader can hide a silhouette that coarse), the island from 120 m to 170 m,
+and the camera clears to the skybox when there is one. Fog is thinner, because fog dense enough to
+hide a missing horizon is not needed once there is a horizon.
+
+All five shaders live under `Assets/Resources/Shaders`, which is a guarantee they are in the build
+rather than a hope: `Shader.Find` resolves anything in the project in the editor and only what the
+build included on a device, which is the classic "it worked in Play mode" failure. Every material
+falls back to the stock lit shader if its own is missing, so the worst case costs the island its
+looks and not its playability.
+
+**IMPLEMENTED BUT NOT RUNTIME VERIFIED.** There is no Unity, no .NET SDK and no Mono in this
+environment. No shader here has been compiled, and shader compilation is exactly the kind of thing
+the two CI gates cannot check — they read C#. Both gates pass; that is all that has been verified.
+
+### Added — items, combination, and the first maintenance puzzle (Phase 3, first half)
+
+Adventure-game verbs on our own terms: carry a specific object, put two of them together, use one
+on a machine somebody stopped servicing. `Inventory` and `Combinations` in Core (engine-free, no
+stacks, no weight, no slots); `InventoryService` as the **fourth `ISaveParticipant`**, registered in
+the same change per ADR-0011; `TakeItem`/`CombineItems`/`UseItem` commands and handlers;
+`ItemPickup` and `Mechanism` interactables.
+
+A failed combination consumes nothing. In a game with no shop and no respawn, eating the inputs on
+a wrong guess is a soft lock the player cannot see coming and cannot undo, and it is the single most
+common way this genre breaks itself. `InventoryTests` covers that case by name.
+
+A `Mechanism` says three different things depending on what the player is holding: what is wrong
+with it (which is the clue), why the wrong part does not fit, and what happens when the right one
+does. That is the shape of every puzzle in this game — the mystery is a maintenance problem, so a
+puzzle is a machine with a part missing, and the part is somewhere a person would have left it.
+
+Content: the Dry Spindle on the shore, the Waterlogged Reel in the channel, the Sluice Key in its
+bracket, the seized sluice, and the tape deck that plays a woman reading pressures aloud, one every
+hour, for as long as the tape runs.
+
 ### Fixed — the flicker while walking: depth precision and shadow bias
 
 A 24-bit depth buffer's precision is dominated by the **near/far ratio**, and the camera was

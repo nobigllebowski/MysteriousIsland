@@ -638,9 +638,23 @@ namespace ForgottenIsle.Game.Diagnostics
                 ? ground.GetColor("_BaseColor")
                 : ground.HasProperty("_Color") ? ground.GetColor("_Color") : Color.grey;
 
+            // The ground mesh's vertex colours multiply the material colour, and the terrain shader
+            // is the only thing that knows that. They average a little under one by construction
+            // (ZoneMeshes.BuildGround), so the estimate folds in that factor rather than reporting
+            // a brightness the player never sees.
+            var vertexFactor = 0.9f;
+
             var linearSpace = QualitySettings.activeColorSpace == ColorSpace.Linear;
             var a = linearSpace ? albedo.linear : albedo;
-            var ambient = linearSpace ? RenderSettings.ambientLight.linear : RenderSettings.ambientLight;
+            a = new Color(a.r * vertexFactor, a.g * vertexFactor, a.b * vertexFactor, 1f);
+
+            // Ambient arriving on an upward-facing surface. Under Trilight that is the sky term,
+            // not the flat one, and reading the wrong field under-reports the ground by whatever
+            // the difference between sky and ground ambient happens to be.
+            var ambientSource = RenderSettings.ambientMode == UnityEngine.Rendering.AmbientMode.Trilight
+                ? RenderSettings.ambientSkyColor
+                : RenderSettings.ambientLight;
+            var ambient = linearSpace ? ambientSource.linear : ambientSource;
 
             // Elevation from the light's own direction rather than its euler angles, which are only
             // the same thing while the light has no parent rotation.

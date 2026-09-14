@@ -783,12 +783,23 @@ namespace ForgottenIsle.Game.Bootstrap
 
             camera.enabled = true;
 
-            // Clear to the zone's own fog colour rather than to a fixed near-black. With the sky
-            // darker than the lit ground the horizon reads as a hard edge against nothing; matching
-            // the clear to the fog is what makes distance fade into sky instead of into a hole.
+            // Draw the sky if the zone gave us one, and fall back to clearing to the zone's own fog
+            // colour if it did not. Clearing to a flat colour was the right answer while there was
+            // no sky -- with the background darker than the lit ground the horizon reads as a hard
+            // edge against nothing -- but it also paints over the skybox, so the moment a sky
+            // exists this has to defer to it or the sky is built and never seen.
+            //
             // ZoneBuilder has already written the atmosphere by the time a camera is commissioned,
-            // so this reads the zone's value instead of duplicating it.
-            camera.clearFlags = CameraClearFlags.SolidColor;
+            // so this reads the zone's values instead of duplicating them.
+            if (RenderSettings.skybox != null)
+            {
+                camera.clearFlags = CameraClearFlags.Skybox;
+            }
+            else
+            {
+                camera.clearFlags = CameraClearFlags.SolidColor;
+            }
+
             camera.backgroundColor = RenderSettings.fog
                 ? RenderSettings.fogColor
                 : new Color(0.04f, 0.06f, 0.05f);

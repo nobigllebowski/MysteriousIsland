@@ -23,38 +23,80 @@ namespace ForgottenIsle.Game.World
     /// </remarks>
     public static class ZoneMeshes
     {
-        /// <summary>Vertices per side of the ground grid. 33 gives 32 quads and ~2k triangles.</summary>
-        private const int GroundResolution = 33;
+        /// <summary>Vertices per side of the ground grid. 97 gives 96 quads and ~18k triangles.</summary>
+        /// <remarks>
+        /// Raised from 33. At 33 the quads were five metres across, which is wider than the player
+        /// is tall: every hillside was a visible staircase of flat facets, and no shader can hide a
+        /// silhouette that coarse. 97 puts a vertex every 1.8 m, which is the scale at which ground
+        /// stops reading as a tessellation and starts reading as a slope.
+        /// </remarks>
+        private const int GroundResolution = 97;
 
         /// <summary>
-        /// Builds a rolling ground mesh with a flat-ish apron near the origin.
+        /// Metres across. The island, its coastline and the sea around it are all sized from this.
         /// </summary>
         /// <remarks>
-        /// The apron matters: the player spawns at the origin, and terrain noise under the spawn
-        /// point is how a character controller ends up embedded in a hill on the first frame. Height
-        /// is faded to zero within <paramref name="flatRadius"/> so the entry area is always safe.
+        /// Public and owned here because the coastline is computed from it: a second copy of this
+        /// number in the zone builder would be a second definition of where the island ends.
         /// </remarks>
-        /// <param name="size">Width and depth in metres.</param>
-        /// <param name="amplitude">Peak height of the undulation.</param>
-        /// <param name="seed">Chooses the noise offsets; the same seed gives the same ground.</param>
+        public const float GroundSize = 170f;
+
+        /// <summary>Y of the waterline. The spawn apron sits this far above it.</summary>
+        public const float SeaLevel = -1.2f;
+
+        /// <summary>How far the seabed drops below the waterline at the outer edge of the mesh.</summary>
+        private const float SeaDepth = 8f;
+
+        /// <summary>Fraction of the half-extent where the land begins falling toward the sea.</summary>
+        private const float CoastStart = 0.56f;
+
+        /// <summary>Fraction of the half-extent where the land is fully submerged.</summary>
+        private const float CoastEnd = 0.93f;
+
+        // The high ground, deliberately off centre. A hill centred on the spawn would put the
+        // player on the summit looking down at everything, which is the one viewpoint from which an
+        // island has no silhouette at all. Pushed to one quarter, the player arrives on the low
+        // shore with high ground visible across the zone -- somewhere to walk towards.
+        private const float RidgeX = -0.21f;
+        private const float RidgeZ = 0.29f;
+        private const float RidgeRadius = 0.44f;
+        private const float RidgeHeight = 2.6f;
+
+        /// <summary>
+        /// Builds an island: rolling land inside a coastline, falling away to a seabed outside it.
+        /// </summary>
+        /// <remarks>
+        /// IT WAS NOT AN ISLAND BEFORE. The mesh was a square of noise that ended at a hard edge
+        /// with nothing past it, and no amount of shading fixes that -- the player was standing on
+        /// a tile. The shape is now three things multiplied together: noise for the surface, a
+        /// ridge for the skyline, and a noisy radial falloff for the coast, so the outline has bays
+        /// and headlands rather than being a circle.
+        /// <para>
+        /// The apron still matters and still works the same way: the player spawns at the origin,
+        /// and terrain noise under the spawn point is how a character controller ends up embedded
+        /// in a hill on the first frame.
+        /// </para>
+        /// </remarks>
+        /// <param name="amplitude">Peak height of the surface undulation.</param>
+        /// <param name="seed">Chooses the noise offsets; the same seed gives the same island.</param>
         /// <param name="flatRadius">Radius around the origin kept level for the spawn.</param>
         /// <returns>A new mesh. The caller owns it.</returns>
-        public static Mesh BuildGround(float size, float amplitude, int seed, float flatRadius)
+        public static Mesh BuildGround(float amplitude, int seed, float flatRadius)
         {
             var mesh = new Mesh { name = "ZoneGround" };
 
-            // 16-bit indices cap at 65535 vertices; 33x33 = 1089, so the default format is fine and
-            // we avoid the memory cost of a 32-bit index buffer on mobile.
+            // 16-bit indices cap at 65535 vertices; 97x97 = 9409, so the default format is still
+            // fine and we avoid the memory cost of a 32-bit index buffer on mobile.
             var vertexCount = GroundResolution * GroundResolution;
             var vertices = new Vector3[vertexCount];
             var uvs = new Vector2[vertexCount];
             var colors = new Color[vertexCount];
 
-            var random = new System.Random(seed);
-            var offsetA = (float)random.NextDouble() * 100f;
-            var offsetB = (float)random.NextDouble() * 100f;
-            var half = size * 0.5f;
-            var step = size / (GroundResolution - 1);
+            float offsetA, offsetB, offsetC;
+            Offsets(seed, out offsetA, out offsetB, out offsetC);
+
+            var half = GroundSize * 0.5f;
+            var step = GroundSize / (GroundResolution - 1);
 
             for (var z = 0; z < GroundResolution; z++)
             {
@@ -63,26 +105,33 @@ namespace ForgottenIsle.Game.World
                     var index = z * GroundResolution + x;
                     var worldX = -half + x * step;
                     var worldZ = -half + z * step;
-
-                    // Two octaves is enough to stop the ground reading as a repeating pattern while
-                    // staying cheap to evaluate at build time.
-                    var height =
-                        Mathf.PerlinNoise(offsetA + worldX * 0.035f, offsetA + worldZ * 0.035f) * amplitude +
-                        Mathf.PerlinNoise(offsetB + worldX * 0.11f, offsetB + worldZ * 0.11f) * amplitude * 0.35f;
-
-                    var distance = Mathf.Sqrt(worldX * worldX + worldZ * worldZ);
-                    if (distance < flatRadius)
-                    {
-                        height *= Mathf.SmoothStep(0f, 1f, distance / flatRadius);
-                    }
+                    var height = HeightAt(worldX, worldZ, amplitude, offsetA, offsetB, offsetC, flatRadius);
 
                     vertices[index] = new Vector3(worldX, height, worldZ);
                     uvs[index] = new Vector2(x / (float)(GroundResolution - 1), z / (float)(GroundResolution - 1));
 
-                    // Vertex colour carries the height gradient so one unlit material can shade the
-                    // whole zone without a texture, a second material, or a custom shader.
-                    var shade = Mathf.InverseLerp(0f, amplitude * 1.35f, height);
-                    colors[index] = Color.Lerp(new Color(0.10f, 0.14f, 0.12f), new Color(0.24f, 0.28f, 0.22f), shade);
+                    // Vertex colour carries the wet-to-dry gradient, and the terrain shader
+                    // multiplies the zone's ground colour through it. It is a MULTIPLIER, so it
+                    // sits around 1 rather than around the colour it used to be: the old values
+                    // were absolute dark greens, and multiplying those by a dark ground colour is
+                    // how this world rendered black for most of a week.
+                    var band = Mathf.InverseLerp(SeaLevel, amplitude * 2.4f, height);
+                    var mottle = Mathf.PerlinNoise(offsetC + worldX * 0.14f, offsetC + worldZ * 0.14f);
+
+                    var damp = new Color(0.62f, 0.66f, 0.63f);
+                    var mid = new Color(0.90f, 0.92f, 0.86f);
+                    var dry = new Color(1.00f, 0.97f, 0.88f);
+
+                    var shade = band < 0.5f
+                        ? Color.Lerp(damp, mid, band * 2f)
+                        : Color.Lerp(mid, dry, (band - 0.5f) * 2f);
+
+                    var tint = Mathf.Lerp(0.88f, 1.06f, mottle);
+                    colors[index] = new Color(
+                        Mathf.Clamp01(shade.r * tint),
+                        Mathf.Clamp01(shade.g * tint),
+                        Mathf.Clamp01(shade.b * tint),
+                        1f);
                 }
             }
 
@@ -121,6 +170,11 @@ namespace ForgottenIsle.Game.World
         /// Callers place rocks and markers on the surface without raycasting, which would need
         /// physics to have ticked at least once — and zone furnishing runs in the frame the scene
         /// finished loading, before that is true.
+        /// <para>
+        /// It calls the identical private function the mesh builder calls. That is the point: the
+        /// previous version was a hand-copied duplicate of the height expression, which is a pair
+        /// of formulas that have to be edited together forever and will not be.
+        /// </para>
         /// </remarks>
         /// <param name="x">World X.</param>
         /// <param name="z">World Z.</param>
@@ -130,21 +184,147 @@ namespace ForgottenIsle.Game.World
         /// <returns>Ground height at that point.</returns>
         public static float SampleHeight(float x, float z, float amplitude, int seed, float flatRadius)
         {
-            var random = new System.Random(seed);
-            var offsetA = (float)random.NextDouble() * 100f;
-            var offsetB = (float)random.NextDouble() * 100f;
+            float offsetA, offsetB, offsetC;
+            Offsets(seed, out offsetA, out offsetB, out offsetC);
+            return HeightAt(x, z, amplitude, offsetA, offsetB, offsetC, flatRadius);
+        }
 
-            var height =
-                Mathf.PerlinNoise(offsetA + x * 0.035f, offsetA + z * 0.035f) * amplitude +
-                Mathf.PerlinNoise(offsetB + x * 0.11f, offsetB + z * 0.11f) * amplitude * 0.35f;
+        /// <summary>Three deterministic noise offsets for a seed.</summary>
+        private static void Offsets(int seed, out float a, out float b, out float c)
+        {
+            var random = new System.Random(seed);
+            a = (float)random.NextDouble() * 100f;
+            b = (float)random.NextDouble() * 100f;
+            c = (float)random.NextDouble() * 100f;
+        }
+
+        /// <summary>The island's height field. The single definition of this world's shape.</summary>
+        private static float HeightAt(
+            float x, float z, float amplitude, float offsetA, float offsetB, float offsetC, float flatRadius)
+        {
+            // Three octaves: the broad shape of the land, the hummocks on it, and the roughness
+            // that keeps a slope from being a plane. Each is a third of the frequency below it.
+            var land =
+                Mathf.PerlinNoise(offsetA + x * 0.021f, offsetA + z * 0.021f) * amplitude +
+                Mathf.PerlinNoise(offsetB + x * 0.072f, offsetB + z * 0.072f) * amplitude * 0.40f +
+                Mathf.PerlinNoise(offsetB + x * 0.185f, offsetB + z * 0.185f) * amplitude * 0.15f;
+
+            var ridgeX = x - RidgeX * GroundSize;
+            var ridgeZ = z - RidgeZ * GroundSize;
+            var ridgeDistance = Mathf.Sqrt(ridgeX * ridgeX + ridgeZ * ridgeZ) / (GroundSize * RidgeRadius);
+            land += amplitude * RidgeHeight * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(1f - ridgeDistance));
 
             var distance = Mathf.Sqrt(x * x + z * z);
             if (distance < flatRadius)
             {
-                height *= Mathf.SmoothStep(0f, 1f, distance / flatRadius);
+                // Everything fades together, so the apron is continuous with the land around it
+                // rather than a disc punched out of it.
+                land *= Mathf.SmoothStep(0f, 1f, distance / flatRadius);
             }
 
-            return height;
+            // The coastline. Perturbing the radius rather than the height is what turns a circular
+            // island into one with bays and headlands, and it does it without breaking the
+            // guarantee that everything past CoastEnd is under water.
+            var half = GroundSize * 0.5f;
+            var wobble = (Mathf.PerlinNoise(offsetC + x * 0.0105f, offsetC + z * 0.0105f) - 0.5f) * 2f;
+            var shaped = distance + wobble * half * 0.16f;
+            var island = 1f - Mathf.SmoothStep(half * CoastStart, half * CoastEnd, shaped);
+
+            return land * island + (SeaLevel - SeaDepth) * (1f - island);
+        }
+
+        /// <summary>
+        /// A radial sheet for the sea: dense near the player, coarse toward the horizon.
+        /// </summary>
+        /// <remarks>
+        /// A uniform grid is the wrong mesh for water. Sized to reach the horizon it has quads
+        /// wider than the waves, so the swell under the player's feet is lost; sized to resolve the
+        /// swell it stops a hundred metres out and the player can see the edge of the sea.
+        /// <para>
+        /// Rings spaced by a cubed parameter give both: metre-scale quads where the water is close
+        /// enough to look at, and a single huge ring out at the horizon where all that is needed is
+        /// colour. Normals and tangents are written flat and uniform because the shader displaces
+        /// the surface itself and derives its own normal from that displacement — the mesh is only
+        /// the sampling grid, and the shader's tangent-space assumption is documented there.
+        /// </para>
+        /// </remarks>
+        /// <param name="radius">How far the sheet reaches.</param>
+        /// <param name="rings">Concentric divisions. 64 is ample.</param>
+        /// <param name="segments">Divisions around. 48 keeps the outer ring from reading polygonal.</param>
+        /// <returns>A new mesh. The caller owns it.</returns>
+        public static Mesh BuildWater(float radius, int rings, int segments)
+        {
+            var mesh = new Mesh { name = "Sea" };
+
+            var vertexCount = 1 + rings * segments;
+            var vertices = new Vector3[vertexCount];
+            var normals = new Vector3[vertexCount];
+            var tangents = new Vector4[vertexCount];
+            var uvs = new Vector2[vertexCount];
+
+            vertices[0] = Vector3.zero;
+            normals[0] = Vector3.up;
+            tangents[0] = new Vector4(1f, 0f, 0f, -1f);
+            uvs[0] = new Vector2(0.5f, 0.5f);
+
+            for (var ring = 1; ring <= rings; ring++)
+            {
+                // Cubed: half the vertices land inside the first fifth of the radius.
+                var ringRadius = radius * Mathf.Pow(ring / (float)rings, 3f);
+
+                for (var segment = 0; segment < segments; segment++)
+                {
+                    var index = 1 + (ring - 1) * segments + segment;
+                    var angle = segment / (float)segments * Mathf.PI * 2f;
+                    var vx = Mathf.Cos(angle) * ringRadius;
+                    var vz = Mathf.Sin(angle) * ringRadius;
+
+                    vertices[index] = new Vector3(vx, 0f, vz);
+                    normals[index] = Vector3.up;
+                    tangents[index] = new Vector4(1f, 0f, 0f, -1f);
+                    uvs[index] = new Vector2(vx / radius * 0.5f + 0.5f, vz / radius * 0.5f + 0.5f);
+                }
+            }
+
+            var triangles = new int[segments * 3 + (rings - 1) * segments * 6];
+            var t = 0;
+
+            // `fanSegment` and not `segment`: this loop sits in the method's own scope while the
+            // ring loops declare a `segment` inside theirs, and C# refuses that pair outright
+            // (CS0136) even though the two can never be in scope at the same time.
+            for (var fanSegment = 0; fanSegment < segments; fanSegment++)
+            {
+                triangles[t++] = 0;
+                triangles[t++] = 1 + (fanSegment + 1) % segments;
+                triangles[t++] = 1 + fanSegment;
+            }
+
+            for (var ring = 1; ring < rings; ring++)
+            {
+                var inner = 1 + (ring - 1) * segments;
+                var outer = 1 + ring * segments;
+
+                for (var segment = 0; segment < segments; segment++)
+                {
+                    var next = (segment + 1) % segments;
+
+                    triangles[t++] = inner + segment;
+                    triangles[t++] = outer + next;
+                    triangles[t++] = outer + segment;
+
+                    triangles[t++] = inner + segment;
+                    triangles[t++] = inner + next;
+                    triangles[t++] = outer + next;
+                }
+            }
+
+            mesh.vertices = vertices;
+            mesh.normals = normals;
+            mesh.tangents = tangents;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
         /// <summary>

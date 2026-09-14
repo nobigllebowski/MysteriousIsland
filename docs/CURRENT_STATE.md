@@ -31,9 +31,9 @@ write (flush→rename) and `.bak` rotation; 3 save slots + autosave; engine-free
 localization with `#key#` fallback; New Input System routing; placeholder capsule player rig;
 dev overlay; UI Toolkit framework, theme, and menu/pause/settings screens.
 
-**Commands registered (7):** `StartNewGame`, `ResumeSavedRun`, `SaveGame`, `QuitToMenu`,
-`TravelToZone`, `Inspect`, `Collect`.
-**Save participants registered (3):** session, player, progress. ADR-0009 targets 14 at
+**Commands registered (10):** `StartNewGame`, `ResumeSavedRun`, `SaveGame`, `QuitToMenu`,
+`TravelToZone`, `Inspect`, `Collect`, `TakeItem`, `CombineItems`, `UseItem`.
+**Save participants registered (4):** session, player, progress, inventory. ADR-0009 targets 14 at
 completion; each later phase adds its own.
 
 **Added in Phase 1.5:** the `ForgottenIsle.Editor` assembly (ADR-0001's fifth, previously missing);
@@ -56,14 +56,32 @@ playable chain is: read the Standing Stone → take the Brass Tag → Fernmaw un
 Gully Mouth → read the Cut Channel Wall → take the Waterlogged Reel → return. Travel to a locked
 zone is refused at the command layer.
 
-**Still not implemented.** Inventory, item combination, crafting, survival meters, camp, puzzles,
-weather, dialogue, story beyond six narration lines, and any audio content.
+**Added in Phase 3 (first half) — items and the first puzzle.** `Inventory` and `Combinations` in
+Core (engine-free; no stacks, no weight, no slots); `InventoryService` as the fourth save
+participant; three commands and handlers; `ItemPickup` and `Mechanism` interactables. A failed
+combination consumes nothing — the soft-lock rule, asserted by name in `InventoryTests`. The puzzle
+chain is: find the Dry Spindle on the shore → find the Waterlogged Reel in the channel → combine
+them into the Rebound Reel → take the Sluice Key from its bracket → open the seized sluice → play
+the reel on the tape deck.
+
+**Added in the graphics pass — the island stopped looking like a greybox.** Five shaders under
+`Assets/Resources/Shaders`: `Vardholm/Sky` (gradient, cloud deck, sun disc placed from the light's
+own transform), `Vardholm/Water` (three crossing waves, analytic normals, ripples, Fresnel, crest
+foam), `Vardholm/Terrain` (uses the vertex colours `Standard` was discarding; slope rock, shoreline
+sand, world-space noise), `Vardholm/Prop` (world-space mottling, weathered upward faces) and
+`Vardholm/Foliage` (procedural blade cut-outs, wind in the vertex shader, wrap lighting). The height
+field now shapes an actual island — a noise-perturbed coastline with land inside it and a seabed
+outside — the ground grid went 33 → 97 a side, the island 120 m → 170 m, and ambient went Flat →
+Trilight. **None of it has been compiled or run** (§2).
+
+**Still not implemented.** Inventory UI, crafting, survival meters, camp, weather, dialogue, story
+beyond the current narration lines, and any audio content.
 
 ## 2. Verification status — read this before trusting anything
 
 | Check | Result |
 |---|---|
-| `ci/validate-structure.py` | **exit 0** — 105 files, 134 public types, 0 errors, 47 warnings |
+| `ci/validate-structure.py` | **exit 0** — 116 files, 155 public types, 13 checks, 0 errors, 52 warnings |
 | `ci/check-layering.sh` | **exit 0** — all 5 invariants hold |
 | Core references `UnityEngine` | **0 occurrences** outside comments |
 | `Update()` methods | **exactly 1** (`Ticker.cs`) |
@@ -72,11 +90,13 @@ weather, dialogue, story beyond six narration lines, and any audio content.
 | **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
 | **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
 | **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
-| **Tests** | **UNCONFIRMED — 243 tests written (229 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
+| **Tests** | **UNCONFIRMED — 259 tests written (245 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
+| **Shaders** | **NEVER COMPILED.** The five files under `Assets/Resources/Shaders` have not been through Unity's shader compiler, and neither CI gate can look at them — both read C#. A shader that fails to compile renders magenta, so this is visible immediately in the editor and invisible until then. |
 
 `ci/validate-structure.py` is a deliberate compiler substitute: brace balance, namespace
 conformance, engine-free Core, asmdef validity, cross-file undeclared-type detection, LocKey
-coverage, duplicate types. It is not a compiler and cannot prove the project builds.
+coverage, duplicate types, accidental nesting, phantom usings and shadowed locals. It is not a
+compiler, it does not read shaders, and it cannot prove the project builds.
 
 ## 3. CONFLICTS — unresolved contradictions in the documentation
 

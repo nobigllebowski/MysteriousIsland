@@ -1,0 +1,143 @@
+// A sky, drawn rather than imported.
+//
+// The world had no skybox at all: the camera cleared to the fog colour, so every zone was a flat
+// field of one grey behind the geometry. That single fact is most of what made the island read as a
+// mockup -- there was no horizon, and without a horizon there is no sense of standing outdoors.
+//
+// Procedural because this project must run from a clone with no asset downloads, and because a
+// gradient plus a sun costs one full-screen pass of arithmetic and no texture memory.
+Shader "Vardholm/Sky"
+{
+    Properties
+    {
+        _ZenithColor  ("Zenith", Color)           = (0.33, 0.47, 0.62, 1)
+        _HorizonColor ("Horizon", Color)          = (0.72, 0.76, 0.78, 1)
+        _GroundColor  ("Below horizon", Color)    = (0.22, 0.23, 0.22, 1)
+        _SunColor     ("Sun", Color)              = (1.00, 0.96, 0.88, 1)
+        _SunDirection ("Sun direction", Vector)   = (0.4, 0.5, 0.75, 0)
+        _SunSize      ("Sun size", Range(0.001, 0.2))     = 0.02
+        _SunGlow      ("Sun glow falloff", Range(2, 512))  = 96
+        _HorizonPower ("Horizon tightness", Range(0.2, 6)) = 1.4
+        _CloudColor   ("Cloud", Color)            = (0.86, 0.87, 0.88, 1)
+        _CloudCover   ("Cloud cover", Range(0, 1))         = 0.45
+        _CloudSharp   ("Cloud edge", Range(0.02, 0.6))     = 0.22
+        _CloudScale   ("Cloud scale", Range(0.5, 12))      = 3.5
+    }
+
+    SubShader
+    {
+        // Background queue, no depth write, no culling: the standard contract for a skybox, which
+        // is drawn as a hull around the camera before anything else.
+        Tags { "Queue" = "Background" "RenderType" = "Background" "PreviewType" = "Skybox" }
+        Cull Off
+        ZWrite Off
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 3.0
+            #include "UnityCG.cginc"
+
+            fixed4 _ZenithColor;
+            fixed4 _HorizonColor;
+            fixed4 _GroundColor;
+            fixed4 _SunColor;
+            float4 _SunDirection;
+            float  _SunSize;
+            float  _SunGlow;
+            float  _HorizonPower;
+            fixed4 _CloudColor;
+            float  _CloudCover;
+            float  _CloudSharp;
+            float  _CloudScale;
+
+            struct appdata
+            {
+                float4 vertex : POSITION;
+            };
+
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float3 dir : TEXCOORD0;
+            };
+
+            // The skybox hull's object-space vertex position IS the view direction; no matrix
+            // needed, and it interpolates correctly across the face.
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.dir = v.vertex.xyz;
+                return o;
+            }
+
+            float hash21(float2 p)
+            {
+                p = frac(p * float2(127.1, 311.7));
+                p += dot(p, p + 34.56);
+                return frac(p.x * p.y);
+            }
+
+            float vnoise(float2 p)
+            {
+                float2 i = floor(p);
+                float2 f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+                float a = hash21(i);
+                float b = hash21(i + float2(1.0, 0.0));
+                float c = hash21(i + float2(0.0, 1.0));
+                float d = hash21(i + float2(1.0, 1.0));
+                return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+            }
+
+            float fbm(float2 p)
+            {
+                return vnoise(p) * 0.53 + vnoise(p * 2.07 + 19.3) * 0.27
+                     + vnoise(p * 4.31 + 41.7) * 0.14 + vnoise(p * 8.13 + 7.1) * 0.06;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float3 d = normalize(i.dir);
+                float up = d.y;
+
+                // Two gradients meeting at the horizon. Above it the sky deepens toward the zenith;
+                // below it the dome darkens toward the ground colour, which is what the player sees
+                // past the edge of the island before the water plane takes over.
+                float3 above = lerp(_HorizonColor.rgb, _ZenithColor.rgb, pow(saturate(up), _HorizonPower));
+                float3 below = lerp(_HorizonColor.rgb, _GroundColor.rgb, pow(saturate(-up), 0.6));
+                float3 col = up >= 0.0 ? above : below;
+
+                // Clouds, on a plane projected through the dome. Dividing by the vertical component
+                // stretches the pattern toward the horizon exactly the way a real cloud deck
+                // foreshortens, and the saturate() keeps the divide away from zero at eye level.
+                float horizonFade = saturate(up * 6.0);
+                float2 plane = d.xz / max(abs(up) + 0.18, 0.18) * _CloudScale;
+                float clouds = fbm(plane);
+                clouds = smoothstep(1.0 - _CloudCover, 1.0 - _CloudCover + _CloudSharp, clouds);
+                col = lerp(col, _CloudColor.rgb, clouds * horizonFade * 0.85);
+
+                // The sun: a hard disc for the body, a wide power falloff for the glow around it.
+                // The glow is what ties the sky to the directional light -- without it the light
+                // has no visible source and the scene looks lit from nowhere.
+                float3 sunDir = normalize(_SunDirection.xyz);
+                float sd = saturate(dot(d, sunDir));
+                float disc = smoothstep(1.0 - _SunSize, 1.0 - _SunSize * 0.25, sd);
+                float glow = pow(sd, _SunGlow);
+                float halo = pow(sd, 6.0) * 0.12;
+                col += _SunColor.rgb * (disc * 3.0 + glow * 0.8 + halo);
+
+                // A pinch of ordered dither. A smooth gradient across a whole screen is the one
+                // case where 8-bit output bands visibly, and banding is a tell that reads as cheap.
+                float dither = (hash21(i.pos.xy) - 0.5) * (1.0 / 255.0);
+                return fixed4(col + dither, 1.0);
+            }
+            ENDCG
+        }
+    }
+
+    Fallback Off
+}
