@@ -9,6 +9,43 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — Phase 1.5: Unity integration
+
+Closes the gap between "the code exists" and "clone, open Unity, press Play".
+
+- **`ForgottenIsle.Editor`** — ADR-0001's fifth assembly, which Phase 1 never created.
+- **`Vardholm → Setup Project`** — one idempotent menu command that creates the four scene assets
+  through `EditorSceneManager`, writes Build Settings in `SceneKeys.All` order, and verifies the
+  localization resource. Plus `Validate Project` (read-only) and `Open Bootstrap Scene`.
+- **First-run prompt** — a fresh clone offers setup on first editor load rather than failing
+  mysteriously. Offered, not forced: silently writing assets on project open is the kind of
+  surprise that makes a toolchain untrustworthy.
+- **`ZoneFurnisher`** — builds ground, directional light, entry anchor, player capsule and camera
+  for any zone scene that does not provide them. This is what makes an empty scene playable, and
+  it is why the scene assets can stay empty and therefore un-corruptible. Authored art always
+  wins; the furnisher only fills gaps.
+- **`VardholmStartupValidator`** — a development-only startup self-check printing PASS / WARN /
+  FAIL for services, scenes in Build Settings, localization, and duplicate bootstrap hosts.
+  Editor and development builds only, compiled out of release by `[Conditional]`.
+- **Runtime camera-pivot attachment** on `PlayerRig`, removing the last dependency in the project
+  that required Inspector assignment. Nothing now needs manual wiring.
+- **`docs/SCENE_CONTRACT.md`** — the dependency graph and what each scene must contain.
+- **`docs/UNITY_RISK_AUDIT.md`** — per-subsystem compile risk, honestly rated.
+- Two new test files: `StartupValidatorTests` (EditMode) and `FirstPlayableFlowTests` (PlayMode),
+  the latter walking new game → furnished zone → pause → resume → save → quit → continue →
+  restored, which is the loop that had no coverage at all.
+
+### Fixed
+
+- `AppBootstrap` searched a loaded zone for a player rig, found none in an empty Phase 1 scene,
+  and **returned silently** — leaving the player in a zone with no body, no camera and nothing
+  underfoot. It now furnishes the zone instead.
+- The structural validator did not know `UnityEditor` types, so the new Editor assembly tripped
+  its undeclared-type check. It now carries a separate `UNITY_EDITOR_TYPES` set, kept distinct so
+  the editor-only boundary stays visible.
+- `Assets/Scenes/README.md` and `docs/dev-setup.md` told the reader to build four scenes and their
+  contents by hand. Both now point at the menu command.
+
 ### Added — Project memory system
 
 Eight documents that make the repository the authoritative source of truth, so a session can be

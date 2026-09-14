@@ -28,7 +28,9 @@ weapons; the signature tool is a microphone.
 | 4 | `ROADMAP.md` | Where we are and what is next |
 | 5 | `ARCHITECTURE.md` | How the code is shaped and why |
 | 6 | `GAME_VISION.md` | What the game is |
-| 7 | `design/01-story-bible.md` | **The naming authority.** Consult before inventing any noun. |
+| 7 | `SCENE_CONTRACT.md` | The dependency graph and what each scene must contain (nothing). |
+| 8 | `UNITY_RISK_AUDIT.md` | What is likely to compile, what needs the editor, what is high risk. |
+| 9 | `design/01-story-bible.md` | **The naming authority.** Consult before inventing any noun. |
 
 Deep detail sits under `design/`, `architecture/` and `production/`. **Nine of those documents
 predate the ADRs and were never reconciled with them** — Phase 1 Task 0 was specified and never
@@ -39,8 +41,9 @@ run. Always check `CURRENT_STATE.md` §Conflicts before trusting an older docume
 1. **Nothing has been compiled.** No Unity, no .NET SDK, no Mono in the dev container, and the
    proxy blocks Microsoft's SDK downloads. 211 tests are written and 0 have run. Never claim
    otherwise — say what was verified and what needs the editor.
-2. **The scenes do not exist.** `.unity` files must be authored by hand in the editor following
-   `../Assets/Scenes/README.md`. The project cannot run until they are.
+2. **The scenes are generated, not committed.** Run **`Vardholm → Setup Project`** once after
+   cloning; it creates all four and writes Build Settings. Never author them by hand. The scene
+   assets are deliberately empty — the runtime furnishes everything (`SCENE_CONTRACT.md`).
 3. **`ForgottenIsle.Core` must never see `UnityEngine`.** Not `Vector3`, not `ScriptableObject`.
    If you type it under `Assets/Scripts/Core/`, you have made a mistake.
 4. **UI must not mutate state.** Tap → controller → command → handler. The gate enforces it.
@@ -59,8 +62,9 @@ Both currently pass. Run them before and after every code change.
 ## 5. Getting it running
 
 `dev-setup.md` is the clean-machine walkthrough. Short version: Unity Hub → install
-`6000.6.0f1` → *Add project from disk* → **author the four scenes** → Game view 390×844 portrait →
-open `Bootstrap.unity` → Play. Tests: **Window → General → Test Runner → EditMode → Run All**.
+`6000.6.0f1` → *Add project from disk* → **`Vardholm → Setup Project`** → Game view 390×844
+portrait → open `Bootstrap.unity` → Play, then read the `VARDHOLM STARTUP CHECK` block in the
+Console. Tests: **Window → General → Test Runner**.
 
 ## 6. Repository and history
 

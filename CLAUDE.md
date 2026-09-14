@@ -4,7 +4,8 @@ Operating rules for this repository. Read `docs/PROJECT_HANDOFF.md` at the start
 
 **Game:** VARDHOLM — premium portrait mobile mystery-adventure. Unity 6 (`6000.6.0f1`), C#, URP.
 **Branch:** `claude/keen-darwin-frw656` (the repository's only branch, and its default).
-**Phase:** 1 complete and pushed. Phase 2 NOT started.
+**Phase:** 1.5 (Unity integration) complete and pushed. Phase 2 NOT started.
+**Setup:** after cloning, run `Vardholm → Setup Project` in Unity. Never create scenes by hand.
 
 ---
 

@@ -39,6 +39,8 @@ These seven files (plus `../CLAUDE.md`) are the authoritative layer. The documen
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | How the code is shaped and why. |
 | [`GAME_VISION.md`](GAME_VISION.md) | What the game is. |
 | [`ROADMAP.md`](ROADMAP.md) | Where we are and what is next. |
+| [`SCENE_CONTRACT.md`](SCENE_CONTRACT.md) | Dependency graph, scene contracts, what the runtime builds. |
+| [`UNITY_RISK_AUDIT.md`](UNITY_RISK_AUDIT.md) | Per-subsystem compile risk: safe / needs verification / high risk. |
 | [`CHANGELOG.md`](CHANGELOG.md) | What changed, when. |
 
 ## Read this first

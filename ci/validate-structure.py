@@ -250,7 +250,28 @@ TEST_TYPES = {
     "ConditionalIgnore", "ConditionalIgnoreAttribute", "RequirePlatformSupport",
 }
 
-KNOWN_EXTERNAL_TYPES = BCL_TYPES | UNITY_TYPES | TEST_TYPES
+# UnityEditor types. Kept in their own set rather than folded into UNITY_TYPES so that the
+# distinction stays visible: anything here is editor-only and must never appear outside
+# ForgottenIsle.Editor or an "#if UNITY_EDITOR" block. The engine-free-Core check and the
+# layering gate are what enforce that; this set only stops the contract scanner reporting
+# real Unity types as undeclared.
+UNITY_EDITOR_TYPES = {
+    "EditorWindow", "Editor", "EditorGUI", "EditorGUILayout", "EditorGUIUtility",
+    "EditorApplication", "EditorUtility", "EditorPrefs", "AssetDatabase",
+    "EditorBuildSettings", "EditorBuildSettingsScene", "BuildPipeline",
+    "BuildPlayerOptions", "BuildReport", "BuildTarget", "BuildTargetGroup",
+    "EditorSceneManager", "NewSceneSetup", "NewSceneMode", "OpenSceneMode",
+    "SceneAsset", "MenuItem", "InitializeOnLoad", "InitializeOnLoadMethod",
+    "InitializeOnLoadMethodAttribute", "InitializeOnLoadAttribute",
+    "MenuItemAttribute", "SerializedObject", "SerializedProperty",
+    "PropertyDrawer", "CustomEditor", "CustomEditorAttribute", "Selection",
+    "Undo", "PrefabUtility", "GUIContent", "GUILayout", "GUI", "GUIStyle",
+    "IPreprocessBuildWithReport", "IPostprocessBuildWithReport",
+    "BuildFailedException", "AssetPostprocessor", "AssetImporter",
+    "TextAsset", "DefaultAsset",
+}
+
+KNOWN_EXTERNAL_TYPES = BCL_TYPES | UNITY_TYPES | TEST_TYPES | UNITY_EDITOR_TYPES
 
 # C# contextual/reserved words that can appear where the reference scanners look
 # for a type name. They are never types, so they must never be reported.

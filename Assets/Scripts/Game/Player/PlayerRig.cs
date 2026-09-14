@@ -72,6 +72,40 @@ namespace ForgottenIsle.Game.Player
         [SerializeField, Tooltip("Transform yawed by look input. Usually the camera's parent pivot.")]
         private Transform _cameraPivot;
 
+        /// <summary>The transform this rig yaws with look input, if it has one.</summary>
+        /// <remarks>
+        /// Exposed so the runtime furnisher can ask whether a pivot is already wired before building
+        /// one. Read-only: nothing outside this component may re-parent or re-point the camera.
+        /// </remarks>
+        public Transform CameraPivot
+        {
+            get { return _cameraPivot; }
+        }
+
+        /// <summary>
+        /// Supplies the camera pivot at runtime, for a rig that was created rather than authored.
+        /// </summary>
+        /// <remarks>
+        /// The field is <c>[SerializeField]</c> so a hand-authored rig can be wired in the Inspector,
+        /// but a furnished rig has no Inspector pass to be wired in. This was the last dependency in
+        /// the project that required manual assignment; with it settable at runtime, a zone scene can
+        /// be completely empty and still produce a playable camera.
+        /// <para>
+        /// An already-assigned pivot wins: an authored rig's own camera is never replaced.
+        /// </para>
+        /// </remarks>
+        /// <param name="pivot">Transform to yaw. Ignored when null, or when one is already set.</param>
+        public void AttachCameraPivot(Transform pivot)
+        {
+            if (pivot == null || _cameraPivot != null)
+            {
+                return;
+            }
+
+            _cameraPivot = pivot;
+            _cameraPivot.rotation = Quaternion.Euler(0f, _yawDegrees, 0f);
+        }
+
         private SessionService _session;
         private InputRouter _input;
         private Vector2 _moveInput;

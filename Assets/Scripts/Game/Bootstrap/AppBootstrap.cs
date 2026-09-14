@@ -5,6 +5,7 @@
 // reference ForgottenIsle.UI; and a self-heal path was added so playing any scene directly lands in a valid state.
 
 using System;
+using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.State;
 using ForgottenIsle.Game.Diagnostics;
 using ForgottenIsle.Game.Player;
@@ -52,6 +53,9 @@ namespace ForgottenIsle.Game.Bootstrap
         /// service and is not the service locator ADR-0012 forbids.
         /// </remarks>
         private static bool _booted;
+
+        /// <summary>Fills in whatever an empty zone scene does not provide.</summary>
+        private ZoneFurnisher _furnisher;
 
         /// <summary>
         /// Raised once per boot, as soon as the object graph exists and before the first state
@@ -136,6 +140,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Application.targetFrameRate = TargetFrameRate;
 
             Context = AppCompositionRoot.Build(this);
+            _furnisher = new ZoneFurnisher(Context.Session, Context.Input, Context.Log);
 
             // Announced here, before the transitions below, so that a listener is already wired when
             // MainMenu (and, on the self-heal path, Loading and InGame) is published and does not have to
@@ -155,6 +160,11 @@ namespace ForgottenIsle.Game.Bootstrap
 
             Context.States.TryTransition(GameStateId.MainMenu);
             SelfHealIntoOpenScene();
+
+            // Last, so it sees the finished graph and whatever the self-heal path adopted. The call is
+            // [Conditional] on UNITY_EDITOR/DEVELOPMENT_BUILD, so it compiles out of a release player
+            // entirely — including the argument evaluation.
+            VardholmStartupValidator.RunAndLog(Context);
         }
 
         /// <summary>
@@ -218,7 +228,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Debug.Log(UnityCoreLog.Prefix + "self-heal booted into zone " + openZone + ".");
 #endif
 
-            BindPlayerRig();
+            FurnishZone(openZone);
         }
 
         private static string FindOpenZoneScene()
@@ -239,31 +249,34 @@ namespace ForgottenIsle.Game.Bootstrap
         {
             if (SceneKeys.IsZone(sceneKey))
             {
-                BindPlayerRig();
+                FurnishZone(sceneKey);
             }
         }
 
         /// <summary>
-        /// Hands the newly resident zone's player rig its dependencies.
+        /// Makes a newly resident zone stand-in-able: ground, light, entry anchor, player and camera.
         /// </summary>
         /// <remarks>
-        /// ⚠ VERIFY — this is the one scene-wide search in the project and it is deliberate, bounded and
-        /// temporary. A rig is authored inside a zone scene, so it cannot be constructor-injected by the
-        /// composition root, which ran before the scene existed. This is a *view* lookup across a load
-        /// boundary, not service location: it finds an object to inject INTO, and no service is ever
-        /// read back out of it. Phase 2 replaces it with a scene-authored binder component that
-        /// registers itself on enable, at which point this method deletes.
+        /// This replaces the previous bind-only behaviour, which searched for a rig, found none in an
+        /// empty Phase 1 zone, and returned silently — leaving the player loaded into a zone with no
+        /// body, no camera and nothing under their feet. Furnishing is what lets the scene assets stay
+        /// empty (and therefore un-corruptible and never out of step with the code) while the first
+        /// playable state is still real.
+        /// <para>
+        /// The furnisher only creates what the scene does not already provide, so authored art
+        /// displaces these placeholders with no code change.
+        /// </para>
         /// </remarks>
-        private void BindPlayerRig()
+        private void FurnishZone(string sceneKey)
         {
-            var rig = UnityEngine.Object.FindAnyObjectByType<PlayerRig>(FindObjectsInactive.Exclude);
-            if (rig == null)
+            var scene = SceneManager.GetSceneByName(sceneKey);
+            if (!scene.IsValid() || !scene.isLoaded)
             {
-                // Phase 1 zones are allowed to be empty geometry with no rig in them.
+                Context.Log.Warn(LogCode.SceneLoadSlow, "furnish: scene not resident: " + sceneKey);
                 return;
             }
 
-            rig.Initialize(Context.Session, Context.Input, Context.Log);
+            _furnisher.Furnish(scene);
         }
 
         private void OnDestroy()

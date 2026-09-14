@@ -164,20 +164,23 @@ Verify: the Console has zero red errors, and the Project window shows
 
 ---
 
-## 5. Create the scenes (first setup only)
+## 5. Run project setup (one click)
 
-The repository ships **no `.unity` files** — they are Editor-generated YAML and
-cannot be authored by hand safely. If `Assets/Scenes/` contains only
-`README.md`, you are the first person to open this project and you need to
-create them.
+From the menu bar: **`Vardholm → Setup Project`**.
 
-Follow **`Assets/Scenes/README.md`** exactly. It specifies all four scenes
-(`Bootstrap`, `MainMenu`, `ZoneRibcage`, `ZoneFernmaw`), the panel settings
-asset, and the Build Settings order. Then come back here.
+It creates the four scene assets, writes Build Settings in the right order, and verifies the
+localization resource. It is idempotent, and it never overwrites anything that exists.
 
-If the scenes already exist in the repo, skip this step.
+On a fresh clone the editor also offers this automatically the first time it loads.
 
----
+**You do not create any scenes or GameObjects by hand.** See `SCENE_CONTRACT.md` for why the
+scene assets are empty and what the runtime builds instead.
+
+### Verify
+
+- `Vardholm → Validate Project` — read-only check.
+- Press Play on `Bootstrap` and read the `VARDHOLM STARTUP CHECK` block in the Console.
+
 
 ## 6. Sync the localization table into Resources
 
