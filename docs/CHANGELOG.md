@@ -9,6 +9,22 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the last two compile errors
+
+- **`InputActionSetupExtensions.AddAction` has no `expectedControlType` parameter** (CS1739, 2
+  sites in `VardholmControls.cs`). The named argument is **`expectedControlLayout`**. Verified
+  against the Input System API docs rather than guessed.
+
+This lands in the file the risk audit named HIGH RISK, which is some vindication of the audit —
+but the failure mode was *better* than predicted. The audit warned that a mistake here "compiles
+cleanly and produces an action that silently never fires". This one did not compile at all, which
+is the good outcome. **The binding strings themselves are still unverified**: `"2DVector(mode=2)"`,
+`<Keyboard>/w`, the processor strings. Those are parsed at runtime and only pressing a key proves
+them.
+
+The validator's `DEPRECATED` table gained the CS1739 named argument, so this exact mistake cannot
+return silently.
+
 ### Fixed — third editor open: all 11 warnings
 
 The project code now compiles far enough to produce warnings rather than stopping. Two errors

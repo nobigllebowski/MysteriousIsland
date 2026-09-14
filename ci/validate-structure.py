@@ -1443,6 +1443,9 @@ DEPRECATED_UNITY_APIS = [
     (re.compile(r"(?<![\w<])TreeViewState(?![\w<])|(?<![\w<])TreeViewItem(?![\w<])"),
      "the non-generic IMGUI TreeView types were deprecated in Unity 6.3 and are obsolete-as-error; "
      "use the TreeViewState<int> / TreeViewItem<int> generics"),
+    (re.compile(r"\bexpectedControlType\s*:"),
+     "InputActionSetupExtensions.AddAction has no 'expectedControlType' parameter; "
+     "the named argument is 'expectedControlLayout' (CS1739)"),
 ]
 
 

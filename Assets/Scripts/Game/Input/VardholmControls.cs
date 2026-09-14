@@ -93,7 +93,7 @@ namespace ForgottenIsle.Game.Input
             _gameplay = new InputActionMap(GameplayMapName);
 
             // MOVE — the character's intended direction on the ground plane, as a sustained value.
-            Move = _gameplay.AddAction("Move", InputActionType.Value, expectedControlType: "Vector2");
+            Move = _gameplay.AddAction("Move", InputActionType.Value, expectedControlLayout: "Vector2");
             Move.AddBinding("<Gamepad>/leftStick", processors: StickDeadzone);
             // mode=2 is "digital normalized": the four keys produce a unit vector, so holding two of them
             // walks diagonally at walking speed rather than at 1.41x walking speed.
@@ -110,7 +110,7 @@ namespace ForgottenIsle.Game.Input
 
             // LOOK — camera aim. Mouse contributes a per-frame delta, the stick a rate; both are read the
             // same way and the scale processors above are what makes that honest.
-            Look = _gameplay.AddAction("Look", InputActionType.Value, expectedControlType: "Vector2");
+            Look = _gameplay.AddAction("Look", InputActionType.Value, expectedControlLayout: "Vector2");
             Look.AddBinding("<Mouse>/delta", processors: MouseLookScale);
             Look.AddBinding("<Gamepad>/rightStick", processors: StickDeadzone);
 
