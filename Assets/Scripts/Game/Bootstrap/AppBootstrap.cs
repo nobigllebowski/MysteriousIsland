@@ -327,18 +327,49 @@ namespace ForgottenIsle.Game.Bootstrap
         /// </remarks>
         private void RestoreBootAsActiveScene()
         {
-            var boot = gameObject.scene;
-            if (!boot.IsValid() || !boot.isLoaded)
+            // NOT gameObject.scene. This host is on DontDestroyOnLoad, so its scene IS the
+            // DontDestroyOnLoad pseudo-scene, and SetActiveScene throws an ArgumentException on it.
+            // The previous version knew that in its comment and then guarded with IsValid/isLoaded,
+            // which are both TRUE for that pseudo-scene -- so the guard passed and the call threw.
+            // The boot scene is addressed by name, and every candidate is checked with the one
+            // property that actually separates a real scene from an engine-internal one.
+            var boot = SceneManager.GetSceneByName(SceneKeys.Bootstrap);
+            if (!IsActivatable(boot))
             {
-                // The host is on DontDestroyOnLoad, whose pseudo-scene cannot be made active. Fall
-                // back to whatever non-zone scene is loaded rather than forcing an invalid one.
-                boot = SceneManager.GetSceneByName(SceneKeys.Bootstrap);
+                boot = FirstActivatableNonZoneScene();
             }
 
-            if (boot.IsValid() && boot.isLoaded && SceneManager.GetActiveScene() != boot)
+            if (IsActivatable(boot) && SceneManager.GetActiveScene() != boot)
             {
                 SceneManager.SetActiveScene(boot);
             }
+        }
+
+        /// <summary>True when Unity will accept this scene as the active one.</summary>
+        /// <remarks>
+        /// <c>buildIndex</c> is the discriminator, not <c>IsValid</c> or <c>isLoaded</c>: the
+        /// DontDestroyOnLoad pseudo-scene reports valid and loaded like any other, and is rejected
+        /// only because Unity created it rather than loading it. A negative build index is what
+        /// marks that.
+        /// </remarks>
+        private static bool IsActivatable(Scene scene)
+        {
+            return scene.IsValid() && scene.isLoaded && scene.buildIndex >= 0;
+        }
+
+        /// <summary>Any loaded, activatable scene that is not a zone. Used when Bootstrap is gone.</summary>
+        private static Scene FirstActivatableNonZoneScene()
+        {
+            for (var i = 0; i < SceneManager.sceneCount; i++)
+            {
+                var scene = SceneManager.GetSceneAt(i);
+                if (IsActivatable(scene) && !SceneKeys.IsZone(scene.name))
+                {
+                    return scene;
+                }
+            }
+
+            return default(Scene);
         }
 
         private void SetFallbackCameraActive(bool active)
@@ -412,7 +443,7 @@ namespace ForgottenIsle.Game.Bootstrap
             //      atmosphere into the boot scene and leaving it there after the zone unloaded.
             //
             // Set before furnishing, so the furnisher's own objects are created in the right place.
-            if (SceneManager.GetActiveScene() != scene)
+            if (IsActivatable(scene) && SceneManager.GetActiveScene() != scene)
             {
                 SceneManager.SetActiveScene(scene);
             }

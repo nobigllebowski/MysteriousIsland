@@ -9,6 +9,27 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — my own regression: `SetActiveScene` on the DontDestroyOnLoad scene
+
+```
+ArgumentException: SceneManager.SetActiveScene failed;
+the internal DontDestroyOnLoad scene cannot be set active.
+```
+
+`RestoreBootAsActiveScene` read `gameObject.scene` to find the boot scene. That host is on
+`DontDestroyOnLoad`, so its scene **is** the DontDestroyOnLoad pseudo-scene. The comment above the
+code said exactly that, and then the guard tested `IsValid()` and `isLoaded` — both of which are
+**true** for that pseudo-scene. The guard passed and the call threw.
+
+The boot scene is now addressed by name, and every candidate goes through one check:
+`buildIndex >= 0`. That is the property that actually separates a real scene from an
+engine-internal one; Unity rejects the pseudo-scene precisely because it created it rather than
+loading it. A fallback scans for any loaded non-zone scene if Bootstrap is somehow gone.
+
+Writing the correct reason in a comment and then not testing for it is a specific kind of mistake,
+and the fix is to test the thing the comment names.
+
+
 ### Added — `ZoneDiagnostics`, because four diagnoses from screenshots produced three wrong answers
 
 A zone that renders nothing and a zone that was never built look identical on screen, and the
