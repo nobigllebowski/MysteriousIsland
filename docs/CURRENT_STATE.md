@@ -55,7 +55,8 @@ capsule moved by transform, not a real character controller.
 | `Update()` methods | **exactly 1** (`Ticker.cs`) |
 | Assembly reference direction | Core ← Game ← UI, no upward refs |
 | Banned C# features | none present |
-| **Compilation** | **UNCONFIRMED — never compiled.** No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
+| **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
+| **Compilation** | **UNCONFIRMED — still never compiled.** Unity stops at the first failing assembly and packages build before user code, so our C# was never reached. No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
 | **Tests** | **UNCONFIRMED — 211 tests written, 0 executed.** |
 
 `ci/validate-structure.py` is a deliberate compiler substitute: brace balance, namespace

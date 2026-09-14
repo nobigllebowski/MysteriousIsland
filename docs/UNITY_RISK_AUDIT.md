@@ -2,6 +2,26 @@
 
 Phase 1.5 · Target **Unity 6000.6.0f1** · 88 C# files
 
+> ### ⚠ FIRST REAL EDITOR FEEDBACK — 2026-09-14
+>
+> The project was opened in Unity `6000.6.0f1` for the first time. It failed with **88 × CS0619**,
+> and **not one of them was in our code** — every error was inside the Input System package:
+> `com.unity.inputsystem@1.14.0` → `InputSystem/Plugins/HID/HIDDescriptorWindow.cs`, using
+> `TreeViewState` / `TreeView` / `TreeViewItem`, which Unity deprecated in 6.3 and treats as
+> obsolete-**as-error**.
+>
+> **Cause:** the pinned version was wrong for the editor. `1.14.2` targets Unity `6000.1`; the
+> version released for `6000.6` is **`1.19.0`**. Fixed by bumping the pin.
+>
+> **What this means for everything below:** Unity halts at the first failing assembly, and package
+> assemblies compile before user assemblies. **So none of our C# has been compiled yet** — every
+> verdict in this audit remains exactly as unverified as it was before the editor was opened.
+> The risks were neither confirmed nor cleared.
+>
+> **Lesson recorded:** the four packages removed earlier for being unused were the right call but
+> the wrong target. The dangerous pin was the one package we actually need. Pinned package versions
+> must be checked against the editor version, not merely against whether the package is used.
+
 **This audit does not claim the project compiles.** Nothing here has been through a C# compiler —
 there is no Unity, no .NET SDK and no Mono in the environment this was written in. What follows is
 a static reading of the API surface against what I can verify, with everything uncertain named.

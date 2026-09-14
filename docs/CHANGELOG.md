@@ -9,6 +9,17 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — first editor open
+
+- **`com.unity.inputsystem` pinned at `1.14.0`, which targets Unity `6000.1`, not `6000.6.0f1`.**
+  The first attempt to open the project produced 88 × CS0619 inside the package's own
+  `HIDDescriptorWindow.cs`, which uses `TreeViewState` / `TreeView` / `TreeViewItem` — deprecated
+  in Unity 6.3 and treated as obsolete-as-error. Bumped to `1.19.0`, the version released for
+  `6000.6`.
+- Not a single error was in project code. Unity halts at the first failing assembly and package
+  assemblies compile first, so **our C# still has not been compiled** — the risk audit's verdicts
+  are unchanged, neither confirmed nor cleared.
+
 ### Added — Phase 1.5: Unity integration
 
 Closes the gap between "the code exists" and "clone, open Unity, press Play".
