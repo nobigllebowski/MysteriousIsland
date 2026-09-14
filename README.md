@@ -1,4 +1,4 @@
-# THE FORGOTTEN ISLE
+# VARDHOLM
 
 > **SURVIVE THE ISLAND. DISCOVER THE TRUTH.**
 
@@ -12,17 +12,22 @@ for thirty-one years.*
 
 ## Status
 
-**Phase 0 — design complete, awaiting approval.** There is no game code in this repository yet,
-by design. Implementation begins only once the Phase 1 plan is approved.
+**Phase 1 — in progress.** Phase 0 design is approved and its decisions are locked (title, save
+spine in Phase 1, premium business model, platform priority, game identity). Phase 1 implements
+the project spine: assemblies, bootstrap, state machine, save system, scene navigation and the
+UI Toolkit menu shell.
+
+Core infrastructure is **ported from the team's NATION: WORLD ORDER project** rather than written
+from scratch — see the [migration plan](docs/production/04-migration-plan.md).
 
 | | |
 |---|---|
-| **Recommended title** | **VARDHOLM** — see [title evaluation](docs/production/01-title-evaluation.md). *The Forgotten Isle* is retained as the working title until a decision is made. |
+| **Title** | **VARDHOLM** *(locked)*. Store subtitle: *Vardholm: A Survival Mystery*; keyword variant *Vardholm: Survival Mystery*. The earlier working title is retired — see [title evaluation](docs/production/01-title-evaluation.md). |
 | **Genre** | Mystery adventure · exploration · environmental puzzle · light survival · crafting |
 | **Platform** | iOS + Android, portrait. Landscape tablet is a possible future target. |
 | **Engine** | Unity 6 LTS, C#, URP, New Input System |
 | **Perspective** | First person, with an authored third-person "Body Camera" for ~14 cinematic beats |
-| **Model** | Free 30-minute prologue → one-time premium unlock. No ads. No pay-to-win. |
+| **Model** | *(locked)* Free 30–45 minute prologue → one-time full unlock. No ads, no energy system, no consumable currency, no pay-to-win, no purchase-pressure timers. |
 | **Length** | 8–10 hour golden path, designed around 12–20 minute sessions |
 
 ## Start here
@@ -64,5 +69,12 @@ docs/
 CHANGELOG.md
 ```
 
-The `Assets/`, `Packages/` and `ProjectSettings/` Unity tree is created in Phase 1, per
-[`docs/production/03-phase-1-plan.md`](docs/production/03-phase-1-plan.md).
+```
+Assets/Scripts/Core/    ForgottenIsle.Core   — engine-free domain. No UnityEngine, at all.
+Assets/Scripts/Game/    ForgottenIsle.Game   — bootstrap, scenes, saves, input, session
+Assets/Scripts/UI/      ForgottenIsle.UI     — UI Toolkit layer (ported framework)
+Assets/Tests/           EditMode + PlayMode
+ci/                     layering gate + structural validator
+```
+
+To open and run the project, follow [`docs/dev-setup.md`](docs/dev-setup.md).

@@ -1,4 +1,4 @@
-# MOBILE UX PLAN — THE FORGOTTEN ISLE
+# MOBILE UX PLAN — VARDHOLM
 ## Portrait Mobile Adventure, Unity 6 LTS / URP / New Input System
 **Reference frame: 390 × 844 pt (iPhone 12/13/14 logical). All coordinates below are in pt, origin top-left, +Y down, unless stated.**
 

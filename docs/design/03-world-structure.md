@@ -1,4 +1,4 @@
-# THE FORGOTTEN ISLE — World Structure Document
+# VARDHOLM — World Structure Document
 
 ## Lead Level Design · v1.0 · Cites Story Bible v1.0
 

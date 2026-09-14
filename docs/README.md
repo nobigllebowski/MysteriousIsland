@@ -1,4 +1,4 @@
-# THE FORGOTTEN ISLE — Design & Architecture Documentation
+# VARDHOLM — Design & Architecture Documentation
 
 **Status:** Phase 0 (design) — awaiting approval before any code is written.
 **Recommended title:** VARDHOLM *(see `production/01-title-evaluation.md`)*

@@ -1,4 +1,4 @@
-# THE FORGOTTEN ISLE
+# VARDHOLM
 ## Canonical Story Bible — v1.0 (Production Canon)
 **Tagline:** SURVIVE THE ISLAND. DISCOVER THE TRUTH.
 
@@ -165,7 +165,7 @@ Nearest comparables, and the concrete separation:
 
 **The load-bearing originality:** the mystery is a *maintenance problem*. The ancients were competent rather than wise; the antagonist is a good scientist who could not revise a conclusion; and the final antagonistic pressure is an employment contract with a dead foundation.
 
-**Unverified assumption flagged for clearance:** "THE FORGOTTEN ISLE", "Vardholm", "Pellamar", "Tolo Vardh", "Substation Oleander", "Orrimond Trust", "Ferrier–Oleander Consortium", "Project Wellhead", "Cormorant Trust" and all character names have **not** been trademark- or title-searched by me. Run a full clearance pass before any public use.
+**Unverified assumption flagged for clearance:** "VARDHOLM", "Pellamar", "Tolo Vardh", "Substation Oleander", "Orrimond Trust", "Ferrier–Oleander Consortium", "Project Wellhead", "Cormorant Trust" and all character names have **not** been trademark- or title-searched by me. Run a full clearance pass before any public use.
 
 ---
 

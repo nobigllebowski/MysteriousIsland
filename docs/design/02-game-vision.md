@@ -1,6 +1,6 @@
 # GAME VISION — ONE PAGE
 
-**Working title:** VARDHOLM *(recommended; supersedes the working title "The Forgotten Isle" — see `docs/production/01-title-evaluation.md`)*
+**Title:** VARDHOLM *(locked)* · Store subtitle: *Vardholm: A Survival Mystery*
 **Tagline:** SURVIVE THE ISLAND. DISCOVER THE TRUTH.
 **Platform:** iOS + Android · Portrait · Unity 6 LTS / C# / URP
 **Cites:** Story Bible v1.0 (`01-story-bible.md`)
@@ -64,8 +64,12 @@ boundary. Supports 90-minute sittings without a difficulty or pacing change. Tot
 
 ## COMMERCIAL MODEL
 
-**Free prologue → one-time premium unlock.** The 30-minute prologue (`04-first-30-minutes.md`) is
-the entire free product and ends on the unknown signal. No ads, ever. No pay-to-win, no energy
+**Free prologue → one-time full unlock** *(locked)*. The **30–45 minute** prologue
+(`04-first-30-minutes.md`) is the entire free product. Before the unlock decision the player must
+have experienced: the shipwreck, first exploration, the first environmental puzzle, the Field
+Slate, the radio repair, the mysterious transmission, the first major reveal, and entry into the
+next major area. The unlock must read as **"continue the mystery"**, never "pay to keep playing."
+No ads, no energy system, no consumable currency, no pay-to-win, no purchase-pressure timers. No ads, ever. No pay-to-win, no energy
 timers, no consumable IAP. Architecture supports Unity IAP, restore purchases and future expansion
 unlocks (*The Lost City*, *Beneath the Island*) from Phase 1 — **but nothing is implemented until
 Phase 15.** The price point is defended by the title, the icon and the first two screenshots.

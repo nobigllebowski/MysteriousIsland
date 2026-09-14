@@ -1,4 +1,4 @@
-# THE FORGOTTEN ISLE — Core Systems Specification
+# VARDHOLM — Core Systems Specification
 ## Lead Gameplay Engineer · v1.0 · Unity 6 LTS / C# / URP / New Input System
 
 ---

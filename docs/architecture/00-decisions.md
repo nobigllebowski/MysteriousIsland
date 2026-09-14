@@ -255,6 +255,45 @@ explicit integer keys, which is what makes the migration framework tractable. Re
 
 ---
 
+## ADR-0014 — UI Toolkit, not uGUI. **This reverses Phase 1 Plan §4.**
+
+**Decision.** The UI layer is **UI Toolkit**, built in code, ported from the NATION: WORLD ORDER
+project's UI framework.
+
+**Superseded.** `03-phase-1-plan.md` §4 chose uGUI.
+
+**Why the earlier decision was right then and wrong now.** The uGUI reasoning was: Phase 1 has
+three screens, and we should not learn a UI framework while simultaneously proving an
+architecture. That was sound **under the assumption that we were starting from nothing.**
+
+We are not. `nobigllebowski/MobileGame` contains a complete, working, code-built UI Toolkit
+premium-mobile framework written by this same team: `UIService` (already at a 390×844 portrait
+reference — the exact figure in our Mobile UX Plan), `ScreenStack` with 260 ms transitions,
+`UIScreen`, `SafeAreaElement` reading real insets, `BottomSheet` with drag detents, `ModalLayer`,
+`ToastLayer`, and a design-token palette.
+
+So the decision is no longer "learn UI Toolkit vs. use familiar uGUI." It is "**inherit a working
+framework the team already wrote, or rebuild it in a less suitable technology.**" The bottom-sheet
+inventory, the layered HUD and the discovery toasts in the Mobile UX Plan map onto the ported
+components almost one to one.
+
+**Consequence.**
+- Phase 1 ports `UIService`, `ScreenStack`, `UIScreen`, `SafeAreaElement`, `ToastLayer`,
+  `Buttons` and `Typography`, stripping their country/economy dependencies.
+- Nation's `Palette` is **not** ported as-is — its cold blue (`#05080F` / `#3B82F6`) is wrong for
+  a tropical caldera. `Theme.cs` recolors to deep green, dark blue, sunset orange, gold for
+  discoveries, red for danger.
+- Screens receive a narrow `IUiContext` (`ILocalizedText` + `ICoreLog`) rather than the whole
+  context object. This is how ADR-0002's "UI never mutates state" becomes a **type-level**
+  guarantee rather than a code-review convention.
+- The Phase 12 UI polish phase gets materially cheaper.
+
+**What we deliberately do not inherit:** Nation's `GameContext.Current` static singleton. A
+service locator lets any class reach any service, which is the coupling ADR-0012 exists to
+prevent. Vardholm passes dependencies through constructors.
+
+---
+
 ## Open items — tracked, not resolved
 
 | # | Item | Owner | Due |
@@ -264,4 +303,5 @@ explicit integer keys, which is what makes the migration framework tractable. Re
 | O-3 | **Foliage overdraw is unbudgeted.** Alpha-tested foliage is the dominant fragment cost in Fernmaw and appears in no performance budget. The "native resolution, 60 fps, iPhone 12" High tier is the least-supported number in the package. | Tech Director | Phase 0 spike, before Phase 7 |
 | O-4 | **Three zone specs promise volumetric-looking effects** the URP renderer budget does not fund. Either the budget grows or the specs change. | Tech Director + Art | Before Phase 7 |
 | O-5 | **No privacy-manifest plan**, while the package calls two required-reason APIs. | Tech Director | Before Phase 16 |
+| O-7 | **Nation port provenance.** Every ported file carries a header naming its Nation origin. If MobileGame is ever made private or relicensed, that provenance is the record. Same owner, so no licensing issue today. | Tech Director | Ongoing |
 | O-6 | **World clock scale** is stated as two different values across documents. Pick one and assert it in a test. | Lead Gameplay | Phase 1 Task 0 |
