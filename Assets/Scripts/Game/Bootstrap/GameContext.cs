@@ -13,6 +13,7 @@ using ForgottenIsle.Core.Save;
 using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Core.Time;
 using ForgottenIsle.Game.Input;
+using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
 using ForgottenIsle.Game.Session;
 

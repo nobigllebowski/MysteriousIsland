@@ -9,6 +9,29 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — second editor open: the first real compile of project code
+
+88 errors became 3, and for the first time they were ours.
+
+- **`GameContext.cs` used `SaveSlotService` without `using ForgottenIsle.Game.Saves;`** (CS0246,
+  2 sites). Introduced when the shared slot service was added and the using was not.
+- **`SessionService` declared both a `PlayerParticipant` property and a nested
+  `PlayerParticipant` class** (CS0102). The nested type is now `PlayerSaveParticipant`; the public
+  property keeps its name, since four call sites use it.
+
+**The validator missed both, so it gained two checks:**
+
+- `USING` — a project type referenced whose namespace is not in scope. The existing contract check
+  only asked "is this type declared anywhere", so a type that exists but was never imported passed
+  cleanly and failed in Unity. Fully-qualified references are ignored.
+- `COLLISION` — a member and a nested type sharing a name inside the same type. Owner is resolved
+  by brace depth, not regex proximity: a naive first version reported six false positives on
+  legal code like `public readonly Severity Severity;` inside a *different* nested type, and a
+  check that cries wolf gets ignored.
+
+Both were regression-tested by reintroducing the original errors and confirming each is caught at
+the right line with the right fix named.
+
 ### Fixed — first editor open
 
 - **`com.unity.inputsystem` pinned at `1.14.0`, which targets Unity `6000.1`, not `6000.6.0f1`.**

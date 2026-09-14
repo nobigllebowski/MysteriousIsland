@@ -1315,6 +1315,118 @@ def check_duplicate_types(report, files):
                 % (namespace or "<global>", qualified, first_path, first_line))
 
 
+
+def check_missing_usings(report, files):
+    """A project type referenced without its namespace being in scope (C# CS0246).
+
+    WHY THIS EXISTS: the contract-drift check only asks "is this type declared anywhere in the
+    project", so a type that exists but whose namespace was never imported passes it cleanly and
+    then fails in Unity as CS0246. That is exactly what shipped in GameContext.cs, which used
+    SaveSlotService without `using ForgottenIsle.Game.Saves;`. It is also the single most likely
+    error when several people (or agents) edit interlocking files without a compiler.
+    """
+    # type name -> set of namespaces declaring it
+    homes = {}
+    for _rel, _scan, _ns, declarations in files:
+        for declaration in declarations:
+            if declaration.namespace:
+                homes.setdefault(declaration.name, set()).add(declaration.namespace)
+
+    for rel_path, scan, namespaces, declarations in files:
+        code = scan.code
+        usings = set(re.findall(r"^\s*using\s+(?:static\s+)?([\w.]+)\s*;", code, re.M))
+
+        # Namespaces that are in scope without an explicit using: the file's own namespaces and
+        # every ancestor of them, because C# resolves outward through enclosing namespaces.
+        in_scope = set(usings)
+        for namespace, _offset in namespaces:
+            parts = namespace.split(".")
+            for index in range(len(parts)):
+                in_scope.add(".".join(parts[: index + 1]))
+
+        # Types declared in this file are reachable regardless of namespace (nested or same file).
+        local = {declaration.name for declaration in declarations}
+
+        reported = set()
+        for name, offset in collect_type_references(code):
+            if name in local or name in reported:
+                continue
+            owners = homes.get(name)
+            if not owners:
+                continue
+            if owners & in_scope:
+                continue
+            # A fully-qualified reference (Some.Name.Space.Type) needs no using at all. The offset
+            # points at the START of the written token, which simple_type_name() has already reduced
+            # to its last segment -- so if the raw token still carries a dot, the author qualified it
+            # deliberately and the check must stay quiet.
+            raw = re.match(r"[\w.]+", code[offset:])
+            if raw and "." in raw.group(0):
+                continue
+            # Only report when every declaring namespace is out of scope, and name the fix.
+            reported.add(name)
+            suggestion = sorted(owners)[0]
+            report.error(
+                "USING", rel_path, scan.line_of(offset),
+                "'%s' is declared in %s but that namespace is not in scope here; "
+                "add 'using %s;' (this is CS0246 in Unity)"
+                % (name, " / ".join(sorted(owners)), suggestion))
+
+
+def check_member_type_collisions(report, files):
+    """A nested type and a member sharing one name inside the SAME type (C# CS0102).
+
+    Shipped once already: SessionService declared both a `PlayerParticipant` property and a nested
+    `PlayerParticipant` class, which Unity rejects outright.
+
+    Owner resolution is by brace depth, not by regex proximity. A field of type `Severity` named
+    `Severity` inside a DIFFERENT nested type is legal C#, and an earlier naive version of this
+    check reported six of those. A check that cries wolf gets ignored, so it resolves the enclosing
+    type properly or it does not report.
+    """
+    member_re = re.compile(
+        r"^[ \t]*(?:public|internal|protected|private)"
+        r"(?:\s+(?:static|readonly|virtual|override|abstract|new|async|extern|unsafe|sealed))*"
+        r"\s+(?!class\b|struct\b|interface\b|enum\b|record\b|delegate\b)"
+        r"[\w<>\[\],.?]+\s+(?P<name>[A-Za-z_]\w*)\s*(?:=>|\{|;|\()",
+        re.M)
+
+    for rel_path, scan, _namespaces, declarations in files:
+        code = scan.code
+        nested_by_owner = {}
+        for declaration in declarations:
+            if "." not in declaration.qualified:
+                continue
+            owner, _, nested = declaration.qualified.rpartition(".")
+            nested_by_owner.setdefault(owner, set()).add(nested)
+        if not nested_by_owner:
+            continue
+
+        depths = depth_prefix(code)
+        ordered = sorted(declarations, key=lambda d: d.offset)
+
+        for match in member_re.finditer(code):
+            offset = match.start("name")
+            name = match.group("name")
+            depth = depths[offset]
+
+            # The enclosing type is the nearest preceding declaration one brace level out.
+            owner_decl = None
+            for declaration in ordered:
+                if declaration.offset >= offset:
+                    break
+                if depths[declaration.offset] == depth - 1:
+                    owner_decl = declaration
+            if owner_decl is None:
+                continue
+
+            if name in nested_by_owner.get(owner_decl.qualified, ()):  # same type, same name
+                report.error(
+                    "COLLISION", rel_path, scan.line_of(offset),
+                    "'%s' is both a member and a nested type inside '%s' "
+                    "(this is CS0102 in Unity; rename one of them)" % (name, owner_decl.qualified))
+
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -1397,6 +1509,12 @@ def main(argv=None):
     # --- G: duplicate public types ----------------------------------------
     report.checks_run += 1
     check_duplicate_types(report, files)
+    report.checks_run += 1
+
+    check_missing_usings(report, files)
+    report.checks_run += 1
+
+    check_member_type_collisions(report, files)
 
     # --- Output ------------------------------------------------------------
     report.emit()
@@ -1413,7 +1531,8 @@ def main(argv=None):
     print("  localization keys ......... %d" % len(csv_keys))
     print("  checks run ................ %d (balance, namespaces, engine-free core, asmdefs,"
           % report.checks_run)
-    print("                                 contract drift, lockeys, duplicate types)")
+    print("                                 contract drift, lockeys, duplicate types,")
+    print("                                 missing usings, member/type collisions)")
     print("  errors .................... %d" % len(report.errors))
     print("  warnings .................. %d%s" % (len(report.warnings), " (hidden by --quiet)" if args.quiet and report.warnings else ""))
     print("")

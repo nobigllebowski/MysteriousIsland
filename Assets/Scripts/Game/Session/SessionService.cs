@@ -84,7 +84,7 @@ namespace ForgottenIsle.Game.Session
             _signals = signals;
             _state = new GameState();
             _random = new PcgRandom(0UL);
-            _playerParticipant = new PlayerParticipant(this);
+            _playerParticipant = new PlayerSaveParticipant(this);
             _boundSlot = NoSlot;
             _hasRun = false;
         }
@@ -445,11 +445,11 @@ namespace ForgottenIsle.Game.Session
         /// The <c>player</c> save section, owned by the enclosing service so that the single-mutator
         /// rule survives having two sections.
         /// </summary>
-        private sealed class PlayerParticipant : ISaveParticipant
+        private sealed class PlayerSaveParticipant : ISaveParticipant
         {
             private readonly SessionService _owner;
 
-            internal PlayerParticipant(SessionService owner)
+            internal PlayerSaveParticipant(SessionService owner)
             {
                 _owner = owner;
             }

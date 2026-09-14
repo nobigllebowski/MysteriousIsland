@@ -56,7 +56,8 @@ capsule moved by transform, not a real character controller.
 | Assembly reference direction | Core ← Game ← UI, no upward refs |
 | Banned C# features | none present |
 | **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
-| **Compilation** | **UNCONFIRMED — still never compiled.** Unity stops at the first failing assembly and packages build before user code, so our C# was never reached. No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
+| **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
+| **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
 | **Tests** | **UNCONFIRMED — 211 tests written, 0 executed.** |
 
 `ci/validate-structure.py` is a deliberate compiler substitute: brace balance, namespace
