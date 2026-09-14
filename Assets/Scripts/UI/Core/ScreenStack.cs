@@ -194,6 +194,20 @@ namespace ForgottenIsle.UI.Core
             _screens.Clear();
             _screens.Add(screen);
             Show(screen, EnterRightClass, SlideDistance);
+
+            // Then sweep the layer itself. The loop above removes the screens this stack KNOWS
+            // about; this removes anything else that reached the layer by any route at all. The
+            // guarantee worth having is "exactly one screen is on screen", and it should not depend
+            // on the bookkeeping having been perfect — a leftover full-bleed screen is an opaque
+            // sheet over the game, and that failure has already cost this project enough.
+            for (var i = _layer.childCount - 1; i >= 0; i--)
+            {
+                var child = _layer[i];
+                if (child != screen.Root)
+                {
+                    child.RemoveFromHierarchy();
+                }
+            }
         }
 
         /// <summary>Parents, reveals and animates a screen in, then marks the stack busy for the transition.</summary>

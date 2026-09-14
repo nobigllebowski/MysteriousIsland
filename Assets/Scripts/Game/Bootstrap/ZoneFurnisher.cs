@@ -740,8 +740,18 @@ namespace ForgottenIsle.Game.Bootstrap
 
             // 62° vertical, locked, per the Mobile UX Plan's comfort commitment. Never animated.
             camera.fieldOfView = 62f;
-            camera.nearClipPlane = 0.05f;
-            camera.farClipPlane = 500f;
+            // DEPTH PRECISION, which is what the flicker while walking actually is. A 24-bit depth
+            // buffer's precision is dominated by the near/far RATIO, and 0.05 against 500 is
+            // 1:10000 — so far apart that surfaces metres from each other land on the same depth
+            // value and swap places as the camera moves. That is z-fighting, and it reads exactly
+            // as "it flickers strangely when I walk".
+            //
+            // 0.2 against 260 is 1:1300, about eight times the precision. Neither number costs
+            // anything visible: a first-person camera has no use for seeing 5 cm from the lens, and
+            // the Ribcage's fog leaves 0.3% visibility at 200 m, so 260 m of far plane is already
+            // well past the point where the world has faded out entirely.
+            camera.nearClipPlane = 0.2f;
+            camera.farClipPlane = 260f;
 
             if (pivot.gameObject.GetComponent<AudioListener>() == null)
             {

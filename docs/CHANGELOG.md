@@ -9,6 +9,31 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the flicker while walking: depth precision and shadow bias
+
+A 24-bit depth buffer's precision is dominated by the **near/far ratio**, and the camera was
+`0.05 / 500` — **1:10000**. Surfaces metres apart land on the same depth value and swap places as
+the camera moves. That is z-fighting, and it reads exactly as "it flickers strangely when I walk".
+
+Now `0.2 / 260` — **1:1300**, about eight times the precision. Neither number costs anything
+visible: a first-person camera has no use for seeing 5 cm from the lens, and the Ribcage's fog
+leaves 0.3% visibility at 200 m, so 260 m of far plane is already well past where the world has
+faded out entirely.
+
+The other half is shadows. A 120 m ground mesh under one directional light is the case Unity's
+shadow defaults handle worst: the terrain shadows itself in moving bands, and cascades spread over
+the default 150 m put almost no resolution where the player actually is — a coarse cascade near the
+camera is what makes shadow edges crawl. `shadowBias`, `shadowNormalBias` and `shadowNearPlane` are
+now set, and `shadowDistance` is 80 m, past which the fog has already hidden everything.
+
+### Changed — `ReplaceAll` now sweeps the whole layer
+
+The loop removes the screens the stack knows about; a second pass removes anything else that
+reached the layer by any route. The guarantee worth having is "exactly one screen is on screen",
+and it should not depend on the bookkeeping having been perfect — a leftover full-bleed screen is
+an opaque sheet over the game, and that failure has cost this project enough already.
+
+
 ### Fixed — the player spawned inside the rib arch
 
 The ribs spanned `z = -16 … +16` with the player appearing at the origin, so the spawn was **inside

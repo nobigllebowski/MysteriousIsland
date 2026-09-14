@@ -191,6 +191,19 @@ namespace ForgottenIsle.Game.World
             // cheapest way to get them on mobile.
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.65f;
+
+            // Shadow bias, set rather than left at the default. A 120 m ground mesh shaded by one
+            // directional light is the case the defaults are worst at: too little bias and the
+            // terrain shadows itself in moving bands, which is the other half of the flicker.
+            sun.shadowBias = 0.03f;
+            sun.shadowNormalBias = 0.12f;
+            sun.shadowNearPlane = 0.2f;
+
+            // Cascades spread over the default 150 m put almost no resolution where the player
+            // actually is. The fog has already taken the world to 3% visibility by 150 m, so
+            // shadows past 80 m are invisible anyway and the cascade split is pure waste — and a
+            // coarse cascade near the camera is what makes shadow edges crawl as you walk.
+            QualitySettings.shadowDistance = 80f;
         }
 
         private static void ScatterRocks(Transform root, Recipe recipe, Material material)
