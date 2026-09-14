@@ -26,6 +26,21 @@
 | 11 | [`production/02-mvp-scope-and-roadmap.md`](production/02-mvp-scope-and-roadmap.md) | MVP content manifest, what is excluded, risks, and Phases 0–16. |
 | 12 | [`production/03-phase-1-plan.md`](production/03-phase-1-plan.md) | The executable Phase 1 plan: file manifest, code sketches, tests, acceptance criteria. |
 
+## Project memory system — start here
+
+These seven files (plus `../CLAUDE.md`) are the authoritative layer. The documents in `design/`,
+`architecture/` and `production/` remain the detail; these hold the *state*.
+
+| File | What it holds |
+|---|---|
+| [`PROJECT_HANDOFF.md`](PROJECT_HANDOFF.md) | **Cold-start entry point.** Read first in any session. Ends with the exact next task. |
+| [`CURRENT_STATE.md`](CURRENT_STATE.md) | What is true right now, the verification ledger, and six live CONFLICTS. |
+| [`DECISIONS.md`](DECISIONS.md) | Every locked decision, ADR index, open items, and decisions deliberately not made. |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | How the code is shaped and why. |
+| [`GAME_VISION.md`](GAME_VISION.md) | What the game is. |
+| [`ROADMAP.md`](ROADMAP.md) | Where we are and what is next. |
+| [`CHANGELOG.md`](CHANGELOG.md) | What changed, when. |
+
 ## Read this first
 
 `architecture/00-decisions.md` is **binding**. The three architecture documents were authored in

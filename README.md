@@ -32,7 +32,11 @@ from scratch — see the [migration plan](docs/production/04-migration-plan.md).
 
 ## Start here
 
-**[`docs/README.md`](docs/README.md)** — the documentation index and reading order.
+**[`docs/PROJECT_HANDOFF.md`](docs/PROJECT_HANDOFF.md)** — cold-start entry point: what this is,
+what is true now, and the exact next task. Then
+[`docs/README.md`](docs/README.md) for the full index.
+
+`CLAUDE.md` in the repository root carries the operating rules and hard invariants.
 
 The single most important document is the
 **[Story Bible](docs/design/01-story-bible.md)**: it is the naming authority for the entire
