@@ -9,6 +9,47 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the island rendered black: the project was in Gamma colour space
+
+The zone was never broken. It loaded, built its terrain and its interactables, registered them,
+raised the prompt and played the narration — all of which the HUD was showing correctly. It was
+being **displayed in the wrong colour space**, and in Gamma the shading result reaches the screen
+unchanged:
+
+```
+Ribcage shore, albedo 0.13, sun 0.85 at 24° elevation
+  direct  = 0.13 × 0.85 × cos(66°) = 0.045
+  ambient = 0.13 × 0.16            = 0.021
+  total   =                          0.066   →  6.6% grey
+```
+
+The same numbers in Linear come out at `0.066^(1/2.2)` = **0.29** — dim, cold and readable, which
+is the shore that was designed. Unity defaults new projects to Gamma, and nothing in the project
+had ever set it.
+
+`Vardholm → Setup Project` now sets Linear, and the first-run check triggers on a wrong colour
+space as well as on missing scenes — a clone whose scenes already exist has everything it needs
+*except* this, and the symptom is a black screen with no error anywhere.
+
+Linear is right on its own merits, not as a workaround: it is the default for new 3D projects, it
+is what every value in `ZoneBuilder`'s recipes assumes, and it is supported on every device this
+game targets.
+
+**Also recorded: the project has no URP.** `Packages/manifest.json` contains no
+`com.unity.render-pipelines.universal` and `GraphicsSettings` has no pipeline asset, so the game
+runs on the Built-in pipeline. Every document in `docs/` says URP. That is **CONFLICT-7**, and it is
+why `ZoneBuilder.CreateMaterial`'s shader chain silently lands on `Standard`.
+
+### Fixed — two diagnostics that were lying
+
+- The panel-size report printed `NaN` because one scheduled tick is not enough for layout to have
+  run. It now waits for `GeometryChangedEvent` — the only reliable signal; a longer delay would
+  just be a longer guess.
+- The furnish report now also prints the renderer count and the active colour space. Those two
+  numbers separate "the zone is empty" from "the zone is there and too dark to see", which is
+  precisely the distinction a black screen hides.
+
+
 ### Fixed — the two console entries left after the menu came right
 
 The menu now lays out correctly (see the panel-height entry below). Two things remained.

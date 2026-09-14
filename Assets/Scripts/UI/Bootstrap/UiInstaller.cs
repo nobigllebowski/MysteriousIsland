@@ -482,6 +482,12 @@ namespace ForgottenIsle.UI.Bootstrap
             }
         }
 
+        private void OnRootGeometryKnown(GeometryChangedEvent evt)
+        {
+            _ui.Root.UnregisterCallback<GeometryChangedEvent>(OnRootGeometryKnown);
+            ReportPanelSize();
+        }
+
         /// <summary>Reports the logical size the layout was actually given.</summary>
         private void ReportPanelSize()
         {
@@ -492,6 +498,15 @@ namespace ForgottenIsle.UI.Bootstrap
 
             var width = _ui.Root.resolvedStyle.width;
             var height = _ui.Root.resolvedStyle.height;
+
+            // One scheduled tick was not enough -- the first report printed NaN, because layout had
+            // still not run. Waiting for the element to actually be given a size is the only
+            // reliable signal; a fixed delay would just be a longer guess.
+            if (float.IsNaN(width) || float.IsNaN(height))
+            {
+                _ui.Root.RegisterCallback<GeometryChangedEvent>(OnRootGeometryKnown);
+                return;
+            }
 
             Debug.Log(
                 "[Vardholm] ui: panel is " + width.ToString("F0") + " x " + height.ToString("F0") +

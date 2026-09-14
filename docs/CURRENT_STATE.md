@@ -86,6 +86,7 @@ coverage, duplicate types. It is not a compiler and cannot prove the project bui
 | **CONFLICT-3** | `ResourceDefinition` / resource-and-vessel inventory still specified | **ADR-0007 deletes it; water is a charged vessel item** | `architecture/03-data-and-save-architecture.md:252,412+` |
 | **CONFLICT-4** | Locomotion is **tap-to-move**, "no virtual stick" | **ADR-0008 + shipped code: floating joystick** (`VardholmControls.Move` is a Vector2 stick) | `design/04-first-30-minutes.md:73`; `production/02-mvp-scope-and-roadmap.md:15,401` |
 | **CONFLICT-5** | UI technology is **uGUI + TextMeshPro, "Not UI Toolkit"** | **ADR-0014 + shipped code: UI Toolkit** | `production/03-phase-1-plan.md:294` |
+| **CONFLICT-7** | **Code contradicts every document.** All of `docs/` says the renderer is **URP** | **UNRESOLVED — needs a decision.** `Packages/manifest.json` has no `com.unity.render-pipelines.universal` and `GraphicsSettings.m_CustomRenderPipeline` is `{fileID: 0}`: the project runs on **Built-in** | `CLAUDE.md:5`, `PROJECT_HANDOFF.md`, `ARCHITECTURE.md`, ADR-0014 discussion |
 | **CONFLICT-6** | **Code contradicts spec.** World clock: docs say `1 real second = 30 world seconds` (48-min day); `Ticker.DefaultWorldSecondsPerRealSecond = 60.0` (24-min day) | **UNRESOLVED — needs a human decision** | `architecture/02-core-systems.md:523,872` vs `Assets/Scripts/Game/Bootstrap/Ticker.cs:51` |
 
 **CONFLICT-6 is the one that matters most.** The survival tick formulas were tuned against 30×.

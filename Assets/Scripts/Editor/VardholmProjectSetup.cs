@@ -44,6 +44,7 @@ namespace ForgottenIsle.Editor
 
             try
             {
+                EnsureColorSpace(report);
                 EnsureSceneFolder(report);
                 EnsureScenes(report);
                 EnsureBuildSettings(report);
@@ -123,6 +124,45 @@ namespace ForgottenIsle.Editor
         }
 
         /// <summary>True when every scene asset exists. Used by the first-run check.</summary>
+        /// <summary>Puts the project in Linear colour space, which its lighting values assume.</summary>
+        /// <remarks>
+        /// THIS IS WHY THE ISLAND RENDERED BLACK. Unity defaults a project to Gamma colour space, and
+        /// in Gamma the shading result reaches the screen unchanged. The Ribcage's shore is black sand
+        /// — albedo 0.13 — under a low 24° sun at intensity 0.85, so:
+        /// <code>
+        /// direct  = 0.13 × 0.85 × cos(66°) = 0.045
+        /// ambient = 0.13 × 0.16            = 0.021
+        /// total   =                          0.066   →   6.6% grey. Black, for all practical purposes.
+        /// </code>
+        /// The same numbers in Linear space come out at 0.066^(1/2.2) = <b>0.29</b> — dim, cold and
+        /// readable, which is the shore that was designed. The zone was rendering correctly the whole
+        /// time; it was being displayed in the wrong colour space.
+        /// <para>
+        /// Linear is the right setting for this game on its own merits, not a workaround: it is the
+        /// default for new 3D projects, it is what every physically-based value in
+        /// <c>ZoneBuilder</c>'s recipes assumes, and it is supported on every device this game
+        /// targets (OpenGL ES 3.0+ / Vulkan / Metal).
+        /// </para>
+        /// <para>
+        /// Changing it makes Unity reimport shaders and textures, which takes a moment and is
+        /// expected. It is done once and then never again, because the check is conditional.
+        /// </para>
+        /// </remarks>
+        private static void EnsureColorSpace(SetupReport report)
+        {
+            if (PlayerSettings.colorSpace == ColorSpace.Linear)
+            {
+                report.Pass("Colour space is already Linear.");
+                return;
+            }
+
+            PlayerSettings.colorSpace = ColorSpace.Linear;
+            report.Change(
+                "Colour space switched from Gamma to Linear. The lighting values in ZoneBuilder " +
+                "assume Linear; in Gamma the shore renders at 6.6% grey, which reads as a black " +
+                "screen. Unity will reimport shaders and textures now — that is expected.");
+        }
+
         internal static bool AllScenesExist()
         {
             for (var i = 0; i < SceneKeys.All.Count; i++)

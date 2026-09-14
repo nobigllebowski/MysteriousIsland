@@ -45,15 +45,29 @@ namespace ForgottenIsle.Editor
         {
             EditorApplication.delayCall -= RunCheck;
 
-            if (Application.isPlaying || VardholmProjectSetup.AllScenesExist())
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            var scenesMissing = !VardholmProjectSetup.AllScenesExist();
+
+            // Checked separately from the scenes, because a clone whose scenes were created before
+            // this step existed has everything it needs EXCEPT the colour space -- and in Gamma the
+            // island renders at 6.6% grey, which reads as a black screen with no error anywhere.
+            var wrongColorSpace = PlayerSettings.colorSpace != ColorSpace.Linear;
+
+            if (!scenesMissing && !wrongColorSpace)
             {
                 return;
             }
 
             Debug.Log(
-                "[Vardholm] first run in this clone: the scene assets do not exist yet. " +
-                "Creating them now — four scenes, Build Settings in load order, and the " +
-                "localization resource. Nothing that already exists is overwritten. " +
+                "[Vardholm] project setup has something to do: " +
+                (scenesMissing ? "the scene assets do not exist yet" : "the scenes are in place") +
+                ", " +
+                (wrongColorSpace ? "and the colour space is Gamma rather than Linear" : "colour space is Linear") +
+                ". Running setup now. Nothing that already exists is overwritten. " +
                 "Re-run any time from  Vardholm > Setup Project.");
 
             VardholmProjectSetup.SetupProject();

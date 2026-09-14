@@ -167,7 +167,9 @@ namespace ForgottenIsle.Game.Bootstrap
                 " (enabled " + Describe(cameraEnabled) + ") · " +
                 "tagged " + Describe(camera != null && camera.CompareTag(MainCameraTag)) + " · " +
                 "Camera.main " + Describe(Camera.main != null) + " · " +
-                "enabled cameras " + enabledCameras.ToString(CultureInfo.InvariantCulture);
+                "enabled cameras " + enabledCameras.ToString(CultureInfo.InvariantCulture) + " · " +
+                "renderers " + CountRenderers(scene).ToString(CultureInfo.InvariantCulture) + " · " +
+                "colour space " + QualitySettings.activeColorSpace;
 
             // Camera.main is REPORTED but not required for the verdict: it is a cached tag lookup,
             // and whether that cache has refreshed in the same frame the tag was set is not
@@ -195,6 +197,29 @@ namespace ForgottenIsle.Game.Bootstrap
         private static string Describe(bool present)
         {
             return present ? "yes" : "NO";
+        }
+
+        /// <summary>Renderers actually present in the zone. Zero means nothing was built to look at.</summary>
+        /// <remarks>
+        /// Reported next to the colour space on purpose: those two numbers separate "the zone is
+        /// empty" from "the zone is there and too dark to see", and a black screen looks identical
+        /// either way. In Gamma the shore renders at 6.6% grey, which is where an afternoon went.
+        /// </remarks>
+        private static int CountRenderers(Scene scene)
+        {
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                return 0;
+            }
+
+            var count = 0;
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                count += roots[i].GetComponentsInChildren<Renderer>(true).Length;
+            }
+
+            return count;
         }
 
         private static int CountEnabledCameras()
