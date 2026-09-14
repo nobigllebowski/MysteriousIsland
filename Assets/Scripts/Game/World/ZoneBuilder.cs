@@ -296,7 +296,12 @@ namespace ForgottenIsle.Game.World
                 var rib = new GameObject("Rib");
                 rib.transform.SetParent(ribs, false);
                 rib.transform.position = new Vector3(lean * 6.5f, Height(lean * 6.5f, z, recipe) - 0.4f, z);
-                rib.transform.rotation = Quaternion.Euler(0f, lean > 0f ? 0f : 180f, lean > 0f ? -8f : 8f);
+                // Yaw 180 for the +X row, not for the -X one. BuildRib arcs toward +X from its
+                // origin, so a rib at x = +6.5 with no yaw arcs AWAY from the centre: both rows
+                // curved outward and the "arch" opened outward like a flower. Six ribs that lean
+                // apart are not a ribcage. Yawing the +X row turns it to face the centre, which is
+                // what the comment above has always claimed this builds.
+                rib.transform.rotation = Quaternion.Euler(0f, lean > 0f ? 180f : 0f, lean > 0f ? 8f : -8f);
                 rib.AddComponent<MeshFilter>().sharedMesh = ribMesh;
                 Dress(rib.AddComponent<MeshRenderer>(), boneMaterial);
             }

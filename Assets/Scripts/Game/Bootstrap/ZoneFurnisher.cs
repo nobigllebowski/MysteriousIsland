@@ -184,7 +184,12 @@ namespace ForgottenIsle.Game.Bootstrap
                         noMaterial++;
                     }
 
-                    if (!renderer.enabled)
+                    // NOT the player's body. Its renderer is disabled on purpose -- the camera pivot
+                    // sits at eye height inside that capsule, so re-enabling it puts a mesh directly
+                    // over the lens. The previous version of this method re-enabled every disabled
+                    // renderer it found, which would have undone that deliberately and blinded the
+                    // camera in the name of repairing it.
+                    if (!renderer.enabled && renderer.GetComponentInParent<PlayerRig>() == null)
                     {
                         renderer.enabled = true;
                         disabled++;

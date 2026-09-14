@@ -201,6 +201,7 @@ namespace ForgottenIsle.Game.Diagnostics
             var colliders = 0;
             var nullShaders = 0;
             var nearest = float.MaxValue;
+            var nearestName = "none";
             var shaderNames = new StringBuilder();
 
             var planes = camera != null ? GeometryUtility.CalculateFrustumPlanes(camera) : null;
@@ -270,6 +271,7 @@ namespace ForgottenIsle.Game.Diagnostics
                     if (distance < nearest)
                     {
                         nearest = distance;
+                        nearestName = renderer.name;
                     }
 
                     if (planes != null && GeometryUtility.TestPlanesAABB(planes, renderer.bounds))
@@ -294,7 +296,9 @@ namespace ForgottenIsle.Game.Diagnostics
 
             b.Append("    nearest renderer ")
              .Append(nearest < float.MaxValue
-                 ? nearest.ToString("F1", CultureInfo.InvariantCulture) + " m from the camera"
+                 ? "'" + nearestName + "' at " + nearest.ToString("F1", CultureInfo.InvariantCulture)
+                   + " m from the camera"
+                   + (nearest < 1.5f ? "  ← POINT BLANK: this object is over the lens" : string.Empty)
                  : "none")
              .Append(" · within ").Append(NearRadius.ToString("F0", CultureInfo.InvariantCulture)).Append(" m: ")
              .Append(nearest <= NearRadius ? "yes" : "NO")
