@@ -1030,6 +1030,8 @@ def simple_type_name(raw):
 # `Type.Member` where Type is capitalised and is NOT itself the tail of a qualified name. The
 # negative lookbehind for a dot is what keeps `something.Inner.Value` and fully-qualified
 # `A.B.ResultCode.NoHandler` quiet -- in both, the interesting identifier follows a dot.
+PROJECT_ROOT_NAMESPACE = "ForgottenIsle"
+
 STATIC_MEMBER_RE = re.compile(r"(?<![\w.])(?P<name>[A-Z]\w*)\s*\.\s*[A-Za-z_]")
 
 
@@ -1378,6 +1380,45 @@ def check_accidental_nesting(report, files):
                 % (declaration.name, outer, nesting))
 
 
+def check_phantom_usings(report, files):
+    """A `using` naming a project namespace that does not exist (C# CS0234).
+
+    WHY THIS EXISTS: the USING check asks "is this type's namespace in scope"; it never asks
+    whether a namespace named in a using directive is real. So a plausible-but-wrong import sails
+    through every other check and fails in Unity as CS0234. That is what shipped in HudScreen.cs,
+    which imported ForgottenIsle.UI.Components -- a real FOLDER, whose files deliberately declare
+    ForgottenIsle.UI.Core instead, as their own header comments say.
+
+    Only namespaces under the project root are checked. UnityEngine.*, System.*, NUnit.* and the
+    rest live in assemblies this validator cannot see, and guessing at them would cry wolf.
+    """
+    real = set()
+    for _rel, _scan, namespaces, _declarations in files:
+        for namespace, _offset in namespaces:
+            parts = namespace.split(".")
+            for index in range(len(parts)):
+                real.add(".".join(parts[: index + 1]))
+
+    for rel_path, scan, _namespaces, _declarations in files:
+        for match in re.finditer(r"^[ \t]*using\s+(?P<static>static\s+)?(?P<ns>[\w.]+)\s*;",
+                                 scan.code, re.M):
+            name = match.group("ns")
+            if not name.startswith(PROJECT_ROOT_NAMESPACE + "."):
+                continue
+            if name in real:
+                continue
+            # `using static Some.Namespace.Type;` names a TYPE, so only its container has to be a
+            # real namespace. This exemption must not apply to a plain using -- doing so would let
+            # any wrong leaf segment pass, since its parent is almost always real. That is exactly
+            # the HudScreen case: ForgottenIsle.UI is real, ForgottenIsle.UI.Components is not.
+            if match.group("static") and name.rsplit(".", 1)[0] in real:
+                continue
+            report.error(
+                "PHANTOM", rel_path, scan.line_of(match.start("ns")),
+                "'using %s;' names a namespace nothing in the project declares "
+                "(this is CS0234 in Unity)" % name)
+
+
 def check_missing_usings(report, files):
     """A project type referenced without its namespace being in scope (C# CS0246).
 
@@ -1640,6 +1681,9 @@ def main(argv=None):
     report.checks_run += 1
 
     check_accidental_nesting(report, files)
+    report.checks_run += 1
+
+    check_phantom_usings(report, files)
 
     # --- Output ------------------------------------------------------------
     report.emit()
@@ -1658,7 +1702,8 @@ def main(argv=None):
           % report.checks_run)
     print("                                 contract drift, lockeys, duplicate types,")
     print("                                 missing usings, member/type collisions,")
-    print("                                 deprecated Unity APIs, accidental nesting)")
+    print("                                 deprecated Unity APIs, accidental nesting,")
+    print("                                 phantom usings)")
     print("  errors .................... %d" % len(report.errors))
     print("  warnings .................. %d%s" % (len(report.warnings), " (hidden by --quiet)" if args.quiet and report.warnings else ""))
     print("")

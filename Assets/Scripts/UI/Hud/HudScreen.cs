@@ -1,5 +1,4 @@
 using ForgottenIsle.Core.Primitives;
-using ForgottenIsle.UI.Components;
 using ForgottenIsle.UI.Core;
 using UnityEngine;
 using UnityEngine.UIElements;

@@ -9,6 +9,25 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — sixth editor open: CS0234 `ForgottenIsle.UI.Components` in `HudScreen.cs`
+
+`using ForgottenIsle.UI.Components;` names a namespace that does not exist. The **folder**
+`Assets/Scripts/UI/Components/` is real, but `Typography.cs` and `Buttons.cs` deliberately declare
+`ForgottenIsle.UI.Core` — their own header comments say so, *"because the contract's namespace
+list has no UI.Components entry"*. `HudScreen.cs` already imported `ForgottenIsle.UI.Core`, so the
+line was pure surplus; deleting it is the whole fix.
+
+**Validator gained a `PHANTOM` check.** The `USING` check asks whether a *type's* namespace is in
+scope; nothing asked whether a namespace *named in a using directive* exists at all. Only
+namespaces under `ForgottenIsle.` are checked — `UnityEngine.*`, `System.*` and `NUnit.*` live in
+assemblies this validator cannot see, and guessing at them would cry wolf.
+
+One subtlety cost a round: the first version exempted anything whose parent namespace was real, to
+accommodate `using static Some.Namespace.Type;`. That exemption swallowed this very bug —
+`ForgottenIsle.UI` is real, so the wrong leaf passed. It now applies only when `static` is actually
+present. Regression-tested by reintroducing the exact line; clean across all 105 files.
+
+
 ### Fixed — fifth editor open: CS0103 `ResultCode` in `InteractionSystem.cs`
 
 `CommandResult.Fail(ResultCode.NoHandler)` with only `ForgottenIsle.Core.Commands` imported —
