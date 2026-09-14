@@ -9,6 +9,27 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — `docs/PHASE_3_REPORT.md`
+
+The full account of the invisible-world investigation: both root causes with their arithmetic, the
+six hypotheses eliminated by reading rather than by assumption, the nine tests written, and an
+explicit statement that acceptance criteria C, D and F cannot be confirmed without the editor.
+
+### Added — the categorised visibility block
+
+The zone dump now sorts every renderer into the one category that explains its fate, checked in the
+order the pipeline applies them:
+
+```
+WORLD VISIBILITY: renderers 58 · enabled 58 · withTriangles 58 · visibleInFrustum N
+  · behindCamera N · outsideClip N · culledByLayer N · zeroBounds N · nonFiniteBounds N
+```
+
+The counts are exclusive, so exactly one is non-zero when something is systematically wrong and the
+line names it without further reading. Non-finite bounds are checked explicitly, because a mesh
+with a NaN vertex produces bounds that fail every frustum test silently.
+
+
 ### Fixed — the Standing Stone was 2.45 m behind the player's head
 
 This is the defect that made the symptom so confusing, and it is exactly the distinction between

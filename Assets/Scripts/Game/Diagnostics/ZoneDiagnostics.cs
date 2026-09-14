@@ -295,10 +295,115 @@ namespace ForgottenIsle.Game.Diagnostics
                  : string.Empty)
              .Append('\n');
 
+            AppendVisibilityCategories(b, scene, camera);
+
             b.Append("  VERDICT: ").Append(Verdict(
                 totalRenderers, enabledRenderers, inMask, visibleRenderers, nullShaders, camera, luminance));
 
             return b.ToString();
+        }
+
+        /// <summary>
+        /// Sorts every renderer into the one category that explains why it is or is not on screen.
+        /// </summary>
+        /// <remarks>
+        /// The counts are exclusive and checked in the order the pipeline applies them, so exactly
+        /// one number is non-zero when something is systematically wrong and the block names it
+        /// without further reading: everything behind the camera is an aim or placement problem,
+        /// everything culled by layer is a mask problem, everything with zero or non-finite bounds
+        /// is a mesh problem, and everything visible with a black screen is a shading problem.
+        /// </remarks>
+        private static void AppendVisibilityCategories(StringBuilder b, Scene scene, Camera camera)
+        {
+            int total = 0, enabled = 0, visible = 0, behind = 0, outsideClip = 0;
+            int culledByLayer = 0, zeroBounds = 0, nonFinite = 0, withTriangles = 0;
+
+            var planes = camera != null ? GeometryUtility.CalculateFrustumPlanes(camera) : null;
+            var eye = camera != null ? camera.transform.position : Vector3.zero;
+            var forward = camera != null ? camera.transform.forward : Vector3.forward;
+            var near = camera != null ? camera.nearClipPlane : 0f;
+            var far = camera != null ? camera.farClipPlane : float.MaxValue;
+
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var renderers = roots[i].GetComponentsInChildren<Renderer>(true);
+                for (var r = 0; r < renderers.Length; r++)
+                {
+                    var renderer = renderers[r];
+                    total++;
+
+                    if (!renderer.enabled || !renderer.gameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+
+                    enabled++;
+
+                    var filter = renderer.GetComponent<MeshFilter>();
+                    var mesh = filter != null ? filter.sharedMesh : null;
+                    if (mesh != null && mesh.triangles.Length >= 3)
+                    {
+                        withTriangles++;
+                    }
+
+                    var bounds = renderer.bounds;
+                    if (!IsFinite(bounds.center) || !IsFinite(bounds.size))
+                    {
+                        nonFinite++;
+                        continue;
+                    }
+
+                    if (bounds.size.sqrMagnitude < 1e-8f)
+                    {
+                        zeroBounds++;
+                        continue;
+                    }
+
+                    if (camera != null && (camera.cullingMask & (1 << renderer.gameObject.layer)) == 0)
+                    {
+                        culledByLayer++;
+                        continue;
+                    }
+
+                    var toObject = bounds.center - eye;
+                    if (Vector3.Dot(toObject, forward) < 0f)
+                    {
+                        behind++;
+                        continue;
+                    }
+
+                    var distance = toObject.magnitude;
+                    if (distance + bounds.extents.magnitude < near || distance - bounds.extents.magnitude > far)
+                    {
+                        outsideClip++;
+                        continue;
+                    }
+
+                    if (planes != null && GeometryUtility.TestPlanesAABB(planes, bounds))
+                    {
+                        visible++;
+                    }
+                }
+            }
+
+            b.Append("  WORLD VISIBILITY: renderers ").Append(total.ToString(CultureInfo.InvariantCulture))
+             .Append(" · enabled ").Append(enabled.ToString(CultureInfo.InvariantCulture))
+             .Append(" · withTriangles ").Append(withTriangles.ToString(CultureInfo.InvariantCulture))
+             .Append(" · visibleInFrustum ").Append(visible.ToString(CultureInfo.InvariantCulture))
+             .Append(" · behindCamera ").Append(behind.ToString(CultureInfo.InvariantCulture))
+             .Append(" · outsideClip ").Append(outsideClip.ToString(CultureInfo.InvariantCulture))
+             .Append(" · culledByLayer ").Append(culledByLayer.ToString(CultureInfo.InvariantCulture))
+             .Append(" · zeroBounds ").Append(zeroBounds.ToString(CultureInfo.InvariantCulture))
+             .Append(" · nonFiniteBounds ").Append(nonFinite.ToString(CultureInfo.InvariantCulture))
+             .Append('\n');
+        }
+
+        /// <summary>True when no component is NaN or infinite. Bounds built from a bad mesh are both.</summary>
+        private static bool IsFinite(Vector3 v)
+        {
+            return !float.IsNaN(v.x) && !float.IsNaN(v.y) && !float.IsNaN(v.z)
+                   && !float.IsInfinity(v.x) && !float.IsInfinity(v.y) && !float.IsInfinity(v.z);
         }
 
         /// <summary>

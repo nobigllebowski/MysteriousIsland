@@ -1,8 +1,12 @@
 # CURRENT STATE
 
 **Updated:** 2026-09-14 · **Branch:** `claude/keen-darwin-frw656`
-**Phase 2 (playable vertical slice) implemented.** Phase 3 not started.
-Full account: [`PHASE_2_REPORT.md`](PHASE_2_REPORT.md).
+**Phase 2 implemented; Phase 3 was one bug, not a phase: the world rendered and was shaded to
+7.7% grey.** Fixed, never played. Phase 4 not started.
+Accounts: [`PHASE_2_REPORT.md`](PHASE_2_REPORT.md) · [`PHASE_3_REPORT.md`](PHASE_3_REPORT.md).
+
+**The project now compiles and runs.** It reached Play Mode, loaded `ZoneRibcage`, furnished it and
+drove the HUD and interaction prompt — the first time anything in this repository has executed.
 
 This file records what is *actually true right now*, verified against the repository — not what
 was planned. When it disagrees with a design document, this file and the shipped code win.
