@@ -90,6 +90,13 @@ namespace ForgottenIsle.UI.Core
 
             button.style.minHeight = MinimumTouchTargetDp;
             button.style.minWidth = MinimumTouchTargetDp;
+
+            // A BUTTON MUST NEVER SHRINK. Flex children shrink by default, and min-height does not
+            // stop it -- Yoga will go below a minimum to fit a column that is too short. A shrunk
+            // button still draws its label at full size, so the text sits outside the rectangle that
+            // actually receives the tap: the button looks perfectly normal and is unclickable. The
+            // 48dp touch target this class exists to guarantee is only a guarantee with this line.
+            button.style.flexShrink = 0f;
             button.style.paddingLeft = Theme.Space20;
             button.style.paddingRight = Theme.Space20;
             button.style.paddingTop = Theme.Space12;

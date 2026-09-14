@@ -9,6 +9,40 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the unclickable menu: the panel was 219 logical pixels tall
+
+The real cause, arithmetic rather than inference. `CreateFallbackPanelSettings` used
+`PanelScreenMatchMode.Shrink`, which picks the **larger** of the two scale factors. On the editor's
+2560 × 1440 Game view against a 390 × 844 portrait design that is `max(6.56, 1.71) = 6.56`, so the
+layout was handed a logical panel of **390 × 219** — 219 pixels of height for a design needing 844.
+
+Everything downstream follows from that one number:
+
+- Flex children shrink by default, so every element was squeezed to roughly a quarter.
+- **A shrunk `Label` does not shrink its text.** The glyphs overflowed the crushed box and drew
+  across their neighbours — the title over the subtitle, the slot label over CONTINUE. That is the
+  "ghosting", and it was never a frame-buffer problem or a second UI tree.
+- **A shrunk `Button` still draws its label at full size**, so the text sat well outside the
+  rectangle that actually receives the tap. The menu looked right and could not be pressed.
+
+Three changes, each closing the hole at a different level:
+
+- `PanelSettings` now matches **height** (`MatchWidthOrHeight`, `match = 1`). The scale is
+  `height / 844`, the column always gets the height it was designed for, and a wide window simply
+  widens the side gutters.
+- `Typography` and `Buttons` set `flexShrink = 0`. A line of type is a fixed amount of space or it
+  is unreadable, and `minHeight` alone never guaranteed the 48 dp touch target — Yoga goes below a
+  minimum to fit a column that is too short. Now no layout anywhere can crush them.
+- The menu's spacers keep `minHeight = 0` and absorb a short screen instead.
+
+The diagnostic now prints the logical panel size on every menu show, and errors when it drops below
+three quarters of the design height — the number that would have answered this in one Play press.
+
+**Two earlier explanations in this changelog were wrong and are retracted:** the ghost text was not
+an uncleared colour buffer, and the UI was not being built twice. The clear-only camera and the
+one-panel guard added for those are each correct on their own terms and stay.
+
+
 ### Fixed — the menu was being built twice, which is why nothing was clickable
 
 **And the earlier "uncleared frame buffer" explanation for the ghost text was wrong.** The proof is

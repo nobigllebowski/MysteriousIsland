@@ -210,9 +210,22 @@ namespace ForgottenIsle.UI.Core
             settings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
             settings.referenceResolution = new Vector2Int(ReferenceWidth, ReferenceHeight);
 
-            // Shrink rather than Expand: on a taller phone this keeps the design's side gutters intact and
-            // adds height, instead of scaling the whole layout up until the type is oversized.
-            settings.screenMatchMode = PanelScreenMatchMode.Shrink;
+            // MATCH HEIGHT, AND THIS IS THE WHOLE BUG THE MENU HAD. The previous mode was Shrink,
+            // which picks the LARGER of the two scale factors. On a 2560x1440 editor Game view that
+            // is max(2560/390, 1440/844) = 6.56, so the layout was handed a logical panel of
+            // 390 x 219 -- 219 pixels of height for a design that needs 844.
+            //
+            // Everything then shrank to a quarter of its size, because flex children shrink by
+            // default. Text overflowed its crushed box and drew across its neighbours (the title
+            // over the subtitle, the slot label over CONTINUE), and every button's clickable
+            // rectangle collapsed to a thin strip while its label still drew at full size. That is
+            // why the menu looked doubled AND why pressing a button did nothing: the tap landed on
+            // text that was nowhere near the button's actual rectangle.
+            //
+            // Matching height instead fixes the scale at height/844, so the column always gets the
+            // full 844 it was designed for and a wide window simply widens the side gutters.
+            settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
+            settings.match = 1f;
             return settings;
         }
 

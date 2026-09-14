@@ -109,6 +109,12 @@ namespace ForgottenIsle.UI.Core
             // that bug is invisible until someone tries to press the button.
             label.pickingMode = PickingMode.Ignore;
             label.style.whiteSpace = WhiteSpace.Normal;
+
+            // Flex children shrink by default, and a shrunk Label does NOT shrink its text -- the
+            // glyphs overflow the box and draw across whatever is next to it. That is what stacked
+            // the menu's title and subtitle on top of each other. A line of type is a fixed amount
+            // of space or it is unreadable; let the spacers absorb a short screen instead.
+            label.style.flexShrink = 0f;
             return label;
         }
     }

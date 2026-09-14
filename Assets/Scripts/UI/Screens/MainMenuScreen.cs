@@ -115,8 +115,12 @@ namespace ForgottenIsle.UI.Screens
             content.style.paddingBottom = Theme.Space24;
             root.Add(content);
 
+            // The spacers are the only things allowed to give. flexShrink stays at its default 1
+            // here and minHeight at 0, so a screen shorter than the design eats into the empty space
+            // and never into the type or the buttons.
             var topSpacer = new VisualElement { name = "menu-spacer-top", pickingMode = PickingMode.Ignore };
             topSpacer.style.flexGrow = 1f;
+            topSpacer.style.minHeight = 0f;
             content.Add(topSpacer);
 
             var title = Typography.Display(Text(TitleKey), "menu__title");
@@ -128,7 +132,10 @@ namespace ForgottenIsle.UI.Screens
 
             var midSpacer = new VisualElement { name = "menu-spacer-mid", pickingMode = PickingMode.Ignore };
             midSpacer.style.flexGrow = 1f;
-            midSpacer.style.minHeight = Theme.Space32;
+
+            // minHeight 0, not Space32: a floor here is a floor Yoga has to violate on a short
+            // screen, and the violation used to come out of the buttons instead.
+            midSpacer.style.minHeight = 0f;
             content.Add(midSpacer);
 
             _continueButton = Buttons.Primary(Text(ContinueKey), _onContinue);

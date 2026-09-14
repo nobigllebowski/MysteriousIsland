@@ -469,11 +469,41 @@ namespace ForgottenIsle.UI.Bootstrap
                 " · transitioning " + _ui.Screens.IsTransitioning +
                 " · curtain " + (_ui.Curtain.IsVisible ? "UP (blocks taps)" : "down"));
 
+            // One frame later, because resolvedStyle is meaningless until layout has run. The
+            // logical panel height is the number that mattered: at 219 against a design of 844 the
+            // menu was crushed to a quarter size, which is what made it overlap and stop responding.
+            _ui.Root?.schedule.Execute(ReportPanelSize);
+
             if (documents.Length != 1)
             {
                 Debug.LogError(
                     "[Vardholm] ui: " + documents.Length + " UI panels exist. The menu is being drawn " +
                     "more than once and taps are going to the copy you are not looking at.");
+            }
+        }
+
+        /// <summary>Reports the logical size the layout was actually given.</summary>
+        private void ReportPanelSize()
+        {
+            if (_ui == null || _ui.Root == null)
+            {
+                return;
+            }
+
+            var width = _ui.Root.resolvedStyle.width;
+            var height = _ui.Root.resolvedStyle.height;
+
+            Debug.Log(
+                "[Vardholm] ui: panel is " + width.ToString("F0") + " x " + height.ToString("F0") +
+                " logical px against a " + UIService.ReferenceWidth + " x " + UIService.ReferenceHeight +
+                " design (screen " + Screen.width + " x " + Screen.height + ").");
+
+            if (height < UIService.ReferenceHeight * 0.75f)
+            {
+                Debug.LogError(
+                    "[Vardholm] ui: the panel is only " + height.ToString("F0") + " logical px tall. " +
+                    "The layout will be crushed: text overflows across its neighbours and buttons " +
+                    "shrink away from their own labels, which reads as an unclickable menu.");
             }
         }
 
