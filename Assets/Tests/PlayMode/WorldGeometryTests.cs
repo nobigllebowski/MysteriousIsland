@@ -9,10 +9,12 @@ using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Player;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
+using ForgottenIsle.UI.Bootstrap;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace ForgottenIsle.Tests.PlayMode
 {
@@ -335,6 +337,42 @@ namespace ForgottenIsle.Tests.PlayMode
                 "The camera is UNDER the terrain: eye y=" + eye.y.ToString("F2")
                 + ", ground y=" + hit.point.y.ToString("F2")
                 + ". From below, the single-sided ground is entirely culled and the screen is black.");
+        }
+
+        /// <summary>The UI is not painting an opaque sheet over the game.</summary>
+        /// <remarks>
+        /// THE BUG THIS EXISTS FOR, and it cost more rounds than everything else combined:
+        /// <c>UIService</c> filled the UI root — the full-bleed container holding every screen,
+        /// drawn in screen-space overlay on top of the camera — with <c>Theme.Background</c>. An
+        /// opaque sheet over the entire game, in every state, permanently.
+        /// <para>
+        /// Nothing done to the camera, the materials, the colour space, the lighting or the geometry
+        /// could change the picture, because none of them were the picture. Every structural check
+        /// passed: 58 renderers, a real shader, one enabled camera looking straight at a correctly
+        /// lit island. The scene view proved the world was fine. It was simply covered.
+        /// </para>
+        /// <para>
+        /// So this asserts the one property no other test looked at: that the layers between the
+        /// camera and the eye let light through.
+        /// </para>
+        /// </remarks>
+        [UnityTest]
+        public IEnumerator TheUiRoot_DoesNotCoverTheGame()
+        {
+            var context = RequireContext();
+            yield return StartRun(context);
+
+            var installer = UnityEngine.Object.FindAnyObjectByType<UiInstaller>(FindObjectsInactive.Include);
+            Assert.That(installer, Is.Not.Null, "No UiInstaller, so there is no UI to check.");
+
+            var root = installer.Root;
+            Assert.That(root, Is.Not.Null, "The UI service has no root element.");
+
+            Assert.That(root.resolvedStyle.backgroundColor.a, Is.LessThan(0.05f),
+                "The UI root is opaque (alpha " + root.resolvedStyle.backgroundColor.a.ToString("F2")
+                + "). It is drawn over the whole camera image in overlay, so the game is invisible "
+                + "behind it no matter how correct the world is.");
+
         }
 
         // --- helpers ---------------------------------------------------------------------------

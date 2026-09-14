@@ -173,9 +173,22 @@ namespace ForgottenIsle.UI.Core
                 }
 
                 old.OnHidden();
-                AddTransientClass(old, ExitFadeClass);
-                Animate(old.Root, 1f, 0f, 0f, 0f);
-                Remove(old);
+
+                // REMOVED SYNCHRONOUSLY, not faded and then removed on a timer. Every screen here is
+                // full-bleed and opaque, so an outgoing one that is still in the tree is a black
+                // sheet over whatever replaced it — and that is exactly what happened: the main
+                // menu's opaque backdrop stayed on top of the game, so the world rendered perfectly
+                // and the player saw the menu's background and its one circular bloom.
+                //
+                // The fade depended on `experimental.animation` and a scheduled callback, and the
+                // project's own risk audit lists that API as HIGH RISK precisely because it fails
+                // silently. A cross-fade is not worth a mode change that can get stuck: ReplaceAll
+                // is called when the game has ALREADY changed mode, so the old screen has no claim
+                // on the screen for even one more frame.
+                old.Root.RemoveFromHierarchy();
+                old.Root.style.opacity = 1f;
+                old.Root.style.translate = new Translate(0f, 0f);
+                old.OnDestroyed();
             }
 
             _screens.Clear();

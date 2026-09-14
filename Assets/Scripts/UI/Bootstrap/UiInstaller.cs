@@ -143,6 +143,18 @@ namespace ForgottenIsle.UI.Bootstrap
         }
 
         /// <summary>
+        /// The root of the UI tree, exposed so a test can assert it is not covering the game.
+        /// </summary>
+        /// <remarks>
+        /// Read-only and deliberately narrow. It exists because the single most expensive bug in this
+        /// project was an opaque background on this element, and no test could see it from outside.
+        /// </remarks>
+        public VisualElement Root
+        {
+            get { return _ui != null ? _ui.Root : null; }
+        }
+
+        /// <summary>
         /// Creates the document, the service, the controllers and the screens, and binds them to the mode.
         /// </summary>
         /// <param name="context">The composed graph. Required.</param>

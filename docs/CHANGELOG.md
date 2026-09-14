@@ -9,6 +9,47 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the UI was painting an opaque sheet over the entire game
+
+`UIService.cs:81`
+
+```csharp
+Root.style.backgroundColor = Theme.Background;
+```
+
+The UI root is a **full-bleed element containing every screen, drawn in screen-space overlay on top
+of whatever the camera rendered**. Filling it with the theme's background colour covered the whole
+game, in every state, permanently.
+
+That is why nothing done to the camera, the materials, the colour space, the lighting or the
+geometry ever changed the picture: **none of them were the picture.** Every structural check passed
+because everything it checked was correct — 58 renderers, a real `Standard` shader, one enabled
+camera tagged `MainCamera` looking straight at a correctly lit island. The scene view proved the
+world was fine. It was simply covered up, and the one soft circle floating in the dark was the main
+menu's own backdrop bloom showing through its own background.
+
+A container is not a screen, and must never assume it is the bottom of the stack. In a 3D game it is
+not — the world is. Screens that want a background paint their own; `MainMenuScreen` deliberately
+does, and should.
+
+### Fixed — `ReplaceAll` left the outgoing screen in the tree
+
+The same failure by a second route. Leaving gameplay removed the old screen on a **timer**, while
+fading it with `experimental.animation` — an API this project's own risk audit lists as HIGH RISK
+because it fails silently. Every screen here is full-bleed and opaque, so an outgoing one still in
+the tree is a black sheet over whatever replaced it.
+
+Outgoing screens are now removed synchronously. `ReplaceAll` is called when the game has **already**
+changed mode, so the old screen has no claim on the display for even one more frame, and a
+cross-fade is not worth a mode change that can get stuck.
+
+### Added — the test that would have found this in one line
+
+`TheUiRoot_DoesNotCoverTheGame` asserts the UI root's resolved background alpha is below 0.05. No
+other test looked at whether the layers between the camera and the eye let light through, because
+every one of them was written to check that things *existed* — and everything did.
+
+
 ### Fixed — CS0136 in my own diagnostic, and the validator now catches that class
 
 ```

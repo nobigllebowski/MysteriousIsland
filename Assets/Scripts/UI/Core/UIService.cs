@@ -78,7 +78,22 @@ namespace ForgottenIsle.UI.Core
             Root.name = "app-root";
             Root.AddToClassList("app-root");
             Root.style.flexGrow = 1f;
-            Root.style.backgroundColor = Theme.Background;
+
+            // TRANSPARENT, AND THIS ONE LINE IS WHY THE WORLD WAS NEVER VISIBLE. The UI root is a
+            // full-bleed element containing every screen, drawn in screen-space overlay on top of
+            // whatever the camera rendered. Filling it with Theme.Background painted an opaque sheet
+            // over the entire game, in every state, permanently.
+            //
+            // It is why nothing done to the camera, the materials, the colour space, the lighting or
+            // the geometry ever changed the picture, and why the scene view showed a complete, well
+            // lit island while the game view showed the theme's background colour with the menu's
+            // circular bloom floating in it. The world rendered correctly the whole time and was
+            // being covered up.
+            //
+            // Screens that want a background paint their own — MainMenuScreen deliberately does, and
+            // should. A container is not a screen and must never assume it is the bottom of the
+            // stack, because in a 3D game it is not: the world is.
+            Root.style.backgroundColor = Color.clear;
             Root.style.color = Theme.Text;
 
             SafeArea = new SafeAreaElement();
