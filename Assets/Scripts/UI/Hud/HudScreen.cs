@@ -22,6 +22,10 @@ namespace ForgottenIsle.UI.Hud
     {
         private static readonly LocKey ObjectiveLabelKey = new LocKey("ui.hud.objective_label");
         private static readonly LocKey PauseKey = new LocKey("ui.hud.pause");
+        private static readonly LocKey InventoryTabKey = new LocKey("ui.hud.inventory_open");
+        private static readonly LocKey InventoryHeadingKey = new LocKey("ui.hud.inventory");
+        private static readonly LocKey InventoryHintKey = new LocKey("ui.hud.combine_hint");
+        private static readonly LocKey InventoryEmptyKey = new LocKey("ui.hud.inventory_empty");
 
         /// <summary>Seconds a narration line stays up before fading.</summary>
         private const long NarrationVisibleMs = 6400;
@@ -36,6 +40,7 @@ namespace ForgottenIsle.UI.Hud
         private Label _narration;
         private VisualElement _narrationCard;
         private TouchControls _touch;
+        private InventoryPanel _inventory;
         private IVisualElementScheduledItem _narrationTimer;
 
         /// <param name="context">Localization and logging.</param>
@@ -48,6 +53,19 @@ namespace ForgottenIsle.UI.Hud
 
         /// <summary>The thumb controls, so the input bridge can read them.</summary>
         public TouchControls Touch => _touch;
+
+        /// <summary>The carried-items tray. Null until the screen has been built.</summary>
+        public InventoryPanel Inventory => _inventory;
+
+        /// <summary>
+        /// Raised when the player taps two different carried items in a row.
+        /// </summary>
+        /// <remarks>
+        /// Forwarded from the tray rather than exposed through it, because the tray does not exist
+        /// until the screen is first shown and a controller has to be able to subscribe before
+        /// that. Subscribing to a panel that is still null is the whole class of bug this avoids.
+        /// </remarks>
+        public event System.Action<string, string> CombineRequested;
 
         /// <inheritdoc />
         protected override void Build(VisualElement root)
@@ -62,6 +80,14 @@ namespace ForgottenIsle.UI.Hud
             BuildPauseButton(root);
             BuildPrompt(root);
             BuildNarration(root);
+
+            _inventory = new InventoryPanel(
+                root,
+                Loc.Get(InventoryTabKey),
+                Loc.Get(InventoryHeadingKey),
+                Loc.Get(InventoryEmptyKey),
+                Loc.Get(InventoryHintKey));
+            _inventory.Combine += RaiseCombineRequested;
         }
 
         /// <summary>Sets the objective line. Empty hides the whole block.</summary>
@@ -140,6 +166,32 @@ namespace ForgottenIsle.UI.Hud
             }
 
             _touch?.SetVisible(visible);
+
+            // The tray goes with the controls. Left up while paused it would offer a combination
+            // the handler is going to refuse for being out of state, which reads as a broken
+            // button rather than as a rule.
+            _inventory?.SetVisible(visible);
+        }
+
+        /// <summary>Replaces what the tray shows.</summary>
+        /// <param name="items">Item ids paired with already-localized names.</param>
+        public void SetInventory(System.Collections.Generic.IReadOnlyList<InventoryItemView> items)
+        {
+            if (!IsBuilt)
+            {
+                return;
+            }
+
+            _inventory.SetItems(items);
+        }
+
+        private void RaiseCombineRequested(string first, string second)
+        {
+            var handler = CombineRequested;
+            if (handler != null)
+            {
+                handler(first, second);
+            }
         }
 
         private void BuildObjective(VisualElement root)

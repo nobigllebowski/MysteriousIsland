@@ -196,7 +196,8 @@ namespace ForgottenIsle.UI.Bootstrap
                 new HudScreen(_ui.Context, OnPauseRequested),
                 context.Signals,
                 context.Localization,
-                context.Log);
+                context.Log,
+                context.Commands);
             _loadFailedScreen = new LoadFailedScreen(_ui.Context, OnReturnToMenu);
 
             _menu = new MainMenuController(_ui, context.Commands, _slots, context.Log, Application.version);
@@ -436,6 +437,7 @@ namespace ForgottenIsle.UI.Bootstrap
                     // HUD is what remains, because ScreenStack refuses to be left empty.
                     _ui.Screens.ReplaceAll(_hud.Screen);
                     _hud.PrimeObjective(_context.Progress.ObjectiveKey);
+                    _hud.PrimeInventory(_context.Inventory.Inventory.Items);
                     _hud.SetGameplayActive(true);
                     StartInputPump();
                     break;

@@ -74,8 +74,13 @@ field now shapes an actual island — a noise-perturbed coastline with land insi
 outside — the ground grid went 33 → 97 a side, the island 120 m → 170 m, and ambient went Flat →
 Trilight. **None of it has been compiled or run** (§2).
 
-**Still not implemented.** Inventory UI, crafting, survival meters, camp, weather, dialogue, story
-beyond the current narration lines, and any audio content.
+**Added — the inventory tray.** Chips below the pause button (top of screen: both thumbs live along
+the bottom edge), opened by a tab. Combining is tap-then-tap, with tap-again to cancel.
+`InventoryChangedSignal` carries a snapshot so the panel never reads a service; `HudController`
+turns a reported pair into a `CombineItemsCommand`. ADR-0019, ADR-0020, ADR-0021 recorded.
+
+**Still not implemented.** Crafting, survival meters, camp, weather, dialogue, story beyond the
+current narration lines, and any audio content.
 
 ## 2. Verification status — read this before trusting anything
 
@@ -90,7 +95,7 @@ beyond the current narration lines, and any audio content.
 | **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
 | **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
 | **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
-| **Tests** | **UNCONFIRMED — 259 tests written (245 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
+| **Tests** | **UNCONFIRMED — 266 tests written (252 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
 | **Shaders** | **NEVER COMPILED.** The five files under `Assets/Resources/Shaders` have not been through Unity's shader compiler, and neither CI gate can look at them — both read C#. A shader that fails to compile renders magenta, so this is visible immediately in the editor and invisible until then. |
 
 `ci/validate-structure.py` is a deliberate compiler substitute: brace balance, namespace

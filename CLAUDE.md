@@ -15,7 +15,7 @@ Phase 3 NOT started. See `docs/PHASE_2_REPORT.md`.
 `docs/` is authoritative. Where documents disagree, this order wins:
 
 1. **Shipped code** — for anything already implemented.
-2. **`docs/DECISIONS.md`** — the decision ledger, including all 18 ADRs.
+2. **`docs/DECISIONS.md`** — the decision ledger, including all 21 ADRs.
 3. **`docs/architecture/00-decisions.md`** — the ADRs in full.
 4. Everything else in `docs/`.
 

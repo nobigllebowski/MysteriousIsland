@@ -164,10 +164,21 @@ namespace ForgottenIsle.Game.Items
 
         private void Publish(InventoryChangeKind kind, string itemId)
         {
-            if (_signals != null)
+            if (_signals == null)
             {
-                _signals.Publish(new InventoryChangedSignal(kind, itemId));
+                return;
             }
+
+            // A copy, not the live list. The panel on the other end of this signal is UI code that
+            // is not allowed to hold a reference into a service, and a list handed out once would
+            // keep changing under it -- the same leak, just slower to notice.
+            var snapshot = new string[_inventory.Items.Count];
+            for (var i = 0; i < snapshot.Length; i++)
+            {
+                snapshot[i] = _inventory.Items[i];
+            }
+
+            _signals.Publish(new InventoryChangedSignal(kind, itemId, snapshot));
         }
     }
 }

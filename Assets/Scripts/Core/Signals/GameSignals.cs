@@ -3,6 +3,7 @@
 // Adapted for Vardholm: Nation's calendar/economy payloads dropped entirely; the Phase 1 signal set is
 // collapsed into one file and retargeted at state, zone, save and sim-hour events.
 
+using System.Collections.Generic;
 using ForgottenIsle.Core.State;
 
 namespace ForgottenIsle.Core.Signals
@@ -194,9 +195,15 @@ namespace ForgottenIsle.Core.Signals
 
     /// <summary>Raised whenever the inventory changes.</summary>
     /// <remarks>
-    /// Carries the kind and the item rather than the whole list, because every listener either
-    /// wants to re-read the inventory anyway (the panel) or wants to react to one specific item
-    /// (audio, narration). A snapshot in the signal would be a second copy of the truth.
+    /// It carries a SNAPSHOT of the whole inventory, not just the item that moved, and that is a
+    /// requirement of the architecture rather than convenience. The panel that renders this lives
+    /// in the UI assembly, and ADR-0002 forbids the UI from touching a service — so "re-read the
+    /// inventory" is not something the listener is allowed to do. Either the list travels in the
+    /// signal or the guarantee is a comment.
+    /// <para>
+    /// The list is a copy taken at publish time. Handing out the live collection would be a
+    /// reference the UI could hold across a change, which is the same leak in a slower form.
+    /// </para>
     /// </remarks>
     public readonly struct InventoryChangedSignal : ISignal
     {
@@ -206,12 +213,17 @@ namespace ForgottenIsle.Core.Signals
         /// <summary>The item involved. Empty for <see cref="InventoryChangeKind.Replaced"/>.</summary>
         public readonly string ItemId;
 
+        /// <summary>Everything carried, in the order it was found. Never null.</summary>
+        public readonly IReadOnlyList<string> Items;
+
         /// <param name="kind">What happened.</param>
         /// <param name="itemId">The item involved.</param>
-        public InventoryChangedSignal(InventoryChangeKind kind, string itemId)
+        /// <param name="items">Snapshot of everything carried. Null is read as empty.</param>
+        public InventoryChangedSignal(InventoryChangeKind kind, string itemId, IReadOnlyList<string> items)
         {
             Kind = kind;
             ItemId = itemId;
+            Items = items ?? System.Array.Empty<string>();
         }
     }
 }

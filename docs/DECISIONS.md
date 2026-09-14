@@ -35,9 +35,9 @@ Full text and rationale in [`architecture/00-decisions.md`](architecture/00-deci
 | 0004 | Zone streaming uses the curtain model; max 2 resident zones | **Implemented** |
 | 0005 | ScriptableObject authoring baked to immutable records; catalog ships as an Addressable | Not yet built (Phase 3+) |
 | 0006 | `SurvivalStat` = `{Health, Energy, Hydration, Satiation, CoreTemp}` | Decided — **CONFLICT-2**, data doc still stale |
-| 0007 | One inventory model: items, not resources. `ResourceDefinition` deleted | Decided — **CONFLICT-3**, data doc still stale |
+| 0007 | One inventory model: items, not resources. `ResourceDefinition` deleted | **Implemented** (Phase 3) — **CONFLICT-3**, data doc still stale |
 | 0008 | Locomotion is a floating joystick; tap-to-move is accessibility-only | **Implemented** — **CONFLICT-4**, prologue/roadmap still stale |
-| 0009 | 14 save participants at completion; `GameState` must cover all owned state | Partial — 3 registered (session, player, progress), by design |
+| 0009 | 14 save participants at completion; `GameState` must cover all owned state | Partial — 4 registered (session, player, progress, inventory), by design |
 | 0010 | Two anti-softlock holes closed: diesel renewable; Ash Throat valve order gets an Act-3-reachable second hint | Design-level, not yet built |
 | 0011 | Save spine in Phase 1 (= D-2) | **Implemented** |
 | 0012 | Hand-wired composition; no service locator. VContainer is a Phase 2 go/no-go | **Implemented** — go/no-go still not taken |
@@ -47,6 +47,9 @@ Full text and rationale in [`architecture/00-decisions.md`](architecture/00-deci
 | 0016 | Zones are furnished at runtime from a recipe; scene assets stay empty | **Implemented** (Phase 2) — the look is unverified |
 | 0017 | Interaction is a registry proximity scan, not physics triggers | **Implemented** (Phase 2) |
 | 0018 | No placeholder audio binaries; the game is honestly silent | **Implemented** (Phase 2) |
+| 0019 | A failed combination consumes nothing — the anti-soft-lock rule | **Implemented** (Phase 3), asserted by name |
+| 0020 | Inventory is a top-of-screen tray; combining is tap-then-tap, with tap-again to cancel | **Implemented** (Phase 3) |
+| 0021 | The world is drawn with this project's own shaders, kept under `Resources` | **Implemented** — **never compiled** |
 
 **Why 0014 reversed:** the uGUI choice assumed a greenfield start. It was not one — the team's
 NATION: WORLD ORDER project already contained a working, code-built UI Toolkit mobile framework at

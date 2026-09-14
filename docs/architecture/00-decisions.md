@@ -383,6 +383,87 @@ one that has hidden the fact that its content does not exist.
   drowning it.
 - This generalizes: no fabricated asset of any kind stands in for content that has not been made.
 
+## ADR-0019 — A failed combination costs the player nothing
+
+**Status.** Accepted. Implemented in `InventoryService.Combine`, asserted in `InventoryTests`.
+
+**Decision.** Two items are consumed only after the recipe is known to match. A wrong pairing
+changes nothing at all and answers with a line of narration.
+
+**Why.** This game has no shop, no respawn and no way to get an item back. A combination that eats
+its inputs on a guess is a soft lock the player cannot see coming and cannot undo, and it is the
+single most common way this genre breaks itself. The cost of the alternative is not a frustrating
+moment — it is a save file that can no longer be finished.
+
+**Consequence.**
+- `Combine` checks possession, then the table, and only then removes anything.
+- Silence is not an acceptable answer to a wrong pairing: a player who gets no response cannot tell
+  a refusal from a broken control, and starts distrusting every combination they have not seen work.
+- The rule generalizes to `UseItem`: the target decides whether the item is spent, and a refusal
+  spends nothing.
+
+---
+
+## ADR-0020 — The inventory is a tray at the top of the screen, and combining is tap-then-tap
+
+**Status.** Accepted. Implemented in `InventoryPanel`.
+
+**Decision.** Carried items appear as chips in a strip below the pause button, opened by a tab. The
+first tap on a chip selects it; a second tap on a different chip requests that combination; a second
+tap on the same chip cancels. No drag, no long press, no separate combine mode, and no full-screen
+bag.
+
+**Why, for the position.** Both of this game's thumbs live along the bottom edge — the movement
+stick on the left, the look pad on the right. A tray down there, which is where every desktop game
+puts one, is an opaque sheet over the controls the player is holding. The top strip of a portrait
+screen is the only part a thumb never rests on.
+
+**Why, for the gesture.** A drag needs two points of contact with a moving world behind it and has
+no cancel; a long press has no affordance and no cancel either. Tap-then-tap is one thumb, nothing
+to learn, and the cancel is the obvious thing to try — tapping the thing again. Given ADR-0019's
+subject matter, having a way out of a half-made choice is not a nicety.
+
+**Why not a full-screen bag.** The game holds five or six specific objects, not an economy. A grid
+of slots is a promise about what kind of game this is, and it is not this one.
+
+**Consequence.**
+- The panel renders strings it is handed and reports taps by id; it holds no service and cannot
+  change what is carried. `HudController` turns a reported pair into a `CombineItemsCommand`.
+- `InventoryChangedSignal` carries a snapshot of the whole inventory, because "re-read the service"
+  is not something a UI listener is permitted to do (ADR-0002).
+- `InventoryPanel.TapItem` is public: it is the panel's input entry point, which puts the selection
+  rule somewhere it can be exercised without a panel, an event system or a frame.
+
+---
+
+## ADR-0021 — The world is drawn with this project's own shaders, kept in `Resources`
+
+**Status.** Accepted. Implemented as five shaders under `Assets/Resources/Shaders`.
+
+**Decision.** Terrain, props, foliage, water and sky each get a purpose-written shader. Every one
+lives under `Resources`, is loaded with `Resources.Load` before `Shader.Find`, and every material
+falls back to the stock lit shader when its own cannot be found.
+
+**Why not `Standard`.** It ignores mesh vertex colours. `ZoneMeshes` has always written a height
+gradient into every ground vertex and `Standard` has always discarded it, so the terrain rendered as
+one flat tint — the computation was happening and being thrown away. Everything else follows from
+the same place: procedural world, no imported art, no texture budget, so what a surface looks like
+has to be arithmetic.
+
+**Why `Resources` and not `Shader.Find` alone.** `Shader.Find` resolves anything in the project
+while running in the editor and only what the build actually included once the game is on a device.
+A shader found that way in Play mode can be missing at runtime, which is the classic "it worked in
+the editor" failure. A folder under `Resources` is a guarantee of inclusion rather than a hope.
+
+**Consequence.**
+- A missing shader costs the island its looks and not its playability: every factory has a fallback.
+- Shaders are outside what either CI gate can check — both read C# — so a shader error is invisible
+  here and immediate in the editor, where it renders magenta.
+- Animation that is purely visual (wind, waves) lives in the vertex shader, not in `Ticker`. It is
+  not an exception to the one-`Update()` rule: no C# code ever learns that anything moved.
+
+---
+
 ---
 
 ## Open items — tracked, not resolved

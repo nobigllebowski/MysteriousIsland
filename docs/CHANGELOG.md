@@ -9,6 +9,35 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the inventory tray, and the first thing the player can do with two items
+
+Carrying items was implemented with no way to see or use them: the player could pick up a spindle
+and a reel and had no route to putting them together. The tray closes that.
+
+Chips in a strip below the pause button, opened by a tab. **At the top of the screen, not the
+bottom** — both of this game's thumbs live along the bottom edge (movement stick left, look pad
+right), so a tray down there is an opaque sheet over the controls the player is holding.
+
+Combining is **tap, then tap**: the first tap selects, a second tap on a different chip requests
+that combination, a second tap on the same chip cancels. No drag (needs two points of contact with
+a moving world behind it, and has no cancel), no long press (no affordance, and no cancel either).
+Given that combinations consume their inputs, having a way out of a half-made choice is not a
+nicety — `InventoryPanelTests` asserts the cancel by name, along with what happens when the
+inventory changes underneath a pending selection.
+
+Architecture: `InventoryChangedSignal` now carries a snapshot of the whole inventory rather than
+just the item that moved. That is a requirement, not a convenience — the panel is UI code, ADR-0002
+forbids it from touching a service, so "re-read the inventory" is not available to it. Either the
+list travels in the signal or the guarantee is a comment. The panel renders strings it is handed and
+reports taps by id; `HudController` is what turns a reported pair into a `CombineItemsCommand`.
+
+`PrimeInventory` mirrors `PrimeObjective` for the same reason: a continued run restores its
+inventory during load, long before the HUD exists, so without a pull at build time the player comes
+back from a save with an empty tray and no way to reach the items a puzzle needs.
+
+Recorded as ADR-0019 (a failed combination costs nothing), ADR-0020 (the tray and the gesture) and
+ADR-0021 (this project's own shaders, kept under `Resources`).
+
 ### Added — the island looks like an island: sky, sea, shore and five shaders
 
 The world was geometrically correct and visually a greybox. Four things were missing, and each one
