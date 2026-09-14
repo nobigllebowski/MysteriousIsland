@@ -29,6 +29,9 @@ namespace ForgottenIsle.Game.Diagnostics
     {
         private const string Prefix = "[Vardholm] ZONE DUMP";
 
+        /// <summary>Name of the file the report is also written to, under persistentDataPath.</summary>
+        public const string DumpFileName = "vardholm-zone-dump.txt";
+
         /// <summary>Renderers further than this from the camera are reported separately as "far".</summary>
         private const float NearRadius = 60f;
 
@@ -42,6 +45,11 @@ namespace ForgottenIsle.Game.Diagnostics
         {
             var text = Build(scene, camera, playerBody);
 
+            // ALSO WRITTEN TO A FILE, because relaying a console block by hand has failed several
+            // times running: the console list shows one line, the detail pane is easy to miss, and
+            // a screenshot of it loses exactly the digits that matter. The file is one attachment.
+            WriteToFile(text);
+
             // One call, and an error rather than a log when the zone cannot be seen: a report nobody
             // reads is the same as no report, and the console only makes noise about errors.
             if (RendersNothing(scene, camera))
@@ -51,6 +59,27 @@ namespace ForgottenIsle.Game.Diagnostics
             }
 
             Debug.Log(text);
+        }
+
+        /// <summary>Writes the report where it can be attached to a message in one action.</summary>
+        /// <remarks>
+        /// <c>Application.persistentDataPath</c> because it is writable on every platform this game
+        /// targets, including a device build, which is where this will eventually matter most. The
+        /// path is logged so nobody has to know what that resolves to.
+        /// </remarks>
+        private static void WriteToFile(string text)
+        {
+            try
+            {
+                var path = System.IO.Path.Combine(Application.persistentDataPath, DumpFileName);
+                System.IO.File.WriteAllText(path, text);
+                Debug.Log("[Vardholm] zone dump written to: " + path);
+            }
+            catch (System.Exception exception)
+            {
+                // A diagnostic that throws is worse than a diagnostic that is missing.
+                Debug.LogWarning("[Vardholm] could not write the zone dump: " + exception.Message);
+            }
         }
 
         /// <summary>True when nothing in this zone can reach the screen.</summary>

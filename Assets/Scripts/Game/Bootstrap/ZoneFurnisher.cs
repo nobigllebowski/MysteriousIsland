@@ -44,6 +44,9 @@ namespace ForgottenIsle.Game.Bootstrap
         /// <summary>Console prefix for the per-zone furnish diagnostic.</summary>
         private const string FurnishLogPrefix = "[Vardholm] furnish: ";
 
+        /// <summary>Screen luminance below which a surface reads as black rather than as dark.</summary>
+        private const float ReadableLuminance = 0.18f;
+
         private const float GroundSize = 60f;
         private const float AnchorHeight = 1f;
         private const float EyeHeight = 1.6f;
@@ -127,6 +130,8 @@ namespace ForgottenIsle.Game.Bootstrap
             // Reported AFTER Initialize, because Initialize is what places the rig: a diagnostic
             // taken before it would print the spawn capsule's construction position rather than
             // where the player actually is.
+            RepairVisibility(scene, camera);
+
             var playable = VerifyPlayable(scene, rig, camera);
 
             // The full structural dump, unconditionally. VerifyPlayable answers "is the rig
@@ -135,6 +140,130 @@ namespace ForgottenIsle.Game.Bootstrap
             ZoneDiagnostics.Dump(scene, camera, rig != null ? rig.transform : null);
 
             return playable ? rig : null;
+        }
+
+        /// <summary>
+        /// Repairs the conditions that make a built zone impossible to see, and says what it repaired.
+        /// </summary>
+        /// <remarks>
+        /// WHY REPAIR RATHER THAN ONLY REPORT. A zone that cannot be seen is not a degraded
+        /// experience, it is no experience: the player is standing in a black screen with a working
+        /// HUD, which is worse than a crash because nothing announces it. Every condition handled
+        /// here is one the game can correct in the frame it is noticed, and each correction is
+        /// logged as a warning naming what was wrong — so this diagnoses in public rather than
+        /// papering over anything. A silent repair would be the thing worth objecting to.
+        /// <para>
+        /// It is deliberately narrow. It repairs a renderer that cannot draw (no material, no
+        /// shader, disabled, on a layer the camera excludes) and lighting too dark to read. It does
+        /// not move the camera, does not move geometry, and does not invent content: if the zone is
+        /// empty or the camera points the wrong way, that is still reported and still not hidden.
+        /// </para>
+        /// </remarks>
+        private void RepairVisibility(Scene scene, Camera camera)
+        {
+            if (!scene.IsValid() || !scene.isLoaded || camera == null)
+            {
+                return;
+            }
+
+            var fallback = new Material(Shader.Find("Standard")) { name = "RepairedZoneSurface" };
+            fallback.SetColor("_Color", new Color(0.45f, 0.47f, 0.45f));
+
+            int noMaterial = 0, disabled = 0, wrongLayer = 0;
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var renderers = roots[i].GetComponentsInChildren<MeshRenderer>(true);
+                for (var r = 0; r < renderers.Length; r++)
+                {
+                    var renderer = renderers[r];
+
+                    if (renderer.sharedMaterial == null || renderer.sharedMaterial.shader == null)
+                    {
+                        renderer.sharedMaterial = fallback;
+                        noMaterial++;
+                    }
+
+                    if (!renderer.enabled)
+                    {
+                        renderer.enabled = true;
+                        disabled++;
+                    }
+
+                    if ((camera.cullingMask & (1 << renderer.gameObject.layer)) == 0)
+                    {
+                        renderer.gameObject.layer = 0;
+                        wrongLayer++;
+                    }
+                }
+            }
+
+            if (noMaterial + disabled + wrongLayer > 0)
+            {
+                Debug.LogWarning(
+                    "[Vardholm] repaired zone visibility — " +
+                    noMaterial.ToString(CultureInfo.InvariantCulture) + " renderer(s) had no usable material, " +
+                    disabled.ToString(CultureInfo.InvariantCulture) + " were disabled, " +
+                    wrongLayer.ToString(CultureInfo.InvariantCulture) + " were on a layer this camera excludes. " +
+                    "Each of those draws nothing with no error, which is indistinguishable from an empty world.");
+            }
+
+            RepairLighting(scene);
+        }
+
+        /// <summary>Raises ambient until the ground is readable, and says by how much.</summary>
+        /// <remarks>
+        /// The ground can render perfectly and still resolve to a few per cent grey — which is what
+        /// happened, and what no structural check could see. Rather than trusting the recipe to be
+        /// right forever, the result is measured and corrected once, in the open.
+        /// </remarks>
+        private void RepairLighting(Scene scene)
+        {
+            var sun = FindSun(scene);
+            var luminance = ZoneDiagnostics.EstimateGroundLuminance(scene, sun);
+            if (luminance < 0f || luminance >= ReadableLuminance)
+            {
+                return;
+            }
+
+            var before = luminance;
+            var guard = 0;
+            while (luminance >= 0f && luminance < ReadableLuminance && guard++ < 12)
+            {
+                RenderSettings.ambientLight = new Color(
+                    Mathf.Clamp01(RenderSettings.ambientLight.r * 1.35f + 0.04f),
+                    Mathf.Clamp01(RenderSettings.ambientLight.g * 1.35f + 0.04f),
+                    Mathf.Clamp01(RenderSettings.ambientLight.b * 1.35f + 0.04f));
+
+                DynamicGI.UpdateEnvironment();
+                luminance = ZoneDiagnostics.EstimateGroundLuminance(scene, sun);
+            }
+
+            Debug.LogWarning(
+                "[Vardholm] the zone was lit too darkly to read: ground luminance " +
+                before.ToString("F3", CultureInfo.InvariantCulture) + ". Ambient raised to " +
+                RenderSettings.ambientLight.ToString("F2") + ", giving " +
+                luminance.ToString("F3", CultureInfo.InvariantCulture) +
+                ". The recipe in ZoneBuilder is what should be corrected; this only stops the run " +
+                "from being a black screen.");
+        }
+
+        private static Light FindSun(Scene scene)
+        {
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var lights = roots[i].GetComponentsInChildren<Light>(true);
+                for (var l = 0; l < lights.Length; l++)
+                {
+                    if (lights[l].type == LightType.Directional && lights[l].enabled)
+                    {
+                        return lights[l];
+                    }
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
