@@ -150,7 +150,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Ticker = gameObject.AddComponent<Ticker>();
             Ticker.Initialize(Context.Session, Context.States, Context.Signals, Context.Log);
 
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
+#if DEBUG || UNITY_EDITOR
             gameObject.AddComponent<DevOverlay>().Initialize(Context, Ticker);
 #endif
 
@@ -162,7 +162,7 @@ namespace ForgottenIsle.Game.Bootstrap
             SelfHealIntoOpenScene();
 
             // Last, so it sees the finished graph and whatever the self-heal path adopted. The call is
-            // [Conditional] on UNITY_EDITOR/DEVELOPMENT_BUILD, so it compiles out of a release player
+            // [Conditional] on UNITY_EDITOR/DEBUG, so it compiles out of a release player
             // entirely — including the argument evaluation.
             VardholmStartupValidator.RunAndLog(Context);
         }
@@ -221,7 +221,7 @@ namespace ForgottenIsle.Game.Bootstrap
                 Context.States.TryTransition(GameStateId.InGame);
             }
 
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
+#if DEBUG || UNITY_EDITOR
             // Developer-facing only, and only in builds that have a console to read it in. The self-heal
             // is silent in a shipped build because it cannot happen there: a player always starts in the
             // scene the build starts in.

@@ -442,7 +442,7 @@ namespace ForgottenIsle.Tests.PlayMode
         /// </remarks>
         private static int CountLiveTransforms()
         {
-            return UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
+            return UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include).Length;
         }
     }
 }

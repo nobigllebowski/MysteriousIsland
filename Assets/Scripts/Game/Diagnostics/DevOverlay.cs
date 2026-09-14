@@ -5,7 +5,7 @@
 // drawing moved from the UI document to IMGUI because ForgottenIsle.Game does not reference ForgottenIsle.UI;
 // the whole file is compiled out of release builds.
 
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
+#if DEBUG || UNITY_EDITOR
 
 using System.Text;
 using ForgottenIsle.Game.Bootstrap;

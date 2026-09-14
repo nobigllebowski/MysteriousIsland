@@ -9,6 +9,27 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — third editor open: all 11 warnings
+
+The project code now compiles far enough to produce warnings rather than stopping. Two errors
+remain and are not yet diagnosed (Console was filtered to warnings).
+
+- **`FindObjectsByType<T>(FindObjectsInactive, FindObjectsSortMode)` is obsolete** in Unity 6.x
+  (CS0618, 4 sites). Switched to the overload without a sort mode.
+- **The `DEVELOPMENT_BUILD` preprocessor symbol is deprecated** (UAC0009, 6 sites). Replaced with
+  `DEBUG`, which Unity defines in the editor and in development builds and omits from release —
+  the same semantics the code wanted.
+
+**Validator gained a `DEPRECATED` check** carrying a table of Unity APIs this editor reports as
+obsolete, each entry earned by actually appearing in the Console rather than guessed. It scans
+`code_with_strings` rather than the string-stripped source, because a first pass missed
+`Conditional("DEVELOPMENT_BUILD")` and `#if DEVELOPMENT_BUILD` — both live in text the normal
+scanner blanks out. Regression-tested on both forms.
+
+These were warnings, not errors, which is exactly why they needed a gate: a warning scrolls past,
+and the next editor version turns it into CS0619 — which is precisely what happened to the Input
+System package.
+
 ### Fixed — second editor open: the first real compile of project code
 
 88 errors became 3, and for the first time they were ours.

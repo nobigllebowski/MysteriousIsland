@@ -88,7 +88,7 @@ namespace ForgottenIsle.Game.Diagnostics
         /// <summary>Runs the checks and writes one block to the console.</summary>
         /// <param name="context">The composed graph.</param>
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
-        [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        [System.Diagnostics.Conditional("DEBUG")]
         public static void RunAndLog(GameContext context)
         {
             var lines = Run(context);
@@ -259,8 +259,7 @@ namespace ForgottenIsle.Game.Diagnostics
 
         private static void CheckSingletons(List<Line> lines)
         {
-            var bootstraps = Object.FindObjectsByType<AppBootstrap>(
-                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var bootstraps = Object.FindObjectsByType<AppBootstrap>(FindObjectsInactive.Include);
 
             if (bootstraps.Length == 1)
             {
@@ -273,8 +272,7 @@ namespace ForgottenIsle.Game.Diagnostics
                     "Two hosts means two service graphs and two tickers."));
             }
 
-            var tickers = Object.FindObjectsByType<Ticker>(
-                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var tickers = Object.FindObjectsByType<Ticker>(FindObjectsInactive.Include);
 
             if (tickers.Length == 1)
             {
@@ -286,8 +284,7 @@ namespace ForgottenIsle.Game.Diagnostics
                     tickers.Length + " Tickers found — expected exactly 1."));
             }
 
-            var listeners = Object.FindObjectsByType<AudioListener>(
-                FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var listeners = Object.FindObjectsByType<AudioListener>(FindObjectsInactive.Exclude);
 
             if (listeners.Length > 1)
             {

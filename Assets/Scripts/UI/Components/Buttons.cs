@@ -163,7 +163,7 @@ namespace ForgottenIsle.UI.Core
                 button.style.width = MinimumTouchTargetDp;
             }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_EDITOR || DEBUG
             Debug.LogError(
                 "[UI] Button '" + button.text + "' laid out at " + rect.width.ToString("0.#") + "x" +
                 rect.height.ToString("0.#") + "dp, below the " + MinimumTouchTargetDp.ToString("0") +

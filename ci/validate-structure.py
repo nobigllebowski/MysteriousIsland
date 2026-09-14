@@ -1427,6 +1427,43 @@ def check_member_type_collisions(report, files):
                     "(this is CS0102 in Unity; rename one of them)" % (name, owner_decl.qualified))
 
 
+
+# Unity APIs this editor version reports as obsolete, and what to use instead. Each entry earned
+# its place by actually appearing in the Console -- this table is a record of real findings, not a
+# guess at what might be deprecated.
+DEPRECATED_UNITY_APIS = [
+    (re.compile(r"\bFindObjectsSortMode\b"),
+     "FindObjectsSortMode is obsolete in Unity 6.x; use the FindObjectsByType overload "
+     "that does not take a sort mode (CS0618)"),
+    (re.compile(r"\bDEVELOPMENT_BUILD\b"),
+     "the DEVELOPMENT_BUILD preprocessor symbol is deprecated; use DEBUG "
+     "(defined in the editor and in development builds, absent in release) (UAC0009)"),
+    (re.compile(r"\bFindObjectsOfType\b|\bFindObjectOfType\b"),
+     "FindObjectOfType/FindObjectsOfType are obsolete; use FindAnyObjectByType/FindObjectsByType"),
+    (re.compile(r"(?<![\w<])TreeViewState(?![\w<])|(?<![\w<])TreeViewItem(?![\w<])"),
+     "the non-generic IMGUI TreeView types were deprecated in Unity 6.3 and are obsolete-as-error; "
+     "use the TreeViewState<int> / TreeViewItem<int> generics"),
+]
+
+
+def check_deprecated_unity_apis(report, files):
+    """Unity APIs that compile today but are reported obsolete by 6000.6.
+
+    These surface as warnings rather than errors, which is exactly why they need a gate: a warning
+    scrolls past, and the next editor version turns it into CS0619. Every pattern here was observed
+    in the Console on this project, not guessed.
+    """
+    for rel_path, scan, _namespaces, _declarations in files:
+        # code_with_strings, not code: two of these patterns live in places the string-stripping
+        # scanner blanks out -- DEVELOPMENT_BUILD appears inside Conditional("...") literals and on
+        # #if preprocessor lines. Scanning the stripped source silently missed both.
+        source = getattr(scan, "code_with_strings", None) or scan.code
+        for pattern, message in DEPRECATED_UNITY_APIS:
+            for match in pattern.finditer(source):
+                report.error("DEPRECATED", rel_path, scan.line_of(match.start()),
+                             "'%s': %s" % (match.group(0), message))
+
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -1515,6 +1552,9 @@ def main(argv=None):
     report.checks_run += 1
 
     check_member_type_collisions(report, files)
+    report.checks_run += 1
+
+    check_deprecated_unity_apis(report, files)
 
     # --- Output ------------------------------------------------------------
     report.emit()
@@ -1532,7 +1572,8 @@ def main(argv=None):
     print("  checks run ................ %d (balance, namespaces, engine-free core, asmdefs,"
           % report.checks_run)
     print("                                 contract drift, lockeys, duplicate types,")
-    print("                                 missing usings, member/type collisions)")
+    print("                                 missing usings, member/type collisions,")
+    print("                                 deprecated Unity APIs)")
     print("  errors .................... %d" % len(report.errors))
     print("  warnings .................. %d%s" % (len(report.warnings), " (hidden by --quiet)" if args.quiet and report.warnings else ""))
     print("")
