@@ -134,6 +134,42 @@ namespace ForgottenIsle.Tests.PlayMode
             Assert.That(Camera.main, Is.Not.Null);
         }
 
+        /// <summary>The menu is never left with nothing clearing the screen.</summary>
+        /// <remarks>
+        /// UI Toolkit renders the menu in overlay with no camera, which is why this looked fine and
+        /// was not: with nothing clearing the colour buffer, each frame composited onto the last and
+        /// the menu smeared into itself. A camera must be enabled here even though no world is drawn.
+        /// </remarks>
+        [UnityTest]
+        public IEnumerator AtTheMenu_SomethingIsStillClearingTheScreen()
+        {
+            var context = RequireContext();
+            yield return WaitFor(() => context.States.Current == GameStateId.MainMenu, LoadTimeoutSeconds);
+
+            Assert.That(context.States.Current, Is.EqualTo(GameStateId.MainMenu), "Never reached the menu.");
+            Assert.That(EnabledCameras(), Is.EqualTo(1),
+                "The menu has no enabled camera, so nothing clears the frame buffer between frames.");
+            Assert.That(EnabledAudioListeners(), Is.EqualTo(1),
+                "The menu has no AudioListener.");
+        }
+
+        /// <summary>Entering a zone hands the screen to the zone camera, not to both.</summary>
+        [UnityTest]
+        public IEnumerator EnteringAZone_RetiresTheFallbackCamera()
+        {
+            var context = RequireContext();
+            yield return StartRun(context);
+
+            Assert.That(EnabledCameras(), Is.EqualTo(1),
+                "The fallback camera is still enabled alongside the zone camera.");
+
+            var main = Camera.main;
+            Assert.That(main, Is.Not.Null);
+            Assert.That(main.cullingMask, Is.Not.EqualTo(0),
+                "Camera.main resolved to a camera that renders nothing -- the fallback camera must "
+                + "never be tagged MainCamera.");
+        }
+
         // --- helpers ---------------------------------------------------------------------------
 
         private static int EnabledCameras()

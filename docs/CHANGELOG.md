@@ -13,9 +13,18 @@ reading order. For what is true *right now* rather than what changed, see
 
 The menu rendered and the game did not. Two separate facts, only one of them a bug.
 
-**The menu needs no camera and never did.** UI Toolkit panels with no `targetTexture` render in
-screen-space overlay, so `MainMenu.unity` — created as `NewSceneSetup.EmptyScene` — is correct as
-it stands. Unity's "No cameras rendering" is an accurate description of a menu that is working.
+**The menu did need a camera — this entry originally said it did not, and that was wrong.** UI
+Toolkit panels with no `targetTexture` do render in screen-space overlay with no camera, which is
+why the menu appeared to work. What has no camera is the **clear**. With nothing clearing the
+colour buffer, every frame's UI composited on top of the last one still sitting there, and the menu
+smeared into itself — the title and subtitle from an earlier layout pass showing through behind the
+current one, at the wrong size, permanently. A screenshot of the running menu is what made it
+visible; "renders" and "renders correctly" are not the same claim.
+
+The fix is a clear-only camera on the persistent host: `cullingMask = 0`, so it draws nothing and
+costs one clear per frame. It is **not** tagged `MainCamera`, so `Camera.main` can never resolve to
+a camera that renders nothing, and it is disabled whenever a zone supplies a real one — by the
+state machine on entering `InGame`/`Paused`, and independently by the furnisher's own sweep.
 
 **The gameplay camera was one early-return away from never existing.** `ZoneFurnisher.EnsureCamera`
 returned the moment `rig.CameraPivot != null`. **A pivot is not a camera.** Any path producing a
@@ -34,9 +43,10 @@ records a zone that came up unplayable. Travel can no longer leave two cameras r
 transition both zones are briefly resident, and every camera but the current zone's is now
 disabled, as is every `AudioListener` but its own.
 
-**Tests.** New `CameraLifecycleTests` (3 PlayMode cases): exactly one enabled camera after New
+**Tests.** New `CameraLifecycleTests` (5 PlayMode cases): exactly one enabled camera after New
 Game with `Camera.main` resolving to it, still exactly one after travel, and a disabled camera
-repaired on re-entry. Deliberately separate from `GameplayLoopTests`, which asserted only that a
+repaired on re-entry, something always clearing at the menu, and the fallback camera retiring when
+a zone opens. Deliberately separate from `GameplayLoopTests`, which asserted only that a
 *pivot* existed — the assertion that let this through.
 
 **Not verified.** None of this has been run. The `⚠ VERIFY` note in `Commission` stands: under URP

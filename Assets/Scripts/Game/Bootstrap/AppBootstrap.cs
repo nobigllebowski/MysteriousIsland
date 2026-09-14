@@ -6,6 +6,7 @@
 
 using System;
 using ForgottenIsle.Core.Logging;
+using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Core.State;
 using ForgottenIsle.Game.Audio;
 using ForgottenIsle.Game.Diagnostics;
@@ -58,6 +59,29 @@ namespace ForgottenIsle.Game.Bootstrap
         /// <summary>Fills in whatever an empty zone scene does not provide.</summary>
         private ZoneFurnisher _furnisher;
         private AudioDirector _audio;
+
+        /// <summary>
+        /// The camera that exists purely to clear the screen while no zone camera does.
+        /// </summary>
+        /// <remarks>
+        /// WHY THIS EXISTS — and it is not the reason it looks like. UI Toolkit panels render in
+        /// screen-space overlay with no camera at all, so the menu appeared to work: the buttons drew
+        /// and responded. What has no camera is the CLEAR. With nothing clearing the colour buffer,
+        /// each frame's UI was composited on top of the last one still sitting there, and the menu
+        /// slowly smeared into itself — the title and subtitle from an earlier layout pass showing
+        /// through behind the current one, at the wrong size, permanently.
+        /// <para>
+        /// So this camera renders nothing (<c>cullingMask</c> is zero) and exists only for its clear.
+        /// It is disabled the moment a zone supplies a real one, which is also what keeps "exactly one
+        /// enabled camera" true during play.
+        /// </para>
+        /// </remarks>
+        private Camera _fallbackCamera;
+
+        private AudioListener _fallbackListener;
+
+        /// <summary>Handle for the state subscription that drives the fallback camera.</summary>
+        private IDisposable _cameraStateSubscription;
 
         /// <summary>
         /// Raised once per boot, as soon as the object graph exists and before the first state
@@ -154,6 +178,11 @@ namespace ForgottenIsle.Game.Bootstrap
             _audio = new AudioDirector(Context.Log);
             _audio.Attach(gameObject, Context.Signals);
 
+            // Before the first state transition, so the very first menu frame is drawn onto a
+            // cleared buffer rather than onto whatever the editor left in it.
+            CreateFallbackCamera();
+            _cameraStateSubscription = Context.Signals.Subscribe<GameStateChangedSignal>(OnStateChangedForCamera);
+
             Ticker = gameObject.AddComponent<Ticker>();
             Ticker.Initialize(Context.Session, Context.States, Context.Signals, Context.Log);
 
@@ -238,6 +267,65 @@ namespace ForgottenIsle.Game.Bootstrap
             FurnishZone(openZone);
         }
 
+        /// <summary>Builds the clear-only camera on the persistent host.</summary>
+        /// <remarks>
+        /// Deliberately NOT tagged <c>MainCamera</c>: it renders nothing, so anything resolving
+        /// <c>Camera.main</c> must find the player's camera or nothing at all, never this one.
+        /// It carries the app's only <c>AudioListener</c> outside a zone, so the menu is not
+        /// listener-less; <see cref="ZoneFurnisher"/> hands that role to the zone's own listener and
+        /// takes it back here.
+        /// </remarks>
+        private void CreateFallbackCamera()
+        {
+            var go = new GameObject("Fallback Camera (clear only)");
+            go.transform.SetParent(transform, false);
+
+            _fallbackCamera = go.AddComponent<Camera>();
+            _fallbackCamera.clearFlags = CameraClearFlags.SolidColor;
+            _fallbackCamera.backgroundColor = new Color(0.03f, 0.05f, 0.05f);
+
+            // Renders no layers at all. The cost is one clear per frame and nothing else.
+            _fallbackCamera.cullingMask = 0;
+
+            // Behind everything, so if a zone camera is ever enabled alongside it the zone wins.
+            _fallbackCamera.depth = -100f;
+            _fallbackCamera.useOcclusionCulling = false;
+            _fallbackCamera.allowHDR = false;
+            _fallbackCamera.allowMSAA = false;
+
+            _fallbackListener = go.AddComponent<AudioListener>();
+        }
+
+        /// <summary>
+        /// Turns the clear camera off while a zone renders, and back on the moment one does not.
+        /// </summary>
+        /// <remarks>
+        /// Driven from the state machine rather than from scene events because the state is the thing
+        /// that actually answers "is a zone on screen right now": a failed load, a quit to menu and a
+        /// pause-then-quit all converge here, where a scene callback would cover only some of them.
+        /// <see cref="ZoneFurnisher"/> disables it too, on its own sweep — the two agree, and
+        /// disabling twice is harmless, whereas leaving it enabled for one frame over a zone is a
+        /// visible flicker.
+        /// </remarks>
+        private void OnStateChangedForCamera(GameStateChangedSignal signal)
+        {
+            var zoneOnScreen = signal.To == GameStateId.InGame || signal.To == GameStateId.Paused;
+            SetFallbackCameraActive(!zoneOnScreen);
+        }
+
+        private void SetFallbackCameraActive(bool active)
+        {
+            if (_fallbackCamera != null)
+            {
+                _fallbackCamera.enabled = active;
+            }
+
+            if (_fallbackListener != null)
+            {
+                _fallbackListener.enabled = active;
+            }
+        }
+
         private static string FindOpenZoneScene()
         {
             for (var i = 0; i < SceneManager.sceneCount; i++)
@@ -294,6 +382,12 @@ namespace ForgottenIsle.Game.Bootstrap
 
         private void OnDestroy()
         {
+            if (_cameraStateSubscription != null)
+            {
+                _cameraStateSubscription.Dispose();
+                _cameraStateSubscription = null;
+            }
+
             if (Context != null)
             {
                 Context.SceneLoader.Loaded -= OnSceneLoaded;
