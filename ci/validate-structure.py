@@ -1323,6 +1323,55 @@ def check_duplicate_types(report, files):
 
 
 
+DECLARATION_MODIFIERS = frozenset((
+    "public", "internal", "private", "protected", "static", "sealed", "abstract",
+    "partial", "readonly", "ref", "unsafe", "new", "record",
+))
+
+
+def check_accidental_nesting(report, files):
+    """A type that reads as top-level but is actually nested inside another type.
+
+    WHY THIS EXISTS: an insertion that lands one line too early swallows the closing brace of the
+    preceding type, so the new type becomes a NESTED member of it. Brace counts still balance --
+    the file's own trailing brace compensates -- so the BALANCE check passes, the namespace check
+    passes, and every use of the new type elsewhere fails in Unity as CS0246 "could not be found".
+    That is exactly what shipped in GameCommands.cs: InspectCommand and CollectCommand were parsed
+    as members of TravelToZoneCommand, and six call sites in CommandHandlers.cs would not compile.
+
+    The tell is the mismatch between what the author indented and what the braces actually say. A
+    deliberately nested type is indented past its parent; an accidentally nested one sits at the
+    same indentation as its namespace-level siblings, because the author believed it was one.
+    """
+    for rel_path, scan, _namespaces, declarations in files:
+        for declaration in declarations:
+            if "." not in declaration.qualified:
+                continue  # genuinely top-level within its namespace
+
+            line_start = scan.code.rfind("\n", 0, declaration.offset) + 1
+            before = scan.code[line_start:declaration.offset]
+
+            # `offset` points at the `class`/`struct` keyword, so everything before it on the line
+            # is the modifier list. Anything else means the declaration shares a line with other
+            # code, and its indentation says nothing about intent.
+            if before.strip() and not set(before.split()) <= DECLARATION_MODIFIERS:
+                continue
+
+            indent = len(before) - len(before.lstrip())
+            nesting = declaration.qualified.count(".")
+            # Namespace-level types sit at one indent step. Each level of nesting adds one more.
+            if indent > 4:
+                continue
+
+            outer = declaration.qualified.rsplit(".", 1)[0]
+            report.error(
+                "NESTING", rel_path, scan.line_of(declaration.offset),
+                "'%s' is indented as a top-level type but the braces nest it inside '%s' "
+                "(%d level(s) deep) -- every unqualified use of it elsewhere is CS0246; "
+                "a closing brace is probably missing above it"
+                % (declaration.name, outer, nesting))
+
+
 def check_missing_usings(report, files):
     """A project type referenced without its namespace being in scope (C# CS0246).
 
@@ -1565,6 +1614,9 @@ def main(argv=None):
     report.checks_run += 1
 
     check_deprecated_unity_apis(report, files)
+    report.checks_run += 1
+
+    check_accidental_nesting(report, files)
 
     # --- Output ------------------------------------------------------------
     report.emit()
@@ -1583,7 +1635,7 @@ def main(argv=None):
           % report.checks_run)
     print("                                 contract drift, lockeys, duplicate types,")
     print("                                 missing usings, member/type collisions,")
-    print("                                 deprecated Unity APIs)")
+    print("                                 deprecated Unity APIs, accidental nesting)")
     print("  errors .................... %d" % len(report.errors))
     print("  warnings .................. %d%s" % (len(report.warnings), " (hidden by --quiet)" if args.quiet and report.warnings else ""))
     print("")

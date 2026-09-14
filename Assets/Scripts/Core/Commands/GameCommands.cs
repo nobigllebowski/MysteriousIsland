@@ -88,7 +88,8 @@ namespace ForgottenIsle.Core.Commands
         {
             ZoneId = zoneId;
         }
-    
+    }
+
     /// <summary>Read an ancient marker. Records it and shows its line of text.</summary>
     /// <remarks>
     /// Separate from <see cref="CollectCommand"/> because the two have different rules: a marker
@@ -120,5 +121,4 @@ namespace ForgottenIsle.Core.Commands
             DiscoveryId = discoveryId;
         }
     }
-}
 }

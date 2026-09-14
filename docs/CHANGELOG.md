@@ -9,6 +9,26 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — fourth editor open: 6 × CS0246 in `CommandHandlers.cs`
+
+`InspectCommand` and `CollectCommand` "could not be found", at six call sites. Both types existed
+and both were spelled correctly. The cause was in `GameCommands.cs`: when the two structs were
+added, the insertion landed one line early and **swallowed the closing brace of
+`TravelToZoneCommand`**, so they were parsed as *nested types of it* —
+`TravelToZoneCommand.InspectCommand`. The file's own trailing brace compensated, so brace counts
+balanced and every existing check passed while nothing that used them could compile.
+
+**Validator gained a `NESTING` check.** It compares what the author indented against what the
+braces actually say: a deliberately nested type is indented past its parent, an accidentally
+nested one sits at namespace-level indentation because its author believed it was one. The check
+was regression-tested by reintroducing the exact bug — it reports both sites and exits 1 — and
+then confirmed clean across all 105 files, so it is not trading one silent failure for a noisy one.
+
+This is the second time a brace-level insertion error has shipped from this environment (the first
+left an orphaned fragment, which `BALANCE` caught). `BALANCE` cannot catch this one by
+construction, because the damage is brace-neutral.
+
+
 ### Added — Phase 2: the playable vertical slice
 
 The technical prototype became a game you can walk around in. Full account, including everything
