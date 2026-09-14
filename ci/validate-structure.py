@@ -1027,6 +1027,12 @@ def simple_type_name(raw):
     return name.split(".")[-1]
 
 
+# `Type.Member` where Type is capitalised and is NOT itself the tail of a qualified name. The
+# negative lookbehind for a dot is what keeps `something.Inner.Value` and fully-qualified
+# `A.B.ResultCode.NoHandler` quiet -- in both, the interesting identifier follows a dot.
+STATIC_MEMBER_RE = re.compile(r"(?<![\w.])(?P<name>[A-Z]\w*)\s*\.\s*[A-Za-z_]")
+
+
 def collect_type_references(code):
     """Yields (simple_name, offset) for every unambiguous type position."""
     references = []
@@ -1404,7 +1410,22 @@ def check_missing_usings(report, files):
         local = {declaration.name for declaration in declarations}
 
         reported = set()
-        for name, offset in collect_type_references(code):
+
+        # Two streams of references. The first is type POSITIONS (new X, typeof(X), X field;) and
+        # needs the fully-qualified guard below. The second is STATIC MEMBER ACCESS -- ResultCode.
+        # NoHandler, LogCode.MissingLocKey, ContentIds.ZoneRibcage -- where the type name is the
+        # qualifier rather than a type position, and where that guard must NOT apply because a dot
+        # always follows. Unity reports this second form as CS0103 ("the name does not exist in the
+        # current context") rather than CS0246, which is why it read as a different class of error
+        # and slipped through: InteractionSystem.cs used ResultCode.NoHandler with only
+        # ForgottenIsle.Core.Commands imported, and ResultCode lives in .Core.Primitives.
+        candidates = [(name, offset, True) for name, offset in collect_type_references(code)]
+        candidates.extend(
+            (match.group("name"), match.start("name"), False)
+            for match in STATIC_MEMBER_RE.finditer(code))
+        candidates.sort(key=lambda item: item[1])
+
+        for name, offset, is_type_position in candidates:
             if name in local or name in reported:
                 continue
             owners = homes.get(name)
@@ -1416,17 +1437,19 @@ def check_missing_usings(report, files):
             # points at the START of the written token, which simple_type_name() has already reduced
             # to its last segment -- so if the raw token still carries a dot, the author qualified it
             # deliberately and the check must stay quiet.
-            raw = re.match(r"[\w.]+", code[offset:])
-            if raw and "." in raw.group(0):
-                continue
+            if is_type_position:
+                raw = re.match(r"[\w.]+", code[offset:])
+                if raw and "." in raw.group(0):
+                    continue
             # Only report when every declaring namespace is out of scope, and name the fix.
             reported.add(name)
             suggestion = sorted(owners)[0]
             report.error(
                 "USING", rel_path, scan.line_of(offset),
                 "'%s' is declared in %s but that namespace is not in scope here; "
-                "add 'using %s;' (this is CS0246 in Unity)"
-                % (name, " / ".join(sorted(owners)), suggestion))
+                "add 'using %s;' (Unity reports this as %s)"
+                % (name, " / ".join(sorted(owners)), suggestion,
+                   "CS0246" if is_type_position else "CS0103"))
 
 
 def check_member_type_collisions(report, files):

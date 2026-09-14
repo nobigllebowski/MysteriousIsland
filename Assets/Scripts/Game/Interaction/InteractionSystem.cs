@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ForgottenIsle.Core.Commands;
 using ForgottenIsle.Core.Logging;
+using ForgottenIsle.Core.Primitives;
 using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Game.Progress;
 using UnityEngine;

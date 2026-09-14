@@ -9,6 +9,26 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — fifth editor open: CS0103 `ResultCode` in `InteractionSystem.cs`
+
+`CommandResult.Fail(ResultCode.NoHandler)` with only `ForgottenIsle.Core.Commands` imported —
+`ResultCode` lives in `.Core.Primitives`. One missing `using`.
+
+**The `USING` check should have caught this and did not**, which is the more useful finding. It
+collected references only from *type positions* (`new X`, `typeof(X)`, `X field;`, generic
+arguments) and never from **static member access** — `ResultCode.NoHandler`,
+`LogCode.MissingLocKey`, `ContentIds.ZoneRibcage` — where the type name is a qualifier rather than
+a type. Unity reports that form as **CS0103** ("the name does not exist in the current context")
+rather than CS0246, which is part of why it read as a different class of problem. Worse, the
+check's own fully-qualified guard (*"if the raw token carries a dot, the author qualified it
+deliberately"*) would have suppressed exactly these references, since a dot always follows.
+
+The check now scans both streams and applies that guard only to type positions. Extending it
+immediately surfaced **a second instance of the same bug** in `InteractionTests.cs`, which Unity
+had not reported because the test assembly had not been reached. Regression-tested by removing the
+fix and confirming it names the file, the line and the `using` to add; clean across all 105 files.
+
+
 ### Fixed — fourth editor open: 6 × CS0246 in `CommandHandlers.cs`
 
 `InspectCommand` and `CollectCommand` "could not be found", at six call sites. Both types existed
