@@ -5,7 +5,8 @@
         "ForgottenIsle.Core",
         "ForgottenIsle.Game",
         "ForgottenIsle.UI",
-        "UnityEngine.TestRunner"
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
