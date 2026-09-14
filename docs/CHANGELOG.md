@@ -9,6 +9,16 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the player spawned inside the rib arch
+
+The ribs spanned `z = -16 … +16` with the player appearing at the origin, so the spawn was **inside
+the arch**: the nearest rib hung directly over the camera and filled a third of the screen with a
+grey slab, and the landmark that exists to be seen from a distance could not be seen at all.
+
+They now start at `z = +6`. The whole arch reads ahead of the spawn — which is what the comment
+above that code has always described — with a walk through it toward the gate at `z = +30`.
+
+
 ### Fixed — the UI was painting an opaque sheet over the entire game
 
 `UIService.cs:81`

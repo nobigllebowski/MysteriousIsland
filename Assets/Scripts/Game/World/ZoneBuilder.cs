@@ -290,7 +290,13 @@ namespace ForgottenIsle.Game.World
 
             for (var i = 0; i < 6; i++)
             {
-                var z = -16f + i * 6.4f;
+                // AHEAD OF THE SPAWN, not around it. The ribs used to span z = -16 to +16 with the
+                // player appearing at the origin, which put them INSIDE the arch: the nearest rib
+                // hung directly over the camera and filled a third of the screen with a grey slab,
+                // and the landmark that is supposed to be seen from a distance could not be seen at
+                // all. Starting at +6 reads as a whole arch ahead, which is what the comment
+                // above has always described, and leaves a walk through it toward the gate at +30.
+                var z = 6f + i * 6.4f;
                 var lean = i % 2 == 0 ? 1f : -1f;
 
                 var rib = new GameObject("Rib");
