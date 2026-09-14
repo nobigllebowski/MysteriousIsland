@@ -108,7 +108,38 @@ namespace ForgottenIsle.UI.Bootstrap
                 return;
             }
 
+            // The host check above only sees THIS host. A panel left behind by an earlier install --
+            // another host, a document authored into a scene, a play session that did not reload the
+            // domain -- renders its own complete copy of every screen on top of ours, at its own
+            // panel scale, and takes the taps meant for ours. One application, one panel.
+            RemoveForeignPanels(host);
+
             host.AddComponent<UiInstaller>().Install(bootstrap.Context);
+        }
+
+        /// <summary>Destroys every <see cref="UIDocument"/> in the application except the host's own.</summary>
+        /// <remarks>
+        /// Logged rather than silent, because a second panel is never something the project intended:
+        /// either an install ran twice or a scene carries a document it should not, and both are worth
+        /// hearing about once rather than discovering as an unclickable menu.
+        /// </remarks>
+        private static void RemoveForeignPanels(GameObject host)
+        {
+            var documents = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Include);
+            for (var i = 0; i < documents.Length; i++)
+            {
+                var document = documents[i];
+                if (document == null || document.gameObject == host)
+                {
+                    continue;
+                }
+
+                Debug.LogWarning(
+                    "[Vardholm] ui: destroying a second UIDocument on '" + document.gameObject.name +
+                    "'. Two panels render two copies of the UI and fight over every tap.");
+
+                UnityEngine.Object.Destroy(document);
+            }
         }
 
         /// <summary>
@@ -220,6 +251,26 @@ namespace ForgottenIsle.UI.Bootstrap
                 // the rest of boot down with it. The game runs without a UI; the log says why.
                 log.Warn(LogCode.CatalogMissing, "ui: UIDocument produced no root visual element");
                 return null;
+            }
+
+            // THE MENU WAS BEING BUILT TWICE, AND THIS IS WHERE IT SHOWED. A UIDocument that already
+            // holds a tree keeps it: building into it again ADDS a second copy rather than replacing
+            // the first. Two copies of the same screen, each laid out by a panel with its own scale,
+            // is exactly the doubled menu on screen -- the title drawn over the subtitle, CONTINUE
+            // drawn over its own slot label -- and the copy on top swallows the taps aimed at the
+            // one underneath, which is why nothing was clickable.
+            //
+            // A title and a subtitle are siblings in one flex column. They cannot overlap. Seeing
+            // them overlap is proof there are two columns, not one.
+            var existingChildren = document.rootVisualElement.childCount;
+            if (existingChildren > 0)
+            {
+                Debug.LogWarning(
+                    "[Vardholm] ui: the UI panel already held " + existingChildren +
+                    " root element(s) before install; clearing them. This is a stale tree from an " +
+                    "earlier install and would have rendered a second copy of every screen.");
+
+                document.rootVisualElement.Clear();
             }
 
             return document;
@@ -354,6 +405,7 @@ namespace ForgottenIsle.UI.Bootstrap
                     _pause.Hide();
                     _ui.Curtain.Hide();
                     _menu.Show();
+                    ReportMenuState();
                     break;
 
                 case GameStateId.Loading:
@@ -392,6 +444,36 @@ namespace ForgottenIsle.UI.Bootstrap
                 default:
                     // Boot. No UI yet, on purpose.
                     break;
+            }
+        }
+
+        /// <summary>
+        /// States, in one console line, every condition that can make the menu look right and not work.
+        /// </summary>
+        /// <remarks>
+        /// Each of these has already cost a round of guessing. A second panel renders a whole second
+        /// copy of the UI and fights for taps; a stale tree in one panel does the same thing inside it;
+        /// a curtain that never finished hiding covers the menu and eats every pointer event; and a
+        /// stack stuck mid-transition refuses navigation while looking completely normal. None of them
+        /// is visible in a screenshot, and all four are one line of state.
+        /// </remarks>
+        private void ReportMenuState()
+        {
+            var documents = UnityEngine.Object.FindObjectsByType<UIDocument>(FindObjectsInactive.Include);
+            var roots = _ui.Root != null ? _ui.Root.childCount : -1;
+
+            Debug.Log(
+                "[Vardholm] ui: menu shown · panels " + documents.Length +
+                " (must be 1) · root children " + roots +
+                " · screens " + _ui.Screens.Count +
+                " · transitioning " + _ui.Screens.IsTransitioning +
+                " · curtain " + (_ui.Curtain.IsVisible ? "UP (blocks taps)" : "down"));
+
+            if (documents.Length != 1)
+            {
+                Debug.LogError(
+                    "[Vardholm] ui: " + documents.Length + " UI panels exist. The menu is being drawn " +
+                    "more than once and taps are going to the copy you are not looking at.");
             }
         }
 

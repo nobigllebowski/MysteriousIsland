@@ -9,6 +9,29 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the menu was being built twice, which is why nothing was clickable
+
+**And the earlier "uncleared frame buffer" explanation for the ghost text was wrong.** The proof is
+simple and was available all along: `MainMenuScreen` adds the title and the subtitle as **siblings
+in one flex column**. Two siblings in a column cannot occupy the same pixels. They were overlapping
+on screen — so there were two columns, not one, each laid out by a panel with its own scale. Two
+copies of the whole UI, the one on top swallowing every tap aimed at the one being looked at.
+
+Two holes let that happen, and both are closed:
+
+- **`CreateDocument` built into a panel that might already hold a tree.** A `UIDocument` keeps what
+  it has; building again *adds* rather than replaces. It now clears the root first and says so.
+- **The duplicate-install guard only checked the host it was installing on.** A panel from any
+  other source — a second host, a document authored into a scene, a play session that did not
+  reload the domain — was invisible to it. Every `UIDocument` outside the host is now destroyed,
+  loudly.
+
+**And a diagnostic, because this cost two wrong diagnoses.** Entering the menu now logs panel
+count, root children, screen depth, whether the stack is stuck transitioning, and whether the
+curtain is still up. Each of those four makes a menu that looks perfect and does nothing, none is
+visible in a screenshot, and all four are one line of state.
+
+
 ### Fixed — NEW GAME did nothing: the scenes had never been created
 
 Not a bug in the button, the controller, the command or the handler. `Assets/Scenes/` holds only a
