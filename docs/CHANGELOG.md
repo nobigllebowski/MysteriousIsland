@@ -9,6 +9,46 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — `ZoneDiagnostics`, because four diagnoses from screenshots produced three wrong answers
+
+A zone that renders nothing and a zone that was never built look identical on screen, and the
+furnish report could not tell them apart: it said "player yes · camera yes" and stopped, which was
+true the entire time the world was invisible. `ZoneDiagnostics.Dump` reports the facts that actually
+discriminate — renderer count, how many are enabled, how many are on a layer the camera's mask
+includes, how many have a **null shader**, how many are inside the frustum, the nearest one's
+distance, plus the camera's position, facing, clip planes, clear flags and mask, and the pipeline
+and colour space. It ends with a verdict naming the first link in the chain that is broken, and
+logs as an **error** when nothing can reach the screen.
+
+### Changed — the loaded zone is now the active scene
+
+`active scene 'Bootstrap'` while `ZoneRibcage` was loaded was a real finding. Two things follow the
+active scene and both belong to the zone:
+
+- A GameObject created without a scene specified lands in the active scene, so anything the zone
+  made for itself accumulated in Bootstrap and outlived the zone — Bootstrap is never unloaded.
+- **`RenderSettings` are per scene**, and the active scene's are the ones used.
+  `ZoneBuilder.ApplyAtmosphere` writes the zone's fog and ambient through that API, so it was
+  writing the Ribcage's atmosphere into the boot scene and leaving it there afterwards.
+
+The zone becomes active before furnishing; the boot scene is restored when gameplay ends.
+
+### Fixed — the player's own capsule was the one thing always in front of the camera
+
+The camera pivot sits at eye height *inside* the body capsule, and its `MeshRenderer` was never
+disabled. A first-person rig shows the world, not the inside of its own collision shape.
+
+### Added — `WorldGeometryTests` (6 PlayMode cases)
+
+Every existing test passed while the world was invisible, because they asserted that a player, a
+controller and a camera existed — and all three did. These assert the chain that ends in a pixel:
+a mesh with vertices, an enabled renderer, a layer the camera can see, a material with a real
+shader, bounds inside the frustum, the player inside the built area, and the zone owning the active
+scene. One of them exists specifically to separate "the Standing Stone registered itself with the
+interaction system" from "the Standing Stone has a mesh" — the prompt reading correctly proves only
+the first.
+
+
 ### Fixed — `??` on a `UnityEngine.Object`, which is why the world may render as nothing
 
 `ZoneBuilder.CreateMaterial` resolved its shader with

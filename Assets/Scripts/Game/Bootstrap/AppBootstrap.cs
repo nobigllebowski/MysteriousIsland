@@ -311,6 +311,34 @@ namespace ForgottenIsle.Game.Bootstrap
         {
             var zoneOnScreen = signal.To == GameStateId.InGame || signal.To == GameStateId.Paused;
             SetFallbackCameraActive(!zoneOnScreen);
+
+            if (!zoneOnScreen)
+            {
+                RestoreBootAsActiveScene();
+            }
+        }
+
+        /// <summary>Hands the active scene back to the boot scene when no zone is on screen.</summary>
+        /// <remarks>
+        /// The counterpart to making a zone active on entry. Unity promotes some other scene by
+        /// itself when the active one unloads, but which one is not something to leave to chance —
+        /// and doing it on leaving gameplay means the menu's own runtime objects are never created
+        /// inside a zone that is about to be destroyed.
+        /// </remarks>
+        private void RestoreBootAsActiveScene()
+        {
+            var boot = gameObject.scene;
+            if (!boot.IsValid() || !boot.isLoaded)
+            {
+                // The host is on DontDestroyOnLoad, whose pseudo-scene cannot be made active. Fall
+                // back to whatever non-zone scene is loaded rather than forcing an invalid one.
+                boot = SceneManager.GetSceneByName(SceneKeys.Bootstrap);
+            }
+
+            if (boot.IsValid() && boot.isLoaded && SceneManager.GetActiveScene() != boot)
+            {
+                SceneManager.SetActiveScene(boot);
+            }
         }
 
         private void SetFallbackCameraActive(bool active)
@@ -369,6 +397,24 @@ namespace ForgottenIsle.Game.Bootstrap
             {
                 Context.Log.Warn(LogCode.SceneLoadSlow, "furnish: scene not resident: " + sceneKey);
                 return;
+            }
+
+            // THE ZONE BECOMES THE ACTIVE SCENE, and the log line saying "active scene 'Bootstrap'"
+            // while ZoneRibcage was loaded was a real finding, not noise. Two things follow the
+            // active scene in Unity and both belong to the zone rather than to the boot object:
+            //
+            //   1. A GameObject created with no scene specified lands in the ACTIVE scene. Every
+            //      runtime object the zone makes for itself would otherwise accumulate in Bootstrap
+            //      and outlive the zone it belongs to, because Bootstrap is never unloaded.
+            //   2. RenderSettings -- ambient light, fog, skybox -- are PER SCENE, and the active
+            //      scene's are the ones used. ZoneBuilder.ApplyAtmosphere writes the zone's fog and
+            //      ambient through that API, so with Bootstrap active it was writing the Ribcage's
+            //      atmosphere into the boot scene and leaving it there after the zone unloaded.
+            //
+            // Set before furnishing, so the furnisher's own objects are created in the right place.
+            if (SceneManager.GetActiveScene() != scene)
+            {
+                SceneManager.SetActiveScene(scene);
             }
 
             // A null return means the zone came up without a player, a controller or a working

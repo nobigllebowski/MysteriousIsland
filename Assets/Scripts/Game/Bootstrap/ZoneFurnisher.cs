@@ -3,6 +3,7 @@ using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Player;
 using ForgottenIsle.Game.Scenes;
+using ForgottenIsle.Game.Diagnostics;
 using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Session;
 using ForgottenIsle.Game.World;
@@ -126,12 +127,14 @@ namespace ForgottenIsle.Game.Bootstrap
             // Reported AFTER Initialize, because Initialize is what places the rig: a diagnostic
             // taken before it would print the spawn capsule's construction position rather than
             // where the player actually is.
-            if (!VerifyPlayable(scene, rig, camera))
-            {
-                return null;
-            }
+            var playable = VerifyPlayable(scene, rig, camera);
 
-            return rig;
+            // The full structural dump, unconditionally. VerifyPlayable answers "is the rig
+            // complete", which was true the whole time the world was invisible; this answers "can
+            // any of it reach the screen", which is the question that was actually open.
+            ZoneDiagnostics.Dump(scene, camera, rig != null ? rig.transform : null);
+
+            return playable ? rig : null;
         }
 
         /// <summary>
@@ -437,6 +440,15 @@ namespace ForgottenIsle.Game.Bootstrap
                 // The primitive's capsule collider is replaced by the CharacterController's own,
                 // which would otherwise fight it and trap the rig on its own geometry.
                 Object.Destroy(collider);
+            }
+
+            // The camera pivot sits at eye height INSIDE this capsule, so its own mesh is the one
+            // thing guaranteed to be in front of the camera at all times. A first-person rig shows
+            // the world, not the inside of its own collision shape.
+            var bodyRenderer = body.GetComponent<MeshRenderer>();
+            if (bodyRenderer != null)
+            {
+                bodyRenderer.enabled = false;
             }
 
             var controller = body.AddComponent<CharacterController>();
