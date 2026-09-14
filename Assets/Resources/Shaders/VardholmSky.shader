@@ -130,9 +130,13 @@ Shader "Vardholm/Sky"
                 float halo = pow(sd, 6.0) * 0.12;
                 col += _SunColor.rgb * (disc * 3.0 + glow * 0.8 + halo);
 
-                // A pinch of ordered dither. A smooth gradient across a whole screen is the one
-                // case where 8-bit output bands visibly, and banding is a tell that reads as cheap.
-                float dither = (hash21(i.pos.xy) - 0.5) * (1.0 / 255.0);
+                // A pinch of dither. A smooth gradient across a whole screen is the one case where
+                // 8-bit output bands visibly, and banding is a tell that reads as cheap.
+                //
+                // Keyed off the view direction rather than the pixel position: reading SV_POSITION
+                // in a fragment shader needs the VPOS semantic and UNITY_VPOS_TYPE to be portable,
+                // and this needs a cheap per-pixel hash, not screen coordinates specifically.
+                float dither = (hash21(d.xz * 2048.0 + d.y * 977.0) - 0.5) * (1.0 / 255.0);
                 return fixed4(col + dither, 1.0);
             }
             ENDCG

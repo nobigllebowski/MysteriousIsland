@@ -241,15 +241,15 @@ namespace ForgottenIsle.Game.World
         /// wider than the waves, so the swell under the player's feet is lost; sized to resolve the
         /// swell it stops a hundred metres out and the player can see the edge of the sea.
         /// <para>
-        /// Rings spaced by a cubed parameter give both: metre-scale quads where the water is close
-        /// enough to look at, and a single huge ring out at the horizon where all that is needed is
-        /// colour. Normals and tangents are written flat and uniform because the shader displaces
+        /// So the rings are even out to a little past the coastline — a couple of metres apart,
+        /// which comfortably resolves an 11 m swell — and then sprint to the horizon, where all
+        /// that is needed is colour. Normals and tangents are written flat and uniform because the shader displaces
         /// the surface itself and derives its own normal from that displacement — the mesh is only
         /// the sampling grid, and the shader's tangent-space assumption is documented there.
         /// </para>
         /// </remarks>
         /// <param name="radius">How far the sheet reaches.</param>
-        /// <param name="rings">Concentric divisions. 64 is ample.</param>
+        /// <param name="rings">Concentric divisions. 64 is ample: 44 of them fall on the near water.</param>
         /// <param name="segments">Divisions around. 48 keeps the outer ring from reading polygonal.</param>
         /// <returns>A new mesh. The caller owns it.</returns>
         public static Mesh BuildWater(float radius, int rings, int segments)
@@ -267,10 +267,21 @@ namespace ForgottenIsle.Game.World
             tangents[0] = new Vector4(1f, 0f, 0f, -1f);
             uvs[0] = new Vector2(0.5f, 0.5f);
 
+            // Even spacing out to here, then a sprint to the horizon. NOT a curve that packs
+            // vertices around the origin, which was the first version and was exactly wrong: the
+            // origin is the middle of the island, which is dry land. The water the player actually
+            // stands next to is at the coast, 50-85 m out, so that is where the resolution goes.
+            var nearRadius = Mathf.Min(GroundSize * 0.65f, radius);
+            const float NearShare = 0.7f;
+
             for (var ring = 1; ring <= rings; ring++)
             {
-                // Cubed: half the vertices land inside the first fifth of the radius.
-                var ringRadius = radius * Mathf.Pow(ring / (float)rings, 3f);
+                // `ringT` and not `t`: the triangle cursor below is named `t` in this same method,
+                // and C# refuses the pair outright (CS0136) even though they never overlap.
+                var ringT = ring / (float)rings;
+                var ringRadius = ringT <= NearShare
+                    ? nearRadius * (ringT / NearShare)
+                    : Mathf.Lerp(nearRadius, radius, Mathf.Pow((ringT - NearShare) / (1f - NearShare), 2f));
 
                 for (var segment = 0; segment < segments; segment++)
                 {

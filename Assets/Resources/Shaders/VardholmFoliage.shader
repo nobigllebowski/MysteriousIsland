@@ -121,8 +121,8 @@ Shader "Vardholm/Foliage"
 
             float3 col = lerp(_BaseColor.rgb, _TipColor.rgb, t);
 
-            // The near edge of a blade catches more light than its middle; cheap, and it stops the
-            // cutout silhouette from looking like a sticker.
+            // A blade is curved, so its middle faces the viewer and its edges turn away. Shading
+            // the band from centre to edge is what stops a flat cut-out looking like a sticker.
             col *= 0.85 + 0.3 * saturate(1.0 - abs(local - lean) / max(halfWidth, 0.001));
 
             o.Albedo = col;
