@@ -1,0 +1,15 @@
+/* Vardholm's runtime UI theme.
+ *
+ * WHY THIS FILE EXISTS: a PanelSettings with no themeStyleSheet makes Unity warn "UI will not
+ * render properly" and leaves every built-in control without its base styles. The project builds
+ * its PanelSettings in code -- the UI is created at runtime and has no inspector for anyone to
+ * assign an asset in -- so the theme has to be loadable by path, which means it lives under
+ * Resources and is loaded as ForgottenIsle.UI.Core.UIService.ThemeResourcePath.
+ *
+ * It imports Unity's default runtime theme and adds nothing. Every colour, size and spacing in
+ * this game is applied in C# from Theme.cs, deliberately: a style split between a stylesheet and
+ * code is a style nobody can predict. This file exists to satisfy the base-styles requirement,
+ * not to become a second place where the look is decided.
+ */
+
+@import url("unity-theme://default");

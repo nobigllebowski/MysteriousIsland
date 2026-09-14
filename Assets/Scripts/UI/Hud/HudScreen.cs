@@ -68,6 +68,15 @@ namespace ForgottenIsle.UI.Hud
         /// <param name="text">Already-localized objective text.</param>
         public void SetObjective(string text)
         {
+            // A screen builds lazily, on first show. The HUD is told to hide its controls the moment
+            // the app reaches the main menu -- before it has ever been shown, so before Build has run
+            // and while every field here is still null. Asking a screen that does not exist yet to
+            // hide something is a reasonable thing for a caller to do; throwing at it is not.
+            if (!IsBuilt)
+            {
+                return;
+            }
+
             var show = !string.IsNullOrEmpty(text);
             _objectiveLabel.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             _objectiveText.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
@@ -80,6 +89,11 @@ namespace ForgottenIsle.UI.Hud
         /// <param name="visible">False when nothing is in range.</param>
         public void SetPrompt(string name, string verb, bool visible)
         {
+            if (!IsBuilt)
+            {
+                return;
+            }
+
             _promptCard.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
             if (!visible)
             {
@@ -94,6 +108,11 @@ namespace ForgottenIsle.UI.Hud
         /// <param name="text">Already-localized line. Empty hides the card.</param>
         public void ShowNarration(string text)
         {
+            if (!IsBuilt)
+            {
+                return;
+            }
+
             if (string.IsNullOrEmpty(text))
             {
                 _narrationCard.style.display = DisplayStyle.None;
@@ -115,6 +134,11 @@ namespace ForgottenIsle.UI.Hud
         /// <param name="visible">False while paused, loading, or in a menu.</param>
         public void SetControlsVisible(bool visible)
         {
+            if (!IsBuilt)
+            {
+                return;
+            }
+
             _touch?.SetVisible(visible);
         }
 

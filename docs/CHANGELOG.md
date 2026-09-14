@@ -9,6 +9,23 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the two console entries left after the menu came right
+
+The menu now lays out correctly (see the panel-height entry below). Two things remained.
+
+- **`NullReferenceException` in `HudScreen.SetPrompt`.** Screens build lazily on first show, and the
+  HUD is told to hide its controls the moment the app reaches the main menu — before it has ever
+  been shown, so before `Build` has run and while every field is still null. Asking a screen that
+  does not exist yet to hide something is a reasonable thing for a caller to do; throwing at it is
+  not. All four public setters now return early until `IsBuilt`.
+- **"No Theme Style Sheet set to PanelSettings".** Added `Assets/Resources/UI/VardholmTheme.tss`,
+  which imports Unity's default runtime theme and adds nothing else. It lives under `Resources`
+  because the panel settings are built in code and have no inspector for anyone to assign an asset
+  in. Every colour and size in this game stays in `Theme.cs` — a look split between a stylesheet and
+  code is a look nobody can predict — so the theme exists to supply base control styles, not to
+  become a second place where the design is decided.
+
+
 ### Fixed — the unclickable menu: the panel was 219 logical pixels tall
 
 The real cause, arithmetic rather than inference. `CreateFallbackPanelSettings` used

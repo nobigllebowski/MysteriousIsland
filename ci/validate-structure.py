@@ -192,7 +192,7 @@ UNITY_TYPES = {
     "GUILayoutOption", "GUIUtility", "GUILayoutUtility", "Event", "EventType",
     "ImagePosition", "TextClipping", "ScaleMode",
     # UI Toolkit (UnityEngine.UIElements)
-    "UIDocument", "PanelSettings", "VisualElement", "VisualTreeAsset", "StyleSheet",
+    "UIDocument", "PanelSettings", "VisualElement", "VisualTreeAsset", "StyleSheet", "ThemeStyleSheet",
     "TemplateContainer", "Label", "Button", "Toggle", "TextField", "Slider",
     "SliderInt", "ScrollView", "ListView", "DropdownField", "Foldout", "Image",
     "Box", "GroupBox", "RadioButton", "RadioButtonGroup", "ProgressBar",

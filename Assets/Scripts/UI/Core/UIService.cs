@@ -40,6 +40,9 @@ namespace ForgottenIsle.UI.Core
         /// <summary>Design height in dp.</summary>
         public const int ReferenceHeight = 844;
 
+        /// <summary>Resources path of the runtime theme, without extension.</summary>
+        public const string ThemeResourcePath = "UI/VardholmTheme";
+
         private readonly UiContext _context;
         private Label _debugOverlay;
 
@@ -226,6 +229,22 @@ namespace ForgottenIsle.UI.Core
             // full 844 it was designed for and a wide window simply widens the side gutters.
             settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
             settings.match = 1f;
+
+            // Without a theme Unity warns "UI will not render properly" and every built-in control
+            // loses its base styles. The theme is loaded by path because these settings are created
+            // at runtime and have no inspector for anyone to assign an asset in.
+            var theme = Resources.Load<ThemeStyleSheet>(ThemeResourcePath);
+            if (theme != null)
+            {
+                settings.themeStyleSheet = theme;
+            }
+            else
+            {
+                Debug.LogWarning(
+                    "[Vardholm] ui: no theme at Resources/" + ThemeResourcePath + ". Controls will " +
+                    "render without their base styles. The file is Assets/Resources/UI/VardholmTheme.tss.");
+            }
+
             return settings;
         }
 
