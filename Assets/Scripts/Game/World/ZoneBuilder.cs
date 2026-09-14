@@ -1,6 +1,7 @@
 using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Game.Interaction;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace ForgottenIsle.Game.World
 {
@@ -461,14 +462,75 @@ namespace ForgottenIsle.Game.World
         /// chain tries URP's lit shader, then the built-in Standard, then an unlit last resort, so
         /// the zone renders as *something* under any of them rather than showing magenta.
         /// </remarks>
+        /// <summary>Cached lit shader for the active render pipeline. Resolved once, reported once.</summary>
+        private static Shader _zoneShader;
+        private static bool _zoneShaderResolved;
+
+        /// <summary>
+        /// The lit shader this project can actually render with.
+        /// </summary>
+        /// <remarks>
+        /// THE PREVIOUS VERSION OF THIS USED <c>??</c>, AND THAT IS A BUG, not a style opinion.
+        /// <c>Shader</c> is a <c>UnityEngine.Object</c>, and Unity overloads <c>==</c> so a destroyed
+        /// or unloadable object compares equal to null while still being a live C# reference. The
+        /// null-coalescing operator does NOT use that overload — it tests the raw reference — so a
+        /// chain of <c>Shader.Find(a) ?? Shader.Find(b)</c> can hand back an object that every other
+        /// line of code agrees is null. A material built on it renders nothing at all, with no error,
+        /// which looks exactly like an empty world.
+        /// <para>
+        /// The pipeline is asked rather than guessed, too. This project has no URP package and no
+        /// pipeline asset (CONFLICT-7), so it runs on Built-in; asking for a URP shader first was
+        /// searching for something that cannot exist here, and a URP shader under Built-in renders
+        /// black in any case.
+        /// </para>
+        /// </remarks>
+        private static Shader ZoneShader
+        {
+            get
+            {
+                if (_zoneShaderResolved)
+                {
+                    return _zoneShader;
+                }
+
+                _zoneShaderResolved = true;
+
+                var scriptable = GraphicsSettings.currentRenderPipeline != null;
+                _zoneShader = scriptable
+                    ? FindShader("Universal Render Pipeline/Lit", "Standard", "Unlit/Color")
+                    : FindShader("Standard", "Legacy Shaders/Diffuse", "Unlit/Color");
+
+                Debug.Log(
+                    "[Vardholm] world: render pipeline is " +
+                    (scriptable ? GraphicsSettings.currentRenderPipeline.name : "Built-in") +
+                    " · colour space " + QualitySettings.activeColorSpace +
+                    " · zone shader '" + (_zoneShader != null ? _zoneShader.name : "NONE — the world will be invisible") + "'");
+
+                return _zoneShader;
+            }
+        }
+
+        /// <summary>First of <paramref name="names"/> that resolves, using Unity's null semantics.</summary>
+        private static Shader FindShader(params string[] names)
+        {
+            for (var i = 0; i < names.Length; i++)
+            {
+                var shader = Shader.Find(names[i]);
+
+                // `== null` and not `is null`: this is the comparison that knows about Unity's
+                // lifetime, and it is the whole reason this helper exists instead of a `??` chain.
+                if (shader != null)
+                {
+                    return shader;
+                }
+            }
+
+            return null;
+        }
+
         private static Material CreateMaterial(Color color, string name)
         {
-            var shader = Shader.Find("Universal Render Pipeline/Lit")
-                         ?? Shader.Find("Standard")
-                         ?? Shader.Find("Unlit/Color")
-                         ?? Shader.Find("Sprites/Default");
-
-            var material = new Material(shader) { name = name };
+            var material = new Material(ZoneShader) { name = name };
 
             // Property names differ across those shaders. Setting whichever exists avoids a hard
             // dependency on any one pipeline being installed.

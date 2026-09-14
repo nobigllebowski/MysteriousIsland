@@ -9,6 +9,35 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — `??` on a `UnityEngine.Object`, which is why the world may render as nothing
+
+`ZoneBuilder.CreateMaterial` resolved its shader with
+
+```csharp
+Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? ...
+```
+
+**That is a bug, not a style opinion.** `Shader` is a `UnityEngine.Object`, and Unity overloads `==`
+so a destroyed or unloadable object compares equal to null while still being a live C# reference.
+The null-coalescing operator does **not** use that overload — it tests the raw reference — so the
+chain can hand back an object that every other line of code agrees is null. A material built on it
+renders nothing at all, with no error and no magenta, which looks exactly like an empty world.
+
+It now asks `GraphicsSettings.currentRenderPipeline` which family to look in — this project has no
+URP and runs on Built-in (CONFLICT-7), so searching for a URP shader first was looking for
+something that cannot exist here, and a URP shader under Built-in renders black regardless — then
+resolves with explicit `!= null` checks, the comparison that knows about Unity's object lifetime.
+
+It logs the pipeline, the colour space and the shader it settled on, once.
+
+### Changed — the furnish diagnostic put its decisive numbers where the console cut them off
+
+Unity's console list shows only a message's first line, and `renderers` and `colour space` were at
+the end of a long single line. Those are the two numbers that separate "the zone is empty" from
+"the zone is there and invisible", and they were the part that got truncated. They lead now, with
+the camera's position, facing, clear flags and culling mask on a third line.
+
+
 ### Fixed — the island rendered black: the project was in Gamma colour space
 
 The zone was never broken. It loaded, built its terrain and its interactables, registered them,

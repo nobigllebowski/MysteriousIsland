@@ -158,18 +158,26 @@ namespace ForgottenIsle.Game.Bootstrap
             var cameraEnabled = camera != null && camera.enabled && camera.gameObject.activeInHierarchy;
             var enabledCameras = CountEnabledCameras();
 
+            // The counts go on the FIRST line, because Unity's console list shows only the first
+            // line and the previous version put them at the end where they were cut off -- which
+            // cost a round trip for the one number that distinguishes an empty zone from an
+            // invisible one.
             var report =
-                "zone '" + scene.name + "' furnished · " +
-                "active scene '" + SceneManager.GetActiveScene().name + "' · " +
-                "player " + Describe(rig != null) + " · " +
-                "controller " + Describe(controller != null) + " · " +
-                "camera " + Describe(camera != null) +
-                " (enabled " + Describe(cameraEnabled) + ") · " +
-                "tagged " + Describe(camera != null && camera.CompareTag(MainCameraTag)) + " · " +
-                "Camera.main " + Describe(Camera.main != null) + " · " +
-                "enabled cameras " + enabledCameras.ToString(CultureInfo.InvariantCulture) + " · " +
-                "renderers " + CountRenderers(scene).ToString(CultureInfo.InvariantCulture) + " · " +
-                "colour space " + QualitySettings.activeColorSpace;
+                "zone '" + scene.name + "' · renderers " +
+                CountRenderers(scene).ToString(CultureInfo.InvariantCulture) +
+                " · cameras " + enabledCameras.ToString(CultureInfo.InvariantCulture) +
+                " · colour space " + QualitySettings.activeColorSpace +
+                "\n  active scene '" + SceneManager.GetActiveScene().name + "'" +
+                " · player " + Describe(rig != null) +
+                " · controller " + Describe(controller != null) +
+                " · camera " + Describe(camera != null) +
+                " (enabled " + Describe(cameraEnabled) + ")" +
+                " · tagged " + Describe(camera != null && camera.CompareTag(MainCameraTag)) +
+                " · Camera.main " + Describe(Camera.main != null) +
+                "\n  camera at " + (camera != null ? camera.transform.position.ToString("F1") : "-") +
+                " looking " + (camera != null ? camera.transform.forward.ToString("F2") : "-") +
+                " · clear " + (camera != null ? camera.clearFlags.ToString() : "-") +
+                " · culling mask 0x" + (camera != null ? camera.cullingMask.ToString("X") : "-");
 
             // Camera.main is REPORTED but not required for the verdict: it is a cached tag lookup,
             // and whether that cache has refreshed in the same frame the tag was set is not
