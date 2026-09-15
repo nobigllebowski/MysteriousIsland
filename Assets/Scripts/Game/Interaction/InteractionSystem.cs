@@ -344,14 +344,23 @@ namespace ForgottenIsle.Game.Interaction
             return CommandResult.Fail(ResultCode.NoHandler);
         }
 
+        private string _lastPromptKey;
+
         private void SetCurrent(Interactable next)
         {
-            if (ReferenceEquals(_current, next))
+            // Republished when the VERB changes on the same target, not only when the target
+            // does. A prompt's verb can depend on what the player is carrying -- the radio reads
+            // EXAMINE, then USE the moment the torch is in hand, then TUNE once it works -- and
+            // a player standing at the set while that changes would otherwise keep reading the
+            // old word until they stepped away and back.
+            var promptKey = next != null ? next.PromptKey : string.Empty;
+            if (ReferenceEquals(_current, next) && promptKey == _lastPromptKey)
             {
                 return;
             }
 
             _current = next;
+            _lastPromptKey = promptKey;
 
             if (_signals == null)
             {
@@ -359,7 +368,7 @@ namespace ForgottenIsle.Game.Interaction
             }
 
             _signals.Publish(next != null
-                ? new InteractionTargetChangedSignal(next.NameKey, next.PromptKey, true)
+                ? new InteractionTargetChangedSignal(next.NameKey, promptKey, true)
                 : new InteractionTargetChangedSignal(string.Empty, string.Empty, false));
         }
     }
