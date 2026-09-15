@@ -148,6 +148,8 @@ namespace ForgottenIsle.Game.Player
         private float _verticalVelocity;
         private float _pitchDegrees;
         private InteractionSystem _interactions;
+        private ICoreLog _log;
+        private bool _fallReported;
 
         /// <summary>True once the rig has been given a session to report its pose to.</summary>
         public bool IsBound => _session != null;
@@ -284,6 +286,7 @@ namespace ForgottenIsle.Game.Player
                 _input.Interact += OnInteractPressed;
             }
 
+            _log = log;
             VerifyCamera(log);
 
             if (session == null)
@@ -539,6 +542,87 @@ namespace ForgottenIsle.Game.Player
             var motion = _horizontalVelocity;
             motion.y = _verticalVelocity;
             _controller.Move(motion * delta);
+
+            CatchAFallThroughTheWorld();
+        }
+
+        /// <summary>
+        /// Puts the rig back on the ground if it has left the world downward, and says so loudly.
+        /// </summary>
+        /// <remarks>
+        /// THIS IS A SAFETY NET, NOT A FIX, and it is written to be impossible to mistake for one:
+        /// it warns through <see cref="ICoreLog"/> with the measured depth every time it fires, and
+        /// the dev overlay shows warnings, so a controller that keeps falling through the terrain
+        /// stays visible instead of being quietly papered over.
+        /// <para>
+        /// WHY IT HAS TO EXIST ANYWAY. The pose cadence writes the rig's position into the session,
+        /// and autosave persists it. A rig that falls through the ground mid-run therefore records
+        /// where it fell to — and on the next continue the run is restored to a point under the
+        /// world, where it falls again, deeper. There is no player action that recovers from that
+        /// and no message that explains it: the save is simply finished. One in-world check costs
+        /// a float comparison per tick and makes that state unreachable.
+        /// </para>
+        /// <para>
+        /// The threshold is far below any real ground. The lowest surface this game generates is
+        /// the seabed at the outer rim of the island (<c>ZoneMeshes.SeaLevel - SeaDepth</c>, about
+        /// -9 m), so -60 cannot be reached by standing anywhere.
+        /// </para>
+        /// </remarks>
+        private void CatchAFallThroughTheWorld()
+        {
+            const float FallFloor = -60f;
+            const float ProbeFrom = 500f;
+            const float Clearance = 1.1f;
+
+            var position = transform.position;
+            if (position.y > FallFloor)
+            {
+                return;
+            }
+
+            var landing = position;
+
+            RaycastHit hit;
+            if (Physics.Raycast(
+                    new Vector3(position.x, ProbeFrom, position.z),
+                    Vector3.down,
+                    out hit,
+                    ProbeFrom * 2f,
+                    ~0,
+                    QueryTriggerInteraction.Ignore))
+            {
+                landing = hit.point + new Vector3(0f, Clearance, 0f);
+            }
+            else
+            {
+                // Nothing underneath at all — the rig is outside the island's footprint as well as
+                // below it. The entry anchor is the one position in a zone that is known good.
+                var anchor = ZoneEntryAnchor.FindInScene(gameObject.scene);
+                if (anchor == null)
+                {
+                    return;
+                }
+
+                landing = anchor.Position;
+            }
+
+            _verticalVelocity = 0f;
+            _horizontalVelocity = Vector3.zero;
+            Teleport(landing);
+
+            if (_log != null && !_fallReported)
+            {
+                // Once per rig. The condition it reports does not change by being reported again,
+                // and a warning every tick would bury everything else in the log.
+                _fallReported = true;
+                _log.Warn(
+                    LogCode.FurnishIncomplete,
+                    nameof(PlayerRig) + ": fell through the world to y=" +
+                    position.y.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) +
+                    " and was put back on the ground at y=" +
+                    landing.y.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) +
+                    ". The controller is missing the terrain collider — this is a repair, not a fix.");
+            }
         }
 
         private void AdvancePoseCadence(float delta)

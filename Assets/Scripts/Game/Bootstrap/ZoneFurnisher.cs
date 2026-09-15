@@ -136,7 +136,7 @@ namespace ForgottenIsle.Game.Bootstrap
             // Reported AFTER Initialize, because Initialize is what places the rig: a diagnostic
             // taken before it would print the spawn capsule's construction position rather than
             // where the player actually is.
-            LiftAboveGround(rig, camera);
+            LiftAboveGround(scene, rig, camera);
             RepairVisibility(scene, camera);
 
             var playable = VerifyPlayable(scene, rig, camera);
@@ -173,7 +173,7 @@ namespace ForgottenIsle.Game.Bootstrap
         /// genuinely below the ground, and says so.
         /// </para>
         /// </remarks>
-        private void LiftAboveGround(PlayerRig rig, Camera camera)
+        private void LiftAboveGround(Scene scene, PlayerRig rig, Camera camera)
         {
             if (rig == null || camera == null)
             {
@@ -184,10 +184,28 @@ namespace ForgottenIsle.Game.Bootstrap
             Physics.SyncTransforms();
 
             var eye = camera.transform.position;
-            var from = new Vector3(eye.x, eye.y + ProbeHeight, eye.z);
+
+            // THE PROBE STARTS ABOVE THE WORLD, NOT ABOVE THE EYE, and the difference is the whole
+            // reason this rescue ever worked or did not.
+            //
+            // It used to cast from eye.y + 250 downward for 500 m, which covers exactly the band
+            // [eye.y - 250, eye.y + 250]. That is fine for a player who has sunk a metre into the
+            // terrain and useless for the case that actually happens: a character controller that
+            // missed the ground entirely keeps accelerating, and by the time anyone looks it is
+            // hundreds of metres down. With the eye at y = -495 the ray runs from -245 to -745 and
+            // the ground at y = 0 is nowhere near it -- so the rescue silently did nothing, the
+            // pose cadence wrote that position into the session, autosave persisted it, and every
+            // continue afterwards restored the player back under the world. A save in that state
+            // could never recover.
+            //
+            // Asking the scene where its ground actually is costs one bounds sweep and works from
+            // any depth.
+            var ceiling = HighestColliderTop(scene);
+            var from = new Vector3(eye.x, Mathf.Max(ceiling, eye.y) + ProbeHeight, eye.z);
+            var reach = from.y - eye.y + ProbeHeight;
 
             RaycastHit hit;
-            if (!Physics.Raycast(from, Vector3.down, out hit, ProbeHeight * 2f, ~0, QueryTriggerInteraction.Ignore))
+            if (!Physics.Raycast(from, Vector3.down, out hit, reach, ~0, QueryTriggerInteraction.Ignore))
             {
                 return;
             }
@@ -207,6 +225,39 @@ namespace ForgottenIsle.Game.Bootstrap
                 "'. From under a single-sided ground mesh every face is back-facing and culled, so the " +
                 "view is black with only the buried parts of rocks in it. Rig lifted by " +
                 lift.ToString("F2", CultureInfo.InvariantCulture) + " m.");
+        }
+
+        /// <summary>
+        /// Y of the highest collider surface in the zone, or zero when the zone has no colliders.
+        /// </summary>
+        /// <remarks>
+        /// Bounds rather than a raycast, for the same reason <see cref="HasColliderBelow"/> uses
+        /// them: this runs in the frame the scene finished loading, and a raycast needs physics to
+        /// have ticked at least once.
+        /// </remarks>
+        private static float HighestColliderTop(Scene scene)
+        {
+            var highest = 0f;
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                return highest;
+            }
+
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var colliders = roots[i].GetComponentsInChildren<Collider>(true);
+                for (var c = 0; c < colliders.Length; c++)
+                {
+                    var top = colliders[c].bounds.max.y;
+                    if (top > highest)
+                    {
+                        highest = top;
+                    }
+                }
+            }
+
+            return highest;
         }
 
         /// <summary>
