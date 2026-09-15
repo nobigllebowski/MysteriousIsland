@@ -582,16 +582,40 @@ namespace ForgottenIsle.Game.Player
 
             var landing = position;
 
-            RaycastHit hit;
-            if (Physics.Raycast(
-                    new Vector3(position.x, ProbeFrom, position.z),
-                    Vector3.down,
-                    out hit,
-                    ProbeFrom * 2f,
-                    ~0,
-                    QueryTriggerInteraction.Ignore))
+            // The ray reaches down to the rig's own depth and a little past it, however deep that
+            // is. A fixed length would give the probe a floor of its own, and a rig below that
+            // floor would be un-rescuable for the second time in this file's history.
+            var reach = ProbeFrom - position.y + 10f;
+
+            // RaycastAll and skip ourselves: a single Raycast from above would hit the rig's own
+            // capsule first whenever there is nothing between it and the sky, and report no ground
+            // for a rig that is standing on some.
+            var hits = Physics.RaycastAll(
+                new Vector3(position.x, ProbeFrom, position.z),
+                Vector3.down,
+                reach,
+                ~0,
+                QueryTriggerInteraction.Ignore);
+
+            var foundGround = false;
+            var ground = new RaycastHit();
+            for (var i = 0; i < hits.Length; i++)
             {
-                landing = hit.point + new Vector3(0f, Clearance, 0f);
+                if (hits[i].collider.transform.IsChildOf(transform))
+                {
+                    continue;
+                }
+
+                if (!foundGround || hits[i].distance < ground.distance)
+                {
+                    ground = hits[i];
+                    foundGround = true;
+                }
+            }
+
+            if (foundGround)
+            {
+                landing = ground.point + new Vector3(0f, Clearance, 0f);
             }
             else
             {

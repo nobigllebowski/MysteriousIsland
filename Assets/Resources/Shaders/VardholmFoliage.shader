@@ -34,7 +34,9 @@ Shader "Vardholm/Foliage"
         Cull Off
 
         CGPROGRAM
-        #pragma surface surf LeafWrap vertex:vert alphatest:_Cutoff addshadow
+        // No addshadow: every flora renderer has shadow casting turned off in ZoneBuilder, so a
+        // shadow-caster pass here would be compiled, with its whole variant set, and never run.
+        #pragma surface surf LeafWrap vertex:vert alphatest:_Cutoff
         #pragma target 3.0
 
         fixed4 _BaseColor;
@@ -64,8 +66,11 @@ Shader "Vardholm/Foliage"
             half wrap = saturate(ndl * 0.5 + 0.5);
             wrap = wrap * wrap * 0.75 + wrap * 0.25;
 
+            // No `* 2` on the attenuation. That doubling is the Unity 4 convention, and the
+            // built-in Lambert dropped it in Unity 5 -- keeping it here would render every plant
+            // up to twice as bright as the ground it grows from. VERIFY against Lighting.cginc.
             half4 c;
-            c.rgb = s.Albedo * _LightColor0.rgb * (wrap * atten * 2.0);
+            c.rgb = s.Albedo * _LightColor0.rgb * (wrap * atten);
             c.a = s.Alpha;
             return c;
         }
@@ -111,7 +116,10 @@ Shader "Vardholm/Foliage"
             float lean = _Bend * t * t * side * (0.6 + jitter * 0.8);
 
             float halfWidth = _Width * 0.5 * (1.0 - _Taper * t);
-            halfWidth *= lerp(1.0, sqrt(saturate(4.0 * t * (1.0 - t))) * 1.8, _Broadleaf);
+            // The broadleaf profile keeps a stem. sqrt(4t(1-t)) is exactly zero at t = 0, so
+            // without the floor every fern was cut away at the base and hung detached above the
+            // ground it was planted in.
+            halfWidth *= lerp(1.0, max(0.18, sqrt(saturate(4.0 * t * (1.0 - t))) * 1.8), _Broadleaf);
 
             float alpha = step(abs(local - lean), halfWidth);
 

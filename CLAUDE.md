@@ -2,7 +2,7 @@
 
 Operating rules for this repository. Read `docs/PROJECT_HANDOFF.md` at the start of any session.
 
-**Game:** VARDHOLM — premium portrait mobile mystery-adventure. Unity 6 (`6000.6.0f1`), C#, URP.
+**Game:** VARDHOLM — premium portrait mobile mystery-adventure. Unity 6 (`6000.6.0f1`), C#, **Built-in render pipeline** (the design docs say URP; the project has no URP package or pipeline asset — CONFLICT-7, shipped code wins).
 **Branch:** `claude/keen-darwin-frw656` (the repository's only branch, and its default).
 **Phase:** 2 (playable vertical slice) implemented and pushed — but never compiled or run.
 Phase 3 NOT started. See `docs/PHASE_2_REPORT.md`.

@@ -9,6 +9,55 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the island was built 440–730 m under the sea
+
+The first run after the graphics pass showed nothing but sky. The player was not falling and the
+world was not missing: **the player was standing on the island, and the island was half a
+kilometre below the water plane and the sky dome.** Both screenshots read `xyz 0.0 <y> 0.0` — the
+spawn axis — with `y` at the spawn height of that sunken world (−496.9 in one; the other, read as
++36.0 through very small text, was almost certainly −436.7, the other branch of the same formula).
+
+The cause is one line in `ZoneMeshes.HeightAt`. The new coastline called `Mathf.SmoothStep(a, b, t)`
+as if it were GLSL's `smoothstep(edge0, edge1, x)`. It is not: Unity's is an **interpolator** —
+`t` in 0..1, result *between* `a` and `b` ([docs](https://docs.unity3d.com/ScriptReference/Mathf.SmoothStep.html)).
+Handed two distances as the edges and a third distance as `t`, it clamped `t` and returned a value
+between 47 and 79, so the island factor was about −47 to −78 everywhere and the terrain, the spawn
+computed from it, and every rock and plant (all discarded by the new below-waterline guards) went
+with it. The apron and the ridge use `SmoothStep(0f, 1f, t)`, where the two functions coincide,
+which is why those worked. `Smooth01` is now a real edge-based smoothstep.
+
+**A correction to yesterday's diagnosis.** The previous entry attributed the screenshots to a
+poisoned save restoring a falling pose. That was wrong: a new game would have spawned in the same
+place. The two changes made under that diagnosis remain — `LiftAboveGround` now probes from above
+the world rather than around the eye, and `PlayerRig` catches a genuine fall through the terrain —
+because both defects were real; they were not the cause.
+
+Also found by the same reading, and fixed:
+
+- **The ground probe was hitting the rig itself.** The camera pivot sits at rig + 0.6 and the top
+  of the rig's own capsule at rig + 1.0, so the unfiltered downward ray in `LiftAboveGround` (and
+  the identical one in `ZoneDiagnostics`) entered the player before the terrain. Every zone entry
+  it "found" the player, lifted the rig 2.1 m and logged that the camera had been under the
+  terrain — naming the capsule as the terrain. The one measurement this project makes of where the
+  ground is had never measured the ground. Both probes now skip the rig. `CreateRig` also disables
+  the primitive's collider before destroying it, since `Destroy` is deferred to end of frame and
+  the doomed collider was live through the whole of `Furnish`.
+- `VerifyPlayable` gained the one check that is about the world rather than the rig: the ground's
+  colliders must straddle the waterline. Every existing check passed while the island was sunk.
+- `HighestColliderTop` seeded its maximum at 0 and so reported 0 for any world below it.
+- `HasColliderBelow` reads bounds after `Physics.SyncTransforms()`; `RepairLighting` raises the
+  Trilight terms it actually shades with rather than the Flat-mode field.
+- The ridge centre was 60.9 m out against a coast that starts falling at 47.6 m; pulled inside.
+- Shaders: the foliage lighting dropped a Unity-4-era `× 2`; the broadleaf profile keeps a stem
+  (it pinched to zero width at the base, so every fern hung detached); `addshadow` removed from a
+  shader whose renderers never cast; the sky guards `pow(0, y)`; all three hash functions replaced
+  with the precision-safe "hash without sine" family.
+- Fog figures in comments were for the old density and are corrected; `CLAUDE.md` now says
+  Built-in, which is what the project runs (CONFLICT-7 — shipped code wins).
+
+**IMPLEMENTED BUT NOT RUNTIME VERIFIED.** Both CI gates pass. The height field arithmetic above is
+reproduced in the commit message. Nothing has been compiled or played.
+
 ### Added — the inventory tray, and the first thing the player can do with two items
 
 Carrying items was implemented with no way to see or use them: the player could pick up a spindle

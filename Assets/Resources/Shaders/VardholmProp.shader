@@ -43,10 +43,12 @@ Shader "Vardholm/Prop"
             float3 worldNormal;
         };
 
+        // Hash without sine (Dave Hoskins), the 3D member of the same family the sky and terrain
+        // use. Small intermediates, so it holds up at half precision.
         float hash31(float3 p)
         {
-            p = frac(p * 0.3183099 + float3(0.71, 0.113, 0.419));
-            p += dot(p, p.yzx + 19.19);
+            p = frac(p * 0.1031);
+            p += dot(p, p.zyx + 31.32);
             return frac((p.x + p.y) * p.z);
         }
 

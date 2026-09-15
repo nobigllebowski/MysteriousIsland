@@ -200,12 +200,12 @@ namespace ForgottenIsle.Game.Bootstrap
             //
             // Asking the scene where its ground actually is costs one bounds sweep and works from
             // any depth.
-            var ceiling = HighestColliderTop(scene);
+            var ceiling = HighestColliderTop(scene, rig.transform);
             var from = new Vector3(eye.x, Mathf.Max(ceiling, eye.y) + ProbeHeight, eye.z);
             var reach = from.y - eye.y + ProbeHeight;
 
             RaycastHit hit;
-            if (!Physics.Raycast(from, Vector3.down, out hit, reach, ~0, QueryTriggerInteraction.Ignore))
+            if (!RaycastIgnoring(from, reach, rig.transform, out hit))
             {
                 return;
             }
@@ -235,9 +235,13 @@ namespace ForgottenIsle.Game.Bootstrap
         /// them: this runs in the frame the scene finished loading, and a raycast needs physics to
         /// have ticked at least once.
         /// </remarks>
-        private static float HighestColliderTop(Scene scene)
+        private static float HighestColliderTop(Scene scene, Transform exclude)
         {
+            // Seeded from the first collider seen, not from zero. A running maximum that starts
+            // at 0 reports 0 for any world that sits entirely below it -- which is exactly the
+            // world this probe exists to find the top of.
             var highest = 0f;
+            var found = false;
             if (!scene.IsValid() || !scene.isLoaded)
             {
                 return highest;
@@ -249,15 +253,61 @@ namespace ForgottenIsle.Game.Bootstrap
                 var colliders = roots[i].GetComponentsInChildren<Collider>(true);
                 for (var c = 0; c < colliders.Length; c++)
                 {
+                    if (exclude != null && colliders[c].transform.IsChildOf(exclude))
+                    {
+                        continue;
+                    }
+
                     var top = colliders[c].bounds.max.y;
-                    if (top > highest)
+                    if (!found || top > highest)
                     {
                         highest = top;
+                        found = true;
                     }
                 }
             }
 
             return highest;
+        }
+
+        /// <summary>
+        /// The first thing a downward ray hits that is not part of the rig itself.
+        /// </summary>
+        /// <remarks>
+        /// THE RIG WAS HITTING ITSELF. The camera pivot sits at rig.y + 0.6 and the top of the
+        /// rig's own capsule at rig.y + 1.0, so a ray cast from high above straight down through
+        /// the camera's column enters the player's collider 0.4 m before it can reach anything
+        /// else. Every zone entry the ground probe therefore "found" the player, judged the eye
+        /// to be below that, lifted the rig 2.1 m into the air and logged that the camera had been
+        /// under the terrain -- naming the player capsule as the terrain. The one measurement this
+        /// project makes of where the ground is had never once measured the ground.
+        /// <para>
+        /// The primitive capsule's own collider is also still alive through the whole of Furnish:
+        /// <c>Object.Destroy</c> is deferred to the end of the frame. Excluding by transform
+        /// covers both it and the CharacterController in one test.
+        /// </para>
+        /// </remarks>
+        private static bool RaycastIgnoring(Vector3 from, float reach, Transform ignore, out RaycastHit best)
+        {
+            best = new RaycastHit();
+            var hits = Physics.RaycastAll(from, Vector3.down, reach, ~0, QueryTriggerInteraction.Ignore);
+            var found = false;
+
+            for (var i = 0; i < hits.Length; i++)
+            {
+                if (ignore != null && hits[i].collider.transform.IsChildOf(ignore))
+                {
+                    continue;
+                }
+
+                if (!found || hits[i].distance < best.distance)
+                {
+                    best = hits[i];
+                    found = true;
+                }
+            }
+
+            return found;
         }
 
         /// <summary>
@@ -351,24 +401,46 @@ namespace ForgottenIsle.Game.Bootstrap
 
             var before = luminance;
             var guard = 0;
+            // The zone lights with Trilight ambient, and the estimator reads the SKY term for an
+            // upward-facing ground. Raising ambientLight -- the Flat-mode field -- while in
+            // Trilight mode writes a value the shading never reads and loops twelve times doing
+            // nothing. All three Trilight terms are raised together so the repair stays a repair
+            // of the recipe's balance rather than a replacement of it.
+            var trilight = RenderSettings.ambientMode == UnityEngine.Rendering.AmbientMode.Trilight;
             while (luminance >= 0f && luminance < ReadableLuminance && guard++ < 12)
             {
-                RenderSettings.ambientLight = new Color(
-                    Mathf.Clamp01(RenderSettings.ambientLight.r * 1.35f + 0.04f),
-                    Mathf.Clamp01(RenderSettings.ambientLight.g * 1.35f + 0.04f),
-                    Mathf.Clamp01(RenderSettings.ambientLight.b * 1.35f + 0.04f));
+                if (trilight)
+                {
+                    RenderSettings.ambientSkyColor = Brighten(RenderSettings.ambientSkyColor);
+                    RenderSettings.ambientEquatorColor = Brighten(RenderSettings.ambientEquatorColor);
+                    RenderSettings.ambientGroundColor = Brighten(RenderSettings.ambientGroundColor);
+                }
+                else
+                {
+                    RenderSettings.ambientLight = Brighten(RenderSettings.ambientLight);
+                }
 
                 DynamicGI.UpdateEnvironment();
                 luminance = ZoneDiagnostics.EstimateGroundLuminance(scene, sun);
             }
 
+            var raisedTo = trilight ? RenderSettings.ambientSkyColor : RenderSettings.ambientLight;
             Debug.LogWarning(
                 "[Vardholm] the zone was lit too darkly to read: ground luminance " +
                 before.ToString("F3", CultureInfo.InvariantCulture) + ". Ambient raised to " +
-                RenderSettings.ambientLight.ToString("F2") + ", giving " +
+                raisedTo.ToString("F2") + ", giving " +
                 luminance.ToString("F3", CultureInfo.InvariantCulture) +
                 ". The recipe in ZoneBuilder is what should be corrected; this only stops the run " +
                 "from being a black screen.");
+        }
+
+        private static Color Brighten(Color color)
+        {
+            return new Color(
+                Mathf.Clamp01(color.r * 1.35f + 0.04f),
+                Mathf.Clamp01(color.g * 1.35f + 0.04f),
+                Mathf.Clamp01(color.b * 1.35f + 0.04f),
+                color.a);
         }
 
         private static Light FindSun(Scene scene)
@@ -439,7 +511,27 @@ namespace ForgottenIsle.Game.Bootstrap
             // something to fail a zone over. The facts it depends on -- an enabled camera carrying
             // the MainCamera tag -- are checked directly instead, so a real failure is still caught.
             var tagged = camera != null && camera.CompareTag(MainCameraTag);
-            var complete = rig != null && controller != null && cameraEnabled && tagged;
+
+            // The one check that is about the WORLD rather than the rig. Every test above is
+            // structural and every one of them passed while the island was built 500 m under the
+            // sea: there was a rig, a controller, a camera, a ground collider, and the player was
+            // standing on it, in the dark, under the water plane. An island that does not break
+            // the surface is not a place, whatever else is present.
+            float groundLow, groundHigh;
+            var hasGround = GroundExtent(scene, rig != null ? rig.transform : null, out groundLow, out groundHigh);
+            var groundBreaksSurface = hasGround
+                                      && groundLow < ZoneMeshes.SeaLevel
+                                      && groundHigh > ZoneMeshes.SeaLevel;
+            report += "\n  ground y " +
+                      (hasGround
+                          ? groundLow.ToString("F1", CultureInfo.InvariantCulture) + " .. " +
+                            groundHigh.ToString("F1", CultureInfo.InvariantCulture)
+                          : "-") +
+                      " · waterline " +
+                      ZoneMeshes.SeaLevel.ToString("F1", CultureInfo.InvariantCulture) +
+                      " · island breaks the surface " + Describe(groundBreaksSurface);
+
+            var complete = rig != null && controller != null && cameraEnabled && tagged && groundBreaksSurface;
             if (complete && enabledCameras == 1)
             {
                 Debug.Log(FurnishLogPrefix + report);
@@ -460,6 +552,47 @@ namespace ForgottenIsle.Game.Bootstrap
         private static string Describe(bool present)
         {
             return present ? "yes" : "NO";
+        }
+
+        /// <summary>Lowest and highest points of every collider in the zone that is not the rig.</summary>
+        private static bool GroundExtent(Scene scene, Transform exclude, out float low, out float high)
+        {
+            low = 0f;
+            high = 0f;
+            var found = false;
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                return false;
+            }
+
+            Physics.SyncTransforms();
+
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var colliders = roots[i].GetComponentsInChildren<Collider>(true);
+                for (var c = 0; c < colliders.Length; c++)
+                {
+                    if (!colliders[c].enabled || (exclude != null && colliders[c].transform.IsChildOf(exclude)))
+                    {
+                        continue;
+                    }
+
+                    var bounds = colliders[c].bounds;
+                    if (!found)
+                    {
+                        low = bounds.min.y;
+                        high = bounds.max.y;
+                        found = true;
+                        continue;
+                    }
+
+                    low = Mathf.Min(low, bounds.min.y);
+                    high = Mathf.Max(high, bounds.max.y);
+                }
+            }
+
+            return found;
         }
 
         /// <summary>Renderers actually present in the zone. Zero means nothing was built to look at.</summary>
@@ -630,6 +763,12 @@ namespace ForgottenIsle.Game.Bootstrap
 
         private static bool HasColliderBelow(Scene scene, ZoneEntryAnchor anchor)
         {
+            // Collider.bounds is read from the physics scene, and a collider created this frame
+            // is not in it until transforms are pushed. Without this the bounds of anything built
+            // moments ago can read as empty at the origin -- benign today only because the terrain
+            // happens to be built at the origin anyway.
+            Physics.SyncTransforms();
+
             var roots = scene.GetRootGameObjects();
             var origin = anchor != null ? anchor.Position : Vector3.up;
 
@@ -695,6 +834,13 @@ namespace ForgottenIsle.Game.Bootstrap
             {
                 // The primitive's capsule collider is replaced by the CharacterController's own,
                 // which would otherwise fight it and trap the rig on its own geometry.
+                //
+                // Disabled first, then destroyed. Destroy is deferred to the end of the frame, and
+                // everything else in Furnish -- the ground probe, the bounds sweep, the first
+                // CharacterController.Move -- runs in this frame with the doomed collider still
+                // live and concentric with the controller. Disabling takes it out of the physics
+                // scene immediately.
+                collider.enabled = false;
                 Object.Destroy(collider);
             }
 
@@ -799,7 +945,7 @@ namespace ForgottenIsle.Game.Bootstrap
             //
             // 0.2 against 260 is 1:1300, about eight times the precision. Neither number costs
             // anything visible: a first-person camera has no use for seeing 5 cm from the lens, and
-            // the Ribcage's fog leaves 0.3% visibility at 200 m, so 260 m of far plane is already
+            // the Ribcage's fog leaves ~13% visibility at 200 m and ~5% at 260 m, so that far plane is
             // well past the point where the world has faded out entirely.
             camera.nearClipPlane = 0.2f;
             camera.farClipPlane = 260f;

@@ -186,10 +186,32 @@ namespace ForgottenIsle.Game.Diagnostics
                 // 'eye' in the enclosing method scope, and C# forbids the two (CS0136) even though
                 // the blocks never overlap.
                 var probeOrigin = camera.transform.position;
-                RaycastHit hit;
-                if (Physics.Raycast(
+
+                // The same self-hit ZoneFurnisher.LiftAboveGround had: the camera pivot is inside
+                // the rig's own capsule, so an unfiltered ray from above finds the player before the
+                // ground and this line reported "under the terrain, on 'Player (furnished)'" every
+                // time. Anything under the player body is skipped, and the nearest remaining hit
+                // is the ground.
+                var hits = Physics.RaycastAll(
                     new Vector3(probeOrigin.x, probeOrigin.y + 250f, probeOrigin.z),
-                    Vector3.down, out hit, 500f))
+                    Vector3.down, 500f, ~0, QueryTriggerInteraction.Ignore);
+                var hit = new RaycastHit();
+                var hitGround = false;
+                for (var h = 0; h < hits.Length; h++)
+                {
+                    if (playerBody != null && hits[h].collider.transform.IsChildOf(playerBody))
+                    {
+                        continue;
+                    }
+
+                    if (!hitGround || hits[h].distance < hit.distance)
+                    {
+                        hit = hits[h];
+                        hitGround = true;
+                    }
+                }
+
+                if (hitGround)
                 {
                     b.Append("  ground under the camera: y=")
                      .Append(hit.point.y.ToString("F2", CultureInfo.InvariantCulture))

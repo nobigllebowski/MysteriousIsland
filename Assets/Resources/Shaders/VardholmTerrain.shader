@@ -60,11 +60,13 @@ Shader "Vardholm/Terrain"
             float4 color : COLOR;
         };
 
+        // Hash without sine (Dave Hoskins): keeps every intermediate small, so it survives the
+        // half precision a phone may run this at. See the note in VardholmSky.
         float hash21(float2 p)
         {
-            p = frac(p * float2(127.1, 311.7));
-            p += dot(p, p + 34.56);
-            return frac(p.x * p.y);
+            float3 p3 = frac(p.xyx * 0.1031);
+            p3 += dot(p3, p3.yzx + 33.33);
+            return frac((p3.x + p3.y) * p3.z);
         }
 
         float vnoise(float2 p)

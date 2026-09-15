@@ -34,8 +34,8 @@ namespace ForgottenIsle.Game.World
         /// <remarks>
         /// Sized to the camera's far plane, not to the horizon. Water drawn past 260 m would be
         /// clipped away and leave a visible arc where the sea simply stops; at 240 m the fog has
-        /// already taken it to about two per cent visibility, so the edge is gone before the far
-        /// plane could cut it. Reaching further would mean pushing the far plane out, and the
+        /// taken it to about five per cent visibility (exp(-(0.0072 · 240)²) = 0.05), so the edge
+        /// is close to gone before the far plane could cut it. Reaching further would mean pushing the far plane out, and the
         /// near/far ratio is exactly what caused the depth-buffer flicker that took a day to find.
         /// </remarks>
         private const float SeaRadius = 240f;
@@ -289,8 +289,9 @@ namespace ForgottenIsle.Game.World
             sun.shadowNearPlane = 0.2f;
 
             // Cascades spread over the default 150 m put almost no resolution where the player
-            // actually is. The fog has already taken the world to 3% visibility by 150 m, so
-            // shadows past 80 m are invisible anyway and the cascade split is pure waste — and a
+            // actually is. At this fog density the world is at ~31% visibility by 150 m and a
+            // shadow's contrast is well below what reads at that distance, so shadows past 80 m
+            // are not worth their cascade -- and a
             // coarse cascade near the camera is what makes shadow edges crawl as you walk.
             QualitySettings.shadowDistance = 80f;
             QualitySettings.shadowCascades = 2;

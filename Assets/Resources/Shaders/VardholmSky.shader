@@ -76,11 +76,15 @@ Shader "Vardholm/Sky"
                 return o;
             }
 
+            // Hash without sine (Dave Hoskins), chosen for precision rather than taste: the usual
+            // frac(p * float2(127.1, 311.7)) pushes its input into the tens of thousands before
+            // taking the fraction, where a mediump float has almost no fractional bits left. This
+            // one keeps every intermediate small.
             float hash21(float2 p)
             {
-                p = frac(p * float2(127.1, 311.7));
-                p += dot(p, p + 34.56);
-                return frac(p.x * p.y);
+                float3 p3 = frac(p.xyx * 0.1031);
+                p3 += dot(p3, p3.yzx + 33.33);
+                return frac((p3.x + p3.y) * p3.z);
             }
 
             float vnoise(float2 p)
@@ -109,8 +113,11 @@ Shader "Vardholm/Sky"
                 // Two gradients meeting at the horizon. Above it the sky deepens toward the zenith;
                 // below it the dome darkens toward the ground colour, which is what the player sees
                 // past the edge of the island before the water plane takes over.
-                float3 above = lerp(_HorizonColor.rgb, _ZenithColor.rgb, pow(saturate(up), _HorizonPower));
-                float3 below = lerp(_HorizonColor.rgb, _GroundColor.rgb, pow(saturate(-up), 0.6));
+                // pow() with a zero base is implemented as exp(y * log(x)) on some compilers, and
+                // log(0) is a documented NaN hazard. Every pixel above the horizon evaluates the
+                // `below` term at base 0, so the base is floored.
+                float3 above = lerp(_HorizonColor.rgb, _ZenithColor.rgb, pow(max(up, 1e-4), _HorizonPower));
+                float3 below = lerp(_HorizonColor.rgb, _GroundColor.rgb, pow(max(-up, 1e-4), 0.6));
                 float3 col = up >= 0.0 ? above : below;
 
                 // Clouds, on a plane projected through the dome. Dividing by the vertical component

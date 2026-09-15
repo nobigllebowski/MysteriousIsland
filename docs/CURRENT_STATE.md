@@ -72,7 +72,7 @@ sand, world-space noise), `Vardholm/Prop` (world-space mottling, weathered upwar
 `Vardholm/Foliage` (procedural blade cut-outs, wind in the vertex shader, wrap lighting). The height
 field now shapes an actual island — a noise-perturbed coastline with land inside it and a seabed
 outside — the ground grid went 33 → 97 a side, the island 120 m → 170 m, and ambient went Flat →
-Trilight. **None of it has been compiled or run** (§2).
+Trilight. First run showed only sky — the coastline formula sank the island; fixed, re-run pending (§2).
 
 **Added — the inventory tray.** Chips below the pause button (top of screen: both thumbs live along
 the bottom edge), opened by a tab. Combining is tap-then-tap, with tap-again to cancel.
@@ -96,7 +96,8 @@ current narration lines, and any audio content.
 | **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
 | **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
 | **Tests** | **UNCONFIRMED — 266 tests written (252 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
-| **Shaders** | **NEVER COMPILED.** The five files under `Assets/Resources/Shaders` have not been through Unity's shader compiler, and neither CI gate can look at them — both read C#. A shader that fails to compile renders magenta, so this is visible immediately in the editor and invisible until then. |
+| **Third editor open (graphics pass)** | **2026-09-15** — the project compiled and ran; the five shaders compiled (a procedural sky was on screen). The game view showed only sky: the island had been built 440–730 m under the sea by a `Mathf.SmoothStep` misuse in the new coastline. Root-caused by reading, fixed, **re-run pending.** |
+| **Shaders** | Compiled once (2026-09-15, sky visible on screen). Subsequent edits **not recompiled.** The five files under `Assets/Resources/Shaders` have not been through Unity's shader compiler, and neither CI gate can look at them — both read C#. A shader that fails to compile renders magenta, so this is visible immediately in the editor and invisible until then. |
 
 `ci/validate-structure.py` is a deliberate compiler substitute: brace balance, namespace
 conformance, engine-free Core, asmdef validity, cross-file undeclared-type detection, LocKey

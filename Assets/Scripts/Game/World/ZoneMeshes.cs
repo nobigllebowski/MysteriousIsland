@@ -57,8 +57,12 @@ namespace ForgottenIsle.Game.World
         // player on the summit looking down at everything, which is the one viewpoint from which an
         // island has no silhouette at all. Pushed to one quarter, the player arrives on the low
         // shore with high ground visible across the zone -- somewhere to walk towards.
-        private const float RidgeX = -0.21f;
-        private const float RidgeZ = 0.29f;
+        //
+        // Its centre must sit INSIDE CoastStart or the summit lands in the coastal falloff and is
+        // cut down: (-0.21, 0.29) put it 60.9 m out against a CoastStart of 47.6 m, which would
+        // have taken a third off the height the constants describe. (-0.15, 0.21) is 43.9 m out.
+        private const float RidgeX = -0.15f;
+        private const float RidgeZ = 0.21f;
         private const float RidgeRadius = 0.44f;
         private const float RidgeHeight = 2.6f;
 
@@ -228,9 +232,34 @@ namespace ForgottenIsle.Game.World
             var half = GroundSize * 0.5f;
             var wobble = (Mathf.PerlinNoise(offsetC + x * 0.0105f, offsetC + z * 0.0105f) - 0.5f) * 2f;
             var shaped = distance + wobble * half * 0.16f;
-            var island = 1f - Mathf.SmoothStep(half * CoastStart, half * CoastEnd, shaped);
+            var island = 1f - Smooth01(half * CoastStart, half * CoastEnd, shaped);
 
             return land * island + (SeaLevel - SeaDepth) * (1f - island);
+        }
+
+        /// <summary>
+        /// GLSL's <c>smoothstep(edge0, edge1, x)</c>: 0 at or below <paramref name="edge0"/>, 1 at
+        /// or above <paramref name="edge1"/>, a Hermite curve between.
+        /// </summary>
+        /// <remarks>
+        /// THIS IS NOT <c>Mathf.SmoothStep</c>, AND CONFUSING THE TWO SANK THE ISLAND. Unity's
+        /// <c>Mathf.SmoothStep(from, to, t)</c> is an interpolator: it takes <c>t</c> in 0..1 and
+        /// returns a value BETWEEN <c>from</c> and <c>to</c>
+        /// (https://docs.unity3d.com/ScriptReference/Mathf.SmoothStep.html). The coastline called
+        /// it with two distances in metres as the edges and a third distance as <c>t</c>, which was
+        /// clamped to 0..1 and produced a number between 47 and 79 -- so the island factor came out
+        /// around minus fifty everywhere and the whole terrain was built 440-730 m under the sea.
+        /// The spawn, computed from the same field, went with it: the player was standing on the
+        /// island the entire time, half a kilometre below the water plane and the sky.
+        /// <para>
+        /// The other two calls in this file pass <c>(0f, 1f, t)</c>, for which the two functions
+        /// coincide. That is why the apron and the ridge worked while the coast did not.
+        /// </para>
+        /// </remarks>
+        private static float Smooth01(float edge0, float edge1, float x)
+        {
+            var t = Mathf.Clamp01((x - edge0) / Mathf.Max(edge1 - edge0, 1e-5f));
+            return t * t * (3f - 2f * t);
         }
 
         /// <summary>
