@@ -8,17 +8,19 @@ project — or worse, contradicting a decision that was already made.
 ## 1. What this is, in sixty seconds
 
 **VARDHOLM** — a premium portrait mobile mystery-adventure for iOS and Android. Unity 6
-(`6000.6.0f1`), C#, URP, UI Toolkit.
+(`6000.6.0f1`), C#, Built-in render pipeline (the design docs say URP — CONFLICT-7), UI Toolkit.
 
 A disgraced marine acoustician is shipwrecked on an island that isn't on any chart, and discovers
 a Bronze Age machine built to keep the ocean quiet — and the woman who has been repairing it alone
 for thirty-one years. **The mystery is a maintenance problem.** No combat, no creatures, no
 weapons; the signature tool is a microphone.
 
-**Phase 1, 1.5 and 2 are implemented.** The project spine exists — five assemblies — and Phase 2
-added a playable vertical slice on top of it: two zones, a walking player, interaction,
-progression, objectives, a HUD and save. All of it has **never been compiled**, because the
-environment it was written in has no Unity and no .NET SDK. See `PHASE_2_REPORT.md`.
+**Phases 1, 1.5, 2 and 3 are implemented.** The project spine exists — five assemblies — Phase 2
+added a playable vertical slice (two zones, a walking player, interaction, progression,
+objectives, a HUD, save), Phase 3 added items, combination, the inventory tray and the first
+maintenance puzzle, and a graphics pass added sky, sea, shore and five shaders. **The project has
+compiled and run once**; every change since is unverified, because the environment it was written
+in has no Unity and no .NET SDK. See `CURRENT_STATE.md` §2.
 
 ## 2. Read in this order
 
@@ -91,13 +93,14 @@ Console. Tests: **Window → General → Test Runner**.
 
 ## 8. The exact next task
 
-**Open the editor and find out whether Phase 2 runs.** Do not start Phase 3.
+**Re-open the editor and confirm the island is above the water.** The graphics pass built the
+island 440–730 m under the sea (`Mathf.SmoothStep` misuse, fixed at 37f5355); the fix has not been
+run. Then walk the Phase 3 chain in `CURRENT_STATE.md` §1: spindle → reel → combine in the tray →
+sluice key → sluice → tape deck. Run both test suites, confirming the PlayMode ones ran rather
+than were ignored.
 
-Everything in the vertical slice is written and statically checked and none of it has been
-executed. In order: open the project, run `Vardholm → Setup Project`, run both test suites
-(confirming the PlayMode ones ran rather than were ignored), then press Play and walk the chain in
-`PHASE_2_REPORT.md` §4. `PHASE_2_REPORT.md` §9 lists what to look at and §10 what is most likely
-to be wrong.
+Then the Phase 6 radio slice (`ROADMAP.md`): one radio object, one frequency list, one
+transmission, the tuning band. Phase 5 stays blocked on CONFLICT-6.
 
 Still outstanding behind that, unchanged by Phase 2:
 

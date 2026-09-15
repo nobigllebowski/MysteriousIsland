@@ -4,8 +4,10 @@ Operating rules for this repository. Read `docs/PROJECT_HANDOFF.md` at the start
 
 **Game:** VARDHOLM — premium portrait mobile mystery-adventure. Unity 6 (`6000.6.0f1`), C#, **Built-in render pipeline** (the design docs say URP; the project has no URP package or pipeline asset — CONFLICT-7, shipped code wins).
 **Branch:** `claude/keen-darwin-frw656` (the repository's only branch, and its default).
-**Phase:** 2 (playable vertical slice) implemented and pushed — but never compiled or run.
-Phase 3 NOT started. See `docs/PHASE_2_REPORT.md`.
+**Phase:** 3 (items, combination, the inventory tray, the first maintenance puzzle) implemented and
+pushed; the project has compiled and run once; the graphics pass (sky, sea, shore, five shaders)
+is in and had one fatal bug, fixed but not re-run. Phase 6's radio slice is the next step.
+See `docs/CURRENT_STATE.md`.
 **Setup:** after cloning, run `Vardholm → Setup Project` in Unity. Never create scenes by hand.
 
 ---

@@ -1,6 +1,6 @@
 # ROADMAP
 
-**Position: Phase 2 implemented, never compiled or run. Phase 3 has not started.**
+**Position: Phases 2 and 3 implemented; the project has compiled and run once. Phase 4's combination step landed with Phase 3 (crafting is excluded by the game's identity). Phase 5 is blocked on CONFLICT-6. Next: the Phase 6 radio slice.**
 
 Full per-phase detail — deliverables, exit criteria, playable state, dependencies —
 in [`production/02-mvp-scope-and-roadmap.md`](production/02-mvp-scope-and-roadmap.md) Part 2.
@@ -15,11 +15,11 @@ in [`production/02-mvp-scope-and-roadmap.md`](production/02-mvp-scope-and-roadma
 ```
   0 ████ Design, architecture, MVP, story foundation          DONE
   1 ████ Project spine: assemblies, bootstrap, menu, SAVE     DONE (never compiled)
-  2 ░░░░ Player, camera, interaction, the beach            ◄── NEXT
-  3 ░░░░ Inventory and items
-  4 ░░░░ Combination, crafting, discovery
-  5 ░░░░ Survival and camp
-  6 ░░░░ Environmental puzzles + audio core + radio  ◄── MVP BOUNDARY
+  2 ████ Player, camera, interaction, the beach            DONE (ran once)
+  3 ████ Inventory and items                               DONE (never re-run)
+  4 ▓▓░░ Combination landed with 3; crafting excluded (identity); discovery from 2
+  5 ░░░░ Survival and camp                    BLOCKED on CONFLICT-6 (world clock)
+  6 ░░░░ Environmental puzzles + audio core + radio  ◄── NEXT · MVP BOUNDARY
      ──── playtest gate: 10 sessions, "what do you want to know next?"
   7 ░░░░ Jungle (Fernmaw) + streaming
   8 ░░░░ Weather, day/night, tide     ∥  9 ░░░░ Story, documents, reels

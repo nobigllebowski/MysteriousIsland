@@ -1,9 +1,11 @@
 # CURRENT STATE
 
-**Updated:** 2026-09-14 · **Branch:** `claude/keen-darwin-frw656`
-**Phase 2 implemented; Phase 3 was one bug, not a phase: the world rendered and was shaded to
-7.7% grey.** Fixed, never played. Phase 4 not started.
-Accounts: [`PHASE_2_REPORT.md`](PHASE_2_REPORT.md) · [`PHASE_3_REPORT.md`](PHASE_3_REPORT.md).
+**Updated:** 2026-09-15 · **Branch:** `claude/keen-darwin-frw656`
+**Phases 2 and 3 implemented; a graphics pass on top.** The project compiled and ran once; the
+graphics pass then sank the island (fixed, not re-run). Phase 5 blocked on CONFLICT-6; the Phase 6
+radio slice is next.
+Accounts: [`PHASE_2_REPORT.md`](PHASE_2_REPORT.md) · [`PHASE_3_REPORT.md`](PHASE_3_REPORT.md)
+(the latter is the invisible-world fix, not the items phase — the name predates the phase).
 
 **The project now compiles and runs.** It reached Play Mode, loaded `ZoneRibcage`, furnished it and
 drove the HUD and interaction prompt — the first time anything in this repository has executed.
