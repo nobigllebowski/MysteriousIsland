@@ -4,6 +4,7 @@
 // collapsed into one file and retargeted at state, zone, save and sim-hour events.
 
 using System.Collections.Generic;
+using ForgottenIsle.Core.Radio;
 using ForgottenIsle.Core.State;
 
 namespace ForgottenIsle.Core.Signals
@@ -227,6 +228,27 @@ namespace ForgottenIsle.Core.Signals
         }
     }
 
+    /// <summary>
+    /// Several lines of narration, in order, to be shown one after another.
+    /// </summary>
+    /// <remarks>
+    /// The GAME decides what is said and in what order; the HUD decides only how long each line
+    /// stays up. A transmission is content, and content is not the controller's to compose — the
+    /// first version had the HUD assembling the transmission from key names, which put a story beat
+    /// in the UI assembly where no test of the game could see it.
+    /// </remarks>
+    public readonly struct NarrationSequenceSignal : ISignal
+    {
+        /// <summary>Localization keys, in order. Never null.</summary>
+        public readonly IReadOnlyList<string> LineKeys;
+
+        /// <param name="lineKeys">Localization keys, in order. Null is read as empty.</param>
+        public NarrationSequenceSignal(IReadOnlyList<string> lineKeys)
+        {
+            LineKeys = lineKeys ?? System.Array.Empty<string>();
+        }
+    }
+
     /// <summary>What the radio just did.</summary>
     public enum RadioChangeKind : byte
     {
@@ -272,8 +294,8 @@ namespace ForgottenIsle.Core.Signals
         /// <summary>Signal strength at the needle, 0..1.</summary>
         public readonly float Strength;
 
-        /// <summary>Reception tier at the needle, as <c>Core.Radio.Reception</c> cast to a byte.</summary>
-        public readonly byte Reception;
+        /// <summary>Reception tier at the needle.</summary>
+        public readonly Reception Reception;
 
         /// <summary>Nearest station within range, or null.</summary>
         public readonly string StationId;
@@ -292,7 +314,7 @@ namespace ForgottenIsle.Core.Signals
         /// <param name="lineKey">A narration key for this change, or null.</param>
         /// <param name="isOpen">Whether the dial is open.</param>
         public RadioChangedSignal(
-            RadioChangeKind kind, float mhz, float strength, byte reception,
+            RadioChangeKind kind, float mhz, float strength, Reception reception,
             string stationId, string lineKey, bool isOpen)
         {
             Kind = kind;

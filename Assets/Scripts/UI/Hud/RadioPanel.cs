@@ -29,6 +29,16 @@ namespace ForgottenIsle.UI.Hud
     /// the one the last signal reported, which is how a refused tune (paused, say) leaves the
     /// needle where the game says it is rather than where the thumb wanted it.
     /// </para>
+    /// <para>
+    /// The band covers the bottom third, including the thumb controls, on purpose: the player is
+    /// at the set with both hands on it, and walking while tuning is not a thing the real object
+    /// allows either. Put the radio down to move.
+    /// </para>
+    /// <para>
+    /// The flywheel and the ribbon tick on the UI Toolkit scheduler, not on the Ticker. That is
+    /// not a second game loop: nothing on the C# side learns anything from either, they stop with
+    /// the panel, and the one-Update() rule is about game logic having one clock. ADR-0022 notes it.
+    /// </para>
     /// </remarks>
     public sealed class RadioPanel
     {
@@ -59,6 +69,7 @@ namespace ForgottenIsle.UI.Hud
         private IVisualElementScheduledItem _ticker;
         private int _pointerId = -1;
         private float _lastPointerX;
+        private long _lastPointerMs;
         private float _velocity;
         private bool _fineDrag;
         private float _shownMhz = RadioBand.MinMhz;
@@ -271,7 +282,7 @@ namespace ForgottenIsle.UI.Hud
             else
             {
                 _ticker?.Pause();
-                ReleaseDrag();
+                CancelDrag();
                 _velocity = 0f;
             }
         }
@@ -308,13 +319,16 @@ namespace ForgottenIsle.UI.Hud
 
                 _pointerId = evt.pointerId;
                 _lastPointerX = evt.position.x;
+                _lastPointerMs = evt.timestamp;
                 _velocity = 0f;
 
                 // The fine knob is decided at touch-down and held for the drag, so a thumb that
                 // starts fine and drifts left stays fine. On the real object your thumb is on the
-                // small knob or it is not.
+                // small knob or it is not. A strip that has not been laid out yet has no width and
+                // therefore no fine zone: coarse, never a surprise ten-times-slower drag.
+                var width = _strip.resolvedStyle.width;
                 var local = _strip.WorldToLocal((Vector2)evt.position).x;
-                _fineDrag = local >= _strip.resolvedStyle.width * (1f - RadioBand.FineZoneFraction);
+                _fineDrag = width > 0f && local >= width * (1f - RadioBand.FineZoneFraction);
 
                 _strip.CapturePointer(evt.pointerId);
                 evt.StopPropagation();
@@ -329,7 +343,17 @@ namespace ForgottenIsle.UI.Hud
 
                 var delta = evt.position.x - _lastPointerX;
                 _lastPointerX = evt.position.x;
-                _velocity = delta;
+
+                // Velocity in points PER TICK, not per pointer event: pointer events arrive at
+                // whatever rate the touch hardware reports, and a flywheel fed per-event speed
+                // would spin ten times slower on a 120 Hz digitiser than on a 60 Hz one.
+                // IPointerEvent.timestamp is milliseconds (VERIFY:
+                // https://docs.unity3d.com/ScriptReference/UIElements.IPointerEvent-timestamp.html).
+                var dtMs = Mathf.Max(1f, evt.timestamp - _lastPointerMs);
+                _lastPointerMs = evt.timestamp;
+                var perTick = delta / dtMs * TickMs;
+                _velocity = 0.5f * _velocity + 0.5f * perTick;
+
                 Nudge(delta);
                 evt.StopPropagation();
             });
@@ -347,11 +371,29 @@ namespace ForgottenIsle.UI.Hud
             });
 
             _strip.RegisterCallback<PointerCaptureOutEvent>(_ => ReleaseDrag());
+            _strip.RegisterCallback<PointerCancelEvent>(evt =>
+            {
+                if (evt.pointerId == _pointerId)
+                {
+                    CancelDrag();
+                }
+            });
         }
 
         private void ReleaseDrag()
         {
             _pointerId = -1;
+        }
+
+        /// <summary>Ends a drag from the panel's side: releases capture the thumb still holds.</summary>
+        private void CancelDrag()
+        {
+            if (_pointerId != -1 && _strip.HasPointerCapture(_pointerId))
+            {
+                _strip.ReleasePointer(_pointerId);
+            }
+
+            ReleaseDrag();
         }
 
         private void Nudge(float deltaPoints)

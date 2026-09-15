@@ -492,7 +492,7 @@ namespace ForgottenIsle.Game.World
 
                     // The primitive's collider would make a forest of triggers the player bumps
                     // into. Vegetation is scenery; it is not solid.
-                    Object.Destroy(quad.GetComponent<Collider>());
+                    StripCollider(quad);
 
                     quad.transform.SetParent(plant.transform, false);
                     quad.transform.localPosition = new Vector3(0f, height * 0.5f, 0f);
@@ -636,19 +636,19 @@ namespace ForgottenIsle.Game.World
             // Three walls and a roof, the fourth side open: a section of flank three metres
             // across, leaning the way a beached hull leans. The floor is the island's own sand,
             // swept — the ground mesh is the floor.
-            Slab(hull, rust, "Flank", new Vector3(0f, 1.7f, 1.6f), new Vector3(4.2f, 3.4f, 0.22f), new Vector3(-8f, 0f, 0f));
-            Slab(hull, rust, "Bulkhead port", new Vector3(-2.1f, 1.7f, 0f), new Vector3(0.22f, 3.4f, 3.2f), Vector3.zero);
-            Slab(hull, rust, "Bulkhead starboard", new Vector3(2.1f, 1.7f, 0f), new Vector3(0.22f, 3.4f, 3.2f), Vector3.zero);
-            Slab(hull, deck, "Deck over", new Vector3(0f, 3.35f, 0.1f), new Vector3(4.4f, 0.24f, 3.6f), new Vector3(-6f, 0f, 0f));
+            Slab(hull, rust, "Flank", new Vector3(0f, 1.7f, 1.6f), new Vector3(4.2f, 3.4f, 0.22f), new Vector3(-8f, 0f, 0f), solid: true);
+            Slab(hull, rust, "Bulkhead port", new Vector3(-2.1f, 1.7f, 0f), new Vector3(0.22f, 3.4f, 3.2f), Vector3.zero, solid: true);
+            Slab(hull, rust, "Bulkhead starboard", new Vector3(2.1f, 1.7f, 0f), new Vector3(0.22f, 3.4f, 3.2f), Vector3.zero, solid: true);
+            Slab(hull, deck, "Deck over", new Vector3(0f, 3.35f, 0.1f), new Vector3(4.4f, 0.24f, 3.6f), new Vector3(-6f, 0f, 0f), solid: true);
 
             // The cut: the open side is the door, and two short lips either side of it are the
             // edges of the hole — cut, not torn, the slag beads still sharp.
-            Slab(hull, rust, "Cut edge left", new Vector3(-1.6f, 1.7f, -1.55f), new Vector3(1.0f, 3.4f, 0.2f), Vector3.zero);
-            Slab(hull, rust, "Cut edge right", new Vector3(1.6f, 1.7f, -1.55f), new Vector3(1.0f, 3.4f, 0.2f), Vector3.zero);
+            Slab(hull, rust, "Cut edge left", new Vector3(-1.6f, 1.7f, -1.55f), new Vector3(1.0f, 3.4f, 0.2f), Vector3.zero, solid: true);
+            Slab(hull, rust, "Cut edge right", new Vector3(1.6f, 1.7f, -1.55f), new Vector3(1.0f, 3.4f, 0.2f), Vector3.zero, solid: true);
 
             // The crate, upside down, used as a table. Against the bulkhead.
             var crate = Slab(hull, CreatePropMaterial(new Color(0.16f, 0.24f, 0.30f), "Crate"), "Crate",
-                new Vector3(0.9f, 0.32f, 0.9f), new Vector3(0.7f, 0.64f, 0.5f), Vector3.zero);
+                new Vector3(0.9f, 0.32f, 0.9f), new Vector3(0.7f, 0.64f, 0.5f), Vector3.zero, solid: true);
 
             // The set. A cream body, a black panel, a perspex window, a handle: four boxes, and
             // enough that a player who has seen a 1970s marine set recognises one.
@@ -681,6 +681,13 @@ namespace ForgottenIsle.Game.World
                     new Vector3(0.02f, 0.06f, 0.04f), Vector3.zero);
             }
 
+            // Not once it has been taken apart. The pickup is rebuilt with the zone like everything
+            // else, and a torch that was opened for its cells does not grow back on the nail.
+            if (radio != null && radio.Repair.TorchTakenApart)
+            {
+                return;
+            }
+
             var torchAt = hull.TransformPoint(new Vector3(-1.9f, 1.55f, 0.6f));
             CreateItem(
                 root, interactions,
@@ -691,13 +698,41 @@ namespace ForgottenIsle.Game.World
                 new Vector3(0.06f, 0.22f, 0.06f));
         }
 
+        /// <summary>
+        /// Takes a primitive's collider out of the physics scene now, not at the end of the frame.
+        /// </summary>
+        /// <remarks>
+        /// <c>Object.Destroy</c> is deferred, and everything in Furnish -- the ground probe, the
+        /// bounds sweep, the first CharacterController.Move -- runs in the frame the primitive was
+        /// created, with the doomed collider still live. A continue saved inside a mechanism's
+        /// footprint was being lifted onto its roof by a probe that hit a collider that would not
+        /// exist a frame later. Disabling first is what makes "no collider" true when it is read.
+        /// </remarks>
+        private static void StripCollider(GameObject go)
+        {
+            var collider = go.GetComponent<Collider>();
+            if (collider == null)
+            {
+                return;
+            }
+
+            collider.enabled = false;
+            Object.Destroy(collider);
+        }
+
         /// <summary>One flat box, parented, positioned and dressed. The hull is made of these.</summary>
+        /// <param name="solid">Keep the collider: a wall the player must not walk through.</param>
         private static Transform Slab(
-            Transform parent, Material material, string name, Vector3 localPosition, Vector3 scale, Vector3 tilt)
+            Transform parent, Material material, string name, Vector3 localPosition, Vector3 scale, Vector3 tilt,
+            bool solid = false)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
-            Object.Destroy(go.GetComponent<Collider>());
+            if (!solid)
+            {
+                StripCollider(go);
+            }
+
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPosition;
             go.transform.localRotation = Quaternion.Euler(tilt);
@@ -724,7 +759,7 @@ namespace ForgottenIsle.Game.World
                 {
                     var block = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     block.name = "Block";
-                    Object.Destroy(block.GetComponent<Collider>());
+                    StripCollider(block);
                     block.transform.SetParent(wall, false);
                     block.transform.position = new Vector3(
                         7.5f + course * 0.35f,
@@ -806,7 +841,7 @@ namespace ForgottenIsle.Game.World
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Marker " + contentId;
-            Object.Destroy(go.GetComponent<Collider>());
+            StripCollider(go);
             go.transform.SetParent(root, false);
             go.transform.position = position + new Vector3(0f, 1.1f, 0f);
             go.transform.localScale = new Vector3(0.7f, 2.2f, 0.45f);
@@ -828,7 +863,7 @@ namespace ForgottenIsle.Game.World
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Discovery " + contentId;
-            Object.Destroy(go.GetComponent<Collider>());
+            StripCollider(go);
             go.transform.SetParent(root, false);
             go.transform.position = position;
             go.transform.localScale = new Vector3(0.34f, 0.24f, 0.06f);
@@ -853,7 +888,7 @@ namespace ForgottenIsle.Game.World
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Item " + itemId;
-            Object.Destroy(go.GetComponent<Collider>());
+            StripCollider(go);
             go.transform.SetParent(root, false);
             go.transform.position = position;
             go.transform.localScale = scale;
@@ -883,7 +918,7 @@ namespace ForgottenIsle.Game.World
         {
             var housing = GameObject.CreatePrimitive(PrimitiveType.Cube);
             housing.name = "Mechanism " + contentId;
-            Object.Destroy(housing.GetComponent<Collider>());
+            StripCollider(housing);
             housing.transform.SetParent(root, false);
             housing.transform.position = position + new Vector3(0f, 0.9f, 0f);
             housing.transform.localScale = new Vector3(1.3f, 1.8f, 0.9f);
@@ -891,7 +926,7 @@ namespace ForgottenIsle.Game.World
 
             var moving = GameObject.CreatePrimitive(PrimitiveType.Cube);
             moving.name = "Moving";
-            Object.Destroy(moving.GetComponent<Collider>());
+            StripCollider(moving);
             moving.transform.SetParent(housing.transform, false);
             moving.transform.localPosition = new Vector3(0.62f, 0.15f, 0f);
             moving.transform.localScale = new Vector3(0.9f, 0.16f, 0.22f);
@@ -926,7 +961,7 @@ namespace ForgottenIsle.Game.World
             {
                 var pillar = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 pillar.name = "Pillar";
-                Object.Destroy(pillar.GetComponent<Collider>());
+                StripCollider(pillar);
                 pillar.transform.SetParent(parent, false);
                 pillar.transform.localPosition = new Vector3(side * 1.9f, 1.9f, 0f);
                 pillar.transform.localScale = new Vector3(0.75f, 3.8f, 0.75f);

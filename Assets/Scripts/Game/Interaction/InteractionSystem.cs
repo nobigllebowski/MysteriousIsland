@@ -316,9 +316,29 @@ namespace ForgottenIsle.Game.Interaction
                 return _commands.Dispatch(travel);
             }
 
+            // THE THREE ABOVE WERE THE WHOLE LIST FOR A PHASE, and it meant every pickup, every
+            // mechanism and the radio were dead from the world: their interactables built a
+            // perfectly good command, this method did not know it, and the prompt's button
+            // silently refused. The registry is typed on purpose; the cost of that is that this
+            // list has to be complete, and a new command kind is not in the game until it is here.
+            if (command is TakeItemCommand take)
+            {
+                return _commands.Dispatch(take);
+            }
+
+            if (command is UseItemCommand use)
+            {
+                return _commands.Dispatch(use);
+            }
+
+            if (command is OpenRadioCommand openRadio)
+            {
+                return _commands.Dispatch(openRadio);
+            }
+
             if (_log != null)
             {
-                _log.Warn(LogCode.UnknownCommand, "interaction produced an unroutable command");
+                _log.Warn(LogCode.UnknownCommand, "interaction produced an unroutable command: " + command.GetType().Name);
             }
 
             return CommandResult.Fail(ResultCode.NoHandler);

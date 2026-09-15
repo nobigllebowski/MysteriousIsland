@@ -601,6 +601,9 @@ namespace ForgottenIsle.Game.Player
             var ground = new RaycastHit();
             for (var i = 0; i < hits.Length; i++)
             {
+                // Transform.IsChildOf returns true for the transform itself, which is what excludes
+                // the CharacterController that lives on this very GameObject. VERIFY:
+                // https://docs.unity3d.com/ScriptReference/Transform.IsChildOf.html
                 if (hits[i].collider.transform.IsChildOf(transform))
                 {
                     continue;

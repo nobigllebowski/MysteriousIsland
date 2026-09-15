@@ -187,14 +187,21 @@ namespace ForgottenIsle.Game.Diagnostics
                 // the blocks never overlap.
                 var probeOrigin = camera.transform.position;
 
+                // From above the whole world, as LiftAboveGround does, not from 250 m above the
+                // eye: a diagnostic that cannot see the ground from a deep fall is the diagnostic
+                // that was needed most and worked least.
+                var ceiling = ForgottenIsle.Game.Bootstrap.ZoneFurnisher.HighestColliderTop(scene, playerBody);
+                var castFrom = Mathf.Max(ceiling, probeOrigin.y) + 250f;
+                var castReach = castFrom - probeOrigin.y + 250f;
+
                 // The same self-hit ZoneFurnisher.LiftAboveGround had: the camera pivot is inside
                 // the rig's own capsule, so an unfiltered ray from above finds the player before the
                 // ground and this line reported "under the terrain, on 'Player (furnished)'" every
                 // time. Anything under the player body is skipped, and the nearest remaining hit
                 // is the ground.
                 var hits = Physics.RaycastAll(
-                    new Vector3(probeOrigin.x, probeOrigin.y + 250f, probeOrigin.z),
-                    Vector3.down, 500f, ~0, QueryTriggerInteraction.Ignore);
+                    new Vector3(probeOrigin.x, castFrom, probeOrigin.z),
+                    Vector3.down, castReach, ~0, QueryTriggerInteraction.Ignore);
                 var hit = new RaycastHit();
                 var hitGround = false;
                 for (var h = 0; h < hits.Length; h++)

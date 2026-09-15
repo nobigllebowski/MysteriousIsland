@@ -76,13 +76,19 @@ namespace ForgottenIsle.Core.Radio
 
         /// <summary>Whether the item is spent by the repair.</summary>
         /// <remarks>
-        /// The torch is taken apart for its cells, and stays apart. The recorder keeps its body and
-        /// loses its charge — it remains carried, dead. The multitool is a tool.
+        /// The torch is taken apart for its cells, and stays apart. The spring is bent across the
+        /// fuse holder and stays there. The recorder keeps its body and loses its charge — it
+        /// remains carried, dead. The multitool is a tool.
         /// </remarks>
         public static bool ConsumesItem(string itemId)
         {
-            return itemId == ItemIds.DeadTorch;
+            return itemId == ItemIds.DeadTorch || itemId == ItemIds.CopperSpring;
         }
+
+        /// <summary>True once the torch has been taken apart. The nail row does not grow a new one.</summary>
+        public bool TorchTakenApart => _torchTakenApart;
+
+        private bool _torchTakenApart;
 
         /// <summary>
         /// Applies an item to the set.
@@ -105,6 +111,11 @@ namespace ForgottenIsle.Core.Radio
             if (itemId == ItemIds.FieldRecorder)
             {
                 _usedRecorderCells = true;
+            }
+
+            if (itemId == ItemIds.DeadTorch)
+            {
+                _torchTakenApart = true;
             }
 
             return true;
@@ -136,12 +147,13 @@ namespace ForgottenIsle.Core.Radio
         {
             _outstanding = RadioFault.All;
             _usedRecorderCells = false;
+            _torchTakenApart = false;
         }
 
-        /// <summary>Packs the state for a save. One byte of faults, one flag.</summary>
+        /// <summary>Packs the state for a save. Three bits of faults, two flags.</summary>
         public int Capture()
         {
-            return (int)_outstanding | (_usedRecorderCells ? 8 : 0);
+            return (int)_outstanding | (_usedRecorderCells ? 8 : 0) | (_torchTakenApart ? 16 : 0);
         }
 
         /// <summary>Restores from <see cref="Capture"/>.</summary>
@@ -149,6 +161,7 @@ namespace ForgottenIsle.Core.Radio
         {
             _outstanding = (RadioFault)(packed & (int)RadioFault.All);
             _usedRecorderCells = (packed & 8) != 0;
+            _torchTakenApart = (packed & 16) != 0;
         }
     }
 }

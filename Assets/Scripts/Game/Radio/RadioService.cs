@@ -45,6 +45,7 @@ namespace ForgottenIsle.Game.Radio
         private readonly ICoreLog _log;
 
         private bool _found;
+        private bool _listRead;
         private bool _open;
         private float _mhz = RestingMhz;
         private int _micAttempts;
@@ -96,9 +97,19 @@ namespace ForgottenIsle.Game.Radio
                 return "narration.radio.found";
             }
 
+            if (!_listRead)
+            {
+                // The second look finds the list taped under the handle: the clue the whole
+                // puzzle turns on, found at 15:00 as designed, long before the set works. The
+                // first version handed it out only from a working set, which the player could not
+                // examine any more -- the clue was written and unreachable.
+                _listRead = true;
+                Publish(RadioChangeKind.Diagnosed, "narration.radio.list");
+                return "narration.radio.list";
+            }
+
             if (_repair.IsWorking)
             {
-                // A working set, inspected: the list under the handle, which is the clue.
                 Publish(RadioChangeKind.Diagnosed, "narration.radio.list");
                 return "narration.radio.list";
             }
@@ -137,17 +148,21 @@ namespace ForgottenIsle.Game.Radio
 
             if (_repair.IsWorking)
             {
-                // The outcome still carries the FIX line: whichever fault went last, the player
-                // reads what fixing it revealed (the inscription, if it was power). The power-up
-                // line -- click, amber lamp, hiss -- rides the signal and the HUD shows it after.
+                // Whichever fault went last, the player reads what fixing it revealed (the
+                // inscription, if it was power) and THEN the click, the amber lamp, the hiss. Both
+                // lines go out as one sequence from here, and the outcome carries no line of its
+                // own so the use handler does not say the first one twice.
                 _mhz = RestingMhz;
                 Publish(RadioChangeKind.PoweredUp, "narration.radio.working");
-            }
-            else
-            {
-                Publish(RadioChangeKind.Repaired, line);
+                if (_signals != null)
+                {
+                    _signals.Publish(new NarrationSequenceSignal(new[] { line, "narration.radio.working" }));
+                }
+
+                return RadioRepair.ConsumesItem(itemId) ? UseOutcome.Spent(null) : UseOutcome.Worked(null);
             }
 
+            Publish(RadioChangeKind.Repaired, line);
             return RadioRepair.ConsumesItem(itemId)
                 ? UseOutcome.Spent(line)
                 : UseOutcome.Worked(line);
@@ -227,6 +242,7 @@ namespace ForgottenIsle.Game.Radio
             _repair.Reset();
             _heard.Clear();
             _found = false;
+            _listRead = false;
             _open = false;
             _mhz = RestingMhz;
             _micAttempts = 0;
@@ -242,8 +258,10 @@ namespace ForgottenIsle.Game.Radio
 
             // found | packed faults | mhz | heard,ids | mic attempts. The dial being open is not
             // saved: a run resumes with the set put down, whatever it was doing when it stopped.
+            // First field is flags: 1 found, 2 list read.
+            var flags = (_found ? 1 : 0) | (_listRead ? 2 : 0);
             var payload =
-                (_found ? "1" : "0") + Separator +
+                flags.ToString(CultureInfo.InvariantCulture) + Separator +
                 _repair.Capture().ToString(CultureInfo.InvariantCulture) + Separator +
                 _mhz.ToString("R", CultureInfo.InvariantCulture) + Separator +
                 string.Join(ListSeparator.ToString(), _heard) + Separator +
@@ -275,7 +293,12 @@ namespace ForgottenIsle.Game.Radio
                 return;
             }
 
-            _found = parts[0] == "1";
+            int flags;
+            if (int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out flags))
+            {
+                _found = (flags & 1) != 0;
+                _listRead = (flags & 2) != 0;
+            }
 
             int packed;
             if (int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out packed))
@@ -338,7 +361,7 @@ namespace ForgottenIsle.Game.Radio
                 kind,
                 _mhz,
                 RadioTuner.Strength(_mhz),
-                (byte)reception,
+                reception,
                 stationId,
                 lineKey,
                 _open));

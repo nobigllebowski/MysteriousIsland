@@ -200,6 +200,12 @@ namespace ForgottenIsle.UI.Hud
                 return;
             }
 
+            ShowLine(text, VisibleMsFor(text));
+        }
+
+        /// <summary>Puts a line on the card for a given time. The one place the card is written.</summary>
+        private void ShowLine(string text, long visibleMs)
+        {
             _narration.text = text;
             _narrationCard.style.display = DisplayStyle.Flex;
 
@@ -208,7 +214,7 @@ namespace ForgottenIsle.UI.Hud
             _narrationTimer?.Pause();
             _narrationTimer = _narrationCard.schedule
                 .Execute(() => _narrationCard.style.display = DisplayStyle.None)
-                .StartingIn(VisibleMsFor(text));
+                .StartingIn(visibleMs);
         }
 
         /// <summary>How long a line stays up: long enough to read, scaled by its length, capped.</summary>
@@ -239,11 +245,32 @@ namespace ForgottenIsle.UI.Hud
             {
                 // The dial goes down with the controls. Its own open/closed state is the game's,
                 // and the controller will put it back up if the game still says it is open.
-                _radio?.SetVisible(false);
+                SetRadioVisible(false);
+            }
+
+            // Narration timers stop with the game. A transmission that keeps stepping through a
+            // pause menu is read by nobody, and one that finishes during quit-to-menu leaves its
+            // last line on the next run's HUD.
+            if (visible)
+            {
+                _narrationTimer?.Resume();
+                _sequenceTimer?.Resume();
+            }
+            else
+            {
+                _narrationTimer?.Pause();
+                _sequenceTimer?.Pause();
             }
         }
 
-        /// <summary>Shows or hides the tuning band.</summary>
+        /// <summary>Shows or hides the tuning band, and moves the cards above it while it is up.</summary>
+        /// <remarks>
+        /// The band is the last child of the HUD root and covers the bottom third, and UI Toolkit
+        /// paints later siblings over earlier ones (VERIFY:
+        /// https://docs.unity3d.com/Manual/UIE-VisualTree.html). Left where they were, the prompt
+        /// and the narration card -- the transmission itself -- would be drawn underneath the dial
+        /// the player is looking at. So they climb above it while it is open.
+        /// </remarks>
         public void SetRadioVisible(bool visible)
         {
             if (!IsBuilt)
@@ -252,64 +279,77 @@ namespace ForgottenIsle.UI.Hud
             }
 
             _radio.SetVisible(visible);
+            _narrationCard.style.bottom = Length.Percent(visible ? 37f : 12f);
+            _promptCard.style.bottom = Length.Percent(visible ? 46f : 26f);
         }
 
-        /// <summary>
-        /// Shows several lines of narration one after another.
-        /// </summary>
-        /// <remarks>
-        /// For the transmission, which is forty-four seconds of someone reading a list and cannot
-        /// be one card. Each line replaces the last after <paramref name="perLineMs"/>; a new
-        /// single line from elsewhere cancels the sequence rather than interleaving with it.
-        /// </remarks>
-        /// <param name="lines">Already-localized lines, in order.</param>
-        /// <param name="perLineMs">How long each line stays up.</param>
-        /// <param name="firstDelayMs">
-        /// Wait before the first line. Used when a single line has just been shown by another
-        /// route and must be read before the sequence replaces it — the first hearing of a
-        /// station, then its transmission.
-        /// </param>
-        public void ShowNarrationSequence(
-            System.Collections.Generic.IReadOnlyList<string> lines, long perLineMs, long firstDelayMs)
-        {
-            if (!IsBuilt || lines == null || lines.Count == 0)
-            {
-                return;
-            }
-
-            // A new sequence replaces a running one. A single line from elsewhere does not: it
-            // shows at once and the sequence takes the card back on its next step, so a stray
-            // prompt during the transmission costs one line, not the transmission.
-            _sequenceTimer?.Pause();
-
-            var index = -1;
-            System.Action step = () =>
-            {
-                index++;
-                if (index < lines.Count)
-                {
-                    ShowNarration(lines[index]);
-                }
-            };
-
-            var startIn = firstDelayMs > 0 ? firstDelayMs : 0;
-            _sequenceTimer = _narrationCard.schedule
-                .Execute(step)
-                .StartingIn(startIn)
-                .Every(perLineMs)
-                .Until(() => index >= lines.Count - 1);
-        }
-
-        /// <summary>Replaces what the tray shows.</summary>
-        /// <param name="items">Item ids paired with already-localized names.</param>
-        public void SetInventory(System.Collections.Generic.IReadOnlyList<InventoryItemView> items)
+        /// <summary>Draws the tuning state the game reports.</summary>
+        /// <param name="mhz">Needle position.</param>
+        /// <param name="reception">Reception tier at the needle.</param>
+        /// <param name="stationText">Already-localized caption for what is being received, or empty.</param>
+        public void SetRadioState(float mhz, ForgottenIsle.Core.Radio.Reception reception, string stationText)
         {
             if (!IsBuilt)
             {
                 return;
             }
 
-            _inventory.SetItems(items);
+            _radio.SetState(mhz, reception, stationText);
+        }
+
+        /// <summary>
+        /// Shows several lines of narration one after another, each for as long as it takes to read.
+        /// </summary>
+        /// <remarks>
+        /// For the transmission, which is forty-four seconds of someone reading a list and cannot
+        /// be one card. Each line stays up for its own reading time (<see cref="VisibleMsFor"/>)
+        /// and is replaced by the next; nothing goes blank between lines, and the last line fades
+        /// on its own clock. A single line from elsewhere shows at once and the sequence takes the
+        /// card back on its next step -- a stray prompt during the transmission costs one line, not
+        /// the transmission. A new sequence replaces a running one.
+        /// </remarks>
+        /// <param name="lines">Already-localized lines, in order. Copied; the caller may reuse the list.</param>
+        public void ShowNarrationSequence(System.Collections.Generic.IReadOnlyList<string> lines)
+        {
+            if (!IsBuilt || lines == null || lines.Count == 0)
+            {
+                return;
+            }
+
+            _sequenceTimer?.Pause();
+
+            var copy = new string[lines.Count];
+            for (var i = 0; i < copy.Length; i++)
+            {
+                copy[i] = lines[i] ?? string.Empty;
+            }
+
+            var index = 0;
+            ShowLine(copy[0], VisibleMsFor(copy[0]));
+            if (copy.Length == 1)
+            {
+                return;
+            }
+
+            // Each step shows the next line and re-arms itself for that line's own duration.
+            // The scheduler's Every() cannot vary its interval per step, so the step re-schedules.
+            System.Action step = null;
+            step = () =>
+            {
+                index++;
+                if (index >= copy.Length)
+                {
+                    return;
+                }
+
+                ShowLine(copy[index], VisibleMsFor(copy[index]));
+                if (index < copy.Length - 1)
+                {
+                    _sequenceTimer = _narrationCard.schedule.Execute(step).StartingIn(VisibleMsFor(copy[index]));
+                }
+            };
+
+            _sequenceTimer = _narrationCard.schedule.Execute(step).StartingIn(VisibleMsFor(copy[0]));
         }
 
         private void RaiseCombineRequested(string first, string second)

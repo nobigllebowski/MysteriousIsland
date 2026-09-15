@@ -212,6 +212,14 @@ namespace ForgottenIsle.Game.Bootstrap
             RaycastHit hit;
             if (!RaycastIgnoring(from, reach, rig.transform, out hit))
             {
+                // Not silent. A probe that cannot see the terrain from above the whole world is
+                // itself the finding: either there is no ground under this column or the
+                // colliders are not queryable yet, and both are worth a line in the log.
+                Debug.LogWarning(
+                    "[Vardholm] ground probe found no collider under the camera at " +
+                    eye.ToString("F1") + " (cast from y=" +
+                    from.y.ToString("F1", CultureInfo.InvariantCulture) + ", reach " +
+                    reach.ToString("F0", CultureInfo.InvariantCulture) + " m).");
                 return;
             }
 
@@ -237,10 +245,10 @@ namespace ForgottenIsle.Game.Bootstrap
         /// </summary>
         /// <remarks>
         /// Bounds rather than a raycast, for the same reason <see cref="HasColliderBelow"/> uses
-        /// them: this runs in the frame the scene finished loading, and a raycast needs physics to
-        /// have ticked at least once.
+        /// them: they are cheap and need no query. Whether a same-frame raycast would also work is
+        /// UNVERIFIED either way (see the note there); nothing here depends on the answer.
         /// </remarks>
-        private static float HighestColliderTop(Scene scene, Transform exclude)
+        public static float HighestColliderTop(Scene scene, Transform exclude)
         {
             // Seeded from the first collider seen, not from zero. A running maximum that starts
             // at 0 reports 0 for any world that sits entirely below it -- which is exactly the
@@ -524,9 +532,15 @@ namespace ForgottenIsle.Game.Bootstrap
             // the surface is not a place, whatever else is present.
             float groundLow, groundHigh;
             var hasGround = GroundExtent(scene, rig != null ? rig.transform : null, out groundLow, out groundHigh);
+
+            // Only the procedural island is required to break the waterline. The furnisher's own
+            // fallback slab sits at y = 0 with no sea around it, and an authored zone may put its
+            // floor anywhere; both are playable without an island silhouette. The test is about
+            // the world ZoneBuilder makes, and that world always has a ground named "Ground".
+            var procedural = HasProceduralGround(scene);
             var groundBreaksSurface = hasGround
-                                      && groundLow < ZoneMeshes.SeaLevel
-                                      && groundHigh > ZoneMeshes.SeaLevel;
+                                      && (!procedural
+                                          || (groundLow < ZoneMeshes.SeaLevel && groundHigh > ZoneMeshes.SeaLevel));
             report += "\n  ground y " +
                       (hasGround
                           ? groundLow.ToString("F1", CultureInfo.InvariantCulture) + " .. " +
@@ -557,6 +571,30 @@ namespace ForgottenIsle.Game.Bootstrap
         private static string Describe(bool present)
         {
             return present ? "yes" : "NO";
+        }
+
+        /// <summary>True when ZoneBuilder's ground mesh is in the zone.</summary>
+        private static bool HasProceduralGround(Scene scene)
+        {
+            if (!scene.IsValid() || !scene.isLoaded)
+            {
+                return false;
+            }
+
+            var roots = scene.GetRootGameObjects();
+            for (var i = 0; i < roots.Length; i++)
+            {
+                var colliders = roots[i].GetComponentsInChildren<MeshCollider>(true);
+                for (var c = 0; c < colliders.Length; c++)
+                {
+                    if (colliders[c].name == "Ground")
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         /// <summary>Lowest and highest points of every collider in the zone that is not the rig.</summary>
@@ -782,8 +820,10 @@ namespace ForgottenIsle.Game.Bootstrap
                 var colliders = roots[i].GetComponentsInChildren<Collider>(true);
                 for (var c = 0; c < colliders.Length; c++)
                 {
-                    // Bounds rather than a raycast: a raycast needs physics to have ticked at least
-                    // once, and this runs in the frame the scene finished loading.
+                    // Bounds rather than a raycast, because bounds are cheap and need no query.
+                    // (The earlier claim that a raycast "needs physics to have ticked" is
+                    // UNVERIFIED and contradicted by the same-frame raycasts LiftAboveGround
+                    // relies on after Physics.SyncTransforms; VERIFY before repeating it.)
                     // bounds.MIN.y, not max. The old test asked whether the collider lay ENTIRELY
                     // below the spawn, which a rolling terrain never does — its peaks rise well
                     // above the player, so the check failed on every zone and a redundant 120 x 1 x

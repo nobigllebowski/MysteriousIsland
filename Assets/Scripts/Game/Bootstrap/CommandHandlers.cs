@@ -895,8 +895,18 @@ namespace ForgottenIsle.Game.Bootstrap
                 return;
             }
 
-            _signals.Publish(new NarrationSignal(
-                string.IsNullOrEmpty(outcome.NarrationKey) ? NoEffectKey : outcome.NarrationKey));
+            // A refusal always answers -- silence is indistinguishable from a broken control. A
+            // success with no line means the target has already spoken for itself (the radio
+            // publishes a two-line sequence when it powers up), and saying "that does nothing"
+            // over the top of it would be a lie.
+            if (!string.IsNullOrEmpty(outcome.NarrationKey))
+            {
+                _signals.Publish(new NarrationSignal(outcome.NarrationKey));
+            }
+            else if (!outcome.Succeeded)
+            {
+                _signals.Publish(new NarrationSignal(NoEffectKey));
+            }
         }
     }
 
@@ -1012,13 +1022,39 @@ namespace ForgottenIsle.Game.Bootstrap
             var heardBefore = _radio.Heard.Count;
             _radio.Tune(command.Mhz);
 
-            if (_signals != null && _radio.Heard.Count > heardBefore)
+            if (_signals == null || _radio.Heard.Count <= heardBefore)
             {
-                // A first lock on a station is narrated. The radio signal carries the same key
-                // for the panel; this is the line the HUD shows.
-                _signals.Publish(new NarrationSignal("narration." + _radio.Heard[_radio.Heard.Count - 1]));
+                return;
             }
+
+            var station = _radio.Heard[_radio.Heard.Count - 1];
+            if (station != Stations.TheVoice)
+            {
+                // A false positive is one line: the hull, or a forecast for somewhere else.
+                _signals.Publish(new NarrationSignal("narration." + station));
+                return;
+            }
+
+            // THE TRANSMISSION. The first hearing, the forty-four seconds of her reading the list,
+            // and Nadia working it out -- composed here, in the game, because a story beat is
+            // content and content is not the HUD's to assemble. The HUD only paces it.
+            _signals.Publish(new NarrationSequenceSignal(TransmissionKeys));
         }
+
+        /// <summary>The voice, in order: first hearing, five lines of transmission, four of deduction.</summary>
+        private static readonly string[] TransmissionKeys =
+        {
+            "narration.radio.the_voice",
+            "narration.radio.transmission.1",
+            "narration.radio.transmission.2",
+            "narration.radio.transmission.3",
+            "narration.radio.transmission.4",
+            "narration.radio.transmission.5",
+            "narration.radio.after.1",
+            "narration.radio.after.2",
+            "narration.radio.after.3",
+            "narration.radio.after.4"
+        };
     }
 
     /// <summary>Squeezes the hand-mic.</summary>

@@ -268,6 +268,7 @@ ui.radio.unit,MHz
 ui.radio.station.hull_thump,The hull
 ui.radio.station.bulletin,Weather bulletin — Portuguese
 ui.radio.station.the_voice,A voice
+ui.radio.station.something,Something in there
 narration.radio.found,"A radio. Cream and black, phenolic knobs, an analogue dial behind scratched perspex. It is clean. Somebody wiped it. There is a row of brass tags on nails beside it, and the newest is dated three weeks ago."
 narration.radio.fault.power,"The battery bay is empty and clean. No corrosion. It was emptied on purpose, for storage — that is what you do if you are keeping gear alive for decades."
 narration.radio.fault.contacts,"Green bloom on the spring terminals. That is not dirt. That is a bad connection."

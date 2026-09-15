@@ -21,12 +21,14 @@ namespace ForgottenIsle.Game.Interaction
     /// </remarks>
     public sealed class RadioSet : Interactable
     {
-        // The torch before the recorder when both are carried, so the prologue's unflagged
-        // decision is made by the player choosing to use the recorder, not by a lookup order
-        // spending it for them.
+        // THE RECORDER IS NOT HERE, on purpose. Spending its cells is the prologue's one real
+        // decision, and a proximity prompt that fits whatever the player happens to be carrying
+        // would make it for them the moment they walked up without the torch. Until there is an
+        // explicit "use this item on that" verb in the tray (open item O-10), the recorder route
+        // exists in Core and is tested there, and is not offered from the world.
         private static readonly string[] Candidates =
         {
-            ItemIds.DeadTorch, ItemIds.CopperSpring, ItemIds.Multitool, ItemIds.FieldRecorder
+            ItemIds.DeadTorch, ItemIds.CopperSpring, ItemIds.Multitool
         };
 
         private RadioService _radio;

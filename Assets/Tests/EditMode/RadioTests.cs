@@ -150,6 +150,8 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(repair.UsedRecorderCells, Is.True);
             Assert.That(RadioRepair.ConsumesItem(ItemIds.FieldRecorder), Is.False, "The recorder stays carried, dead.");
             Assert.That(RadioRepair.ConsumesItem(ItemIds.DeadTorch), Is.True, "The torch is taken apart.");
+            Assert.That(RadioRepair.ConsumesItem(ItemIds.CopperSpring), Is.True, "The spring stays in the holder.");
+            Assert.That(RadioRepair.ConsumesItem(ItemIds.Multitool), Is.False, "A tool.");
         }
 
         [Test]
@@ -165,6 +167,19 @@ namespace ForgottenIsle.Tests.EditMode
 
             Assert.That(target.Outstanding, Is.EqualTo(RadioFault.Contacts));
             Assert.That(target.UsedRecorderCells, Is.True);
+        }
+
+        [Test]
+        public void TakingTheTorchApart_IsRemembered_SoTheNailRowDoesNotGrowANewOne()
+        {
+            var source = new RadioRepair();
+            RadioFault cleared;
+            source.TryApply(ItemIds.DeadTorch, out cleared);
+            Assert.That(source.TorchTakenApart, Is.True);
+
+            var target = new RadioRepair();
+            target.Restore(source.Capture());
+            Assert.That(target.TorchTakenApart, Is.True);
         }
 
         // --- the service --------------------------------------------------------------------
@@ -197,6 +212,8 @@ namespace ForgottenIsle.Tests.EditMode
             var radio = NewService(out inventory);
 
             Assert.That(radio.Inspect(), Is.EqualTo("narration.radio.found"));
+            Assert.That(radio.Inspect(), Is.EqualTo("narration.radio.list"),
+                "The clue the puzzle turns on is found on the second look, long before the set works.");
             Assert.That(radio.Inspect(), Is.EqualTo("narration.radio.fault.power"));
             radio.Apply(ItemIds.DeadTorch);
             Assert.That(radio.Inspect(), Is.EqualTo("narration.radio.fault.contacts"));
@@ -221,6 +238,28 @@ namespace ForgottenIsle.Tests.EditMode
 
             radio.Tune(5.2401f);
             Assert.That(radio.Heard.Count, Is.EqualTo(1), "Heard once; recorded once.");
+        }
+
+        [Test]
+        public void PoweringUp_SpeaksOnceAsASequence_WhicheverFaultWentLast()
+        {
+            // The fix line and then the click/lamp/hiss line, as one sequence from the game, and
+            // an outcome with no line of its own so the use handler does not say the fix twice.
+            var signals = new SignalBus();
+            var inventory = new InventoryService(signals, null);
+            var radio = new RadioService(signals, inventory, null);
+            System.Collections.Generic.IReadOnlyList<string> sequence = null;
+            signals.Subscribe<NarrationSequenceSignal>(s => sequence = s.LineKeys);
+
+            radio.Apply(ItemIds.DeadTorch);
+            radio.Apply(ItemIds.CopperSpring);
+            var last = radio.Apply(ItemIds.Multitool);
+
+            Assert.That(last.Succeeded, Is.True);
+            Assert.That(last.NarrationKey, Is.Null, "The set has already spoken.");
+            Assert.That(sequence, Is.Not.Null);
+            Assert.That(sequence[0], Is.EqualTo("narration.radio.fixed.contacts"));
+            Assert.That(sequence[1], Is.EqualTo("narration.radio.working"));
         }
 
         [Test]
@@ -315,10 +354,63 @@ namespace ForgottenIsle.Tests.EditMode
             states.TryTransition(GameStateId.Loading);
             states.TryTransition(GameStateId.InGame);
 
+            System.Collections.Generic.IReadOnlyList<string> sequence = null;
+            signals.Subscribe<NarrationSequenceSignal>(s => sequence = s.LineKeys);
+
             Assert.That(dispatcher.Dispatch(new TuneRadioCommand(5.24f)).Code, Is.EqualTo(ResultCode.NotAllowedInState));
             Assert.That(dispatcher.Dispatch(new OpenRadioCommand()).Success, Is.True);
             Assert.That(dispatcher.Dispatch(new TuneRadioCommand(5.24f)).Success, Is.True);
             Assert.That(radio.TransmissionReceived, Is.True);
+
+            // The transmission is composed by the game, first hearing first, deduction last.
+            Assert.That(sequence, Is.Not.Null);
+            Assert.That(sequence[0], Is.EqualTo("narration.radio.the_voice"));
+            Assert.That(sequence[sequence.Count - 1], Is.EqualTo("narration.radio.after.4"));
+        }
+
+        [Test]
+        public void AUseThatSucceedsWithoutALine_IsNotCalledNothing()
+        {
+            // The use handler's rule: a refusal always answers; a success may have already spoken.
+            var signals = new SignalBus();
+            var states = new GameStateMachine(null, signals);
+            var inventory = new InventoryService(signals, null);
+            var radio = new RadioService(signals, inventory, null);
+            radio.Apply(ItemIds.DeadTorch);
+            radio.Apply(ItemIds.CopperSpring);
+            inventory.Take(ItemIds.Multitool);
+
+            var lines = new System.Collections.Generic.List<string>();
+            signals.Subscribe<NarrationSignal>(n => lines.Add(n.LineKey));
+
+            var resolver = new StubResolver(radio);
+            var dispatcher = new CommandDispatcher(null);
+            dispatcher.Register<UseItemCommand>(new UseItemHandler(states, inventory, resolver, signals));
+            states.TryTransition(GameStateId.MainMenu);
+            states.TryTransition(GameStateId.Loading);
+            states.TryTransition(GameStateId.InGame);
+
+            Assert.That(dispatcher.Dispatch(new UseItemCommand(ItemIds.Multitool, "radio.set")).Success, Is.True);
+            Assert.That(lines, Does.Not.Contain(UseItemHandler.NoEffectKey));
+
+            Assert.That(dispatcher.Dispatch(new UseItemCommand(ItemIds.Multitool, "radio.set")).Success, Is.True,
+                "Using it again is legal and does nothing.");
+            Assert.That(lines, Does.Contain(UseItemHandler.NoEffectKey), "And a refusal always answers.");
+        }
+
+        private sealed class StubResolver : IUseTargetResolver
+        {
+            private readonly RadioService _radio;
+
+            public StubResolver(RadioService radio)
+            {
+                _radio = radio;
+            }
+
+            public UseOutcome Use(string itemId, string targetId)
+            {
+                return targetId == "radio.set" ? _radio.Apply(itemId) : UseOutcome.Nothing;
+            }
         }
 
         // --- the panel's one piece of arithmetic --------------------------------------------

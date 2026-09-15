@@ -9,6 +9,39 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — pickups, mechanisms and the radio were unreachable from the world
+
+`InteractionSystem.Dispatch` routed exactly three command kinds — inspect, collect, travel — and
+logged everything else as unroutable. Every `ItemPickup`, every `Mechanism` and the radio built a
+correct command from the prompt and were silently refused by it. This has been true since Phase 3
+landed; nothing in the item chain was ever reachable by a player. Found by an adversarial review of
+the radio slice. Take, use and open-radio are now routed, and the unroutable warning names the type.
+
+Also from that review, all applied:
+
+- **The clue was unreachable.** The frequency list was handed out only from a working set, which
+  cannot be examined any more. It is found on the second look at the broken set, as the design has
+  it at 15:00, and remembered in the save.
+- **Story beats belong to the game.** The HUD had been assembling the transmission from key names.
+  A `NarrationSequenceSignal` of keys now travels from the handler; the HUD translates and paces
+  it, each line for its own reading time, nothing blank between lines. The power-up pair (the fix
+  line, then the click and the hiss) goes the same way whichever fault went last, and the use
+  handler no longer says "that does nothing" over a target that has already spoken.
+- The first hearing of the voice is read for its own duration before the transmission starts; the
+  narration and prompt cards climb above the tuning band while it is open, so the transmission is
+  not drawn underneath the dial; narration timers pause with the game.
+- The copper spring stays in the fuse holder; the dead torch does not grow back on the nail once
+  taken apart; the recorder's cells are no longer auto-fitted from the prompt (O-10).
+- The hull's walls and crate are solid; every other primitive collider in the zone is disabled
+  before its deferred destroy, so a continue saved inside a mechanism's footprint is not lifted
+  onto its roof by a probe that hit a collider that would not exist a frame later.
+- `VerifyPlayable`'s waterline test applies to the procedural island only; the ground probe says
+  so when it finds nothing; the diagnostics probe starts above the world; two unverified "needs a
+  physics tick" claims are marked as such; `IsChildOf(self)` carries a VERIFY.
+- Station caption only on a lock; below that, "Something in there". Flywheel velocity normalised to
+  time; pointer capture released when the band hides; fine zone needs a laid-out strip; chip
+  outline stays 1 dp when deselected; `Reception` travels typed.
+
 ### Changed — the sea follows the camera
 
 The sea was a 240 m disc centred on the island's origin, so from the shore — 60–80 m out — its near

@@ -282,10 +282,12 @@ namespace ForgottenIsle.UI.Hud
             {
                 // Border rather than a fill change: the chip has to stay readable while selected,
                 // and the tray's background is already translucent over a moving world.
-                _button.style.borderLeftWidth = selected ? 2f : 0f;
-                _button.style.borderRightWidth = selected ? 2f : 0f;
-                _button.style.borderTopWidth = selected ? 2f : 0f;
-                _button.style.borderBottomWidth = selected ? 2f : 0f;
+                // 1 dp when not selected, not 0: Buttons.Secondary draws a 1 dp outline, and
+                // zeroing it here meant a chip lost its edge the first time it was deselected.
+                _button.style.borderLeftWidth = selected ? 2f : 1f;
+                _button.style.borderRightWidth = selected ? 2f : 1f;
+                _button.style.borderTopWidth = selected ? 2f : 1f;
+                _button.style.borderBottomWidth = selected ? 2f : 1f;
 
                 var color = selected ? Theme.Gold : Theme.Border;
                 _button.style.borderLeftColor = color;

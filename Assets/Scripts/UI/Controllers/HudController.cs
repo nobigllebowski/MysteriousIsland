@@ -34,9 +34,6 @@ namespace ForgottenIsle.UI.Controllers
         private readonly List<InventoryItemView> _itemViews = new List<InventoryItemView>(8);
         private readonly List<string> _sequence = new List<string>(10);
 
-        /// <summary>Milliseconds each line of the transmission stays up. Forty-four seconds over nine lines.</summary>
-        private const long TransmissionLineMs = 4900;
-
         private bool _disposed;
 
         /// <param name="screen">The HUD view this drives.</param>
@@ -74,6 +71,7 @@ namespace ForgottenIsle.UI.Controllers
             _subscriptions.Add(signals.Subscribe<NarrationSignal>(OnNarration));
             _subscriptions.Add(signals.Subscribe<InventoryChangedSignal>(OnInventoryChanged));
             _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(OnRadioChanged));
+            _subscriptions.Add(signals.Subscribe<NarrationSequenceSignal>(OnNarrationSequence));
         }
 
         /// <summary>The HUD view, so the installer can push it onto the screen stack.</summary>
@@ -194,8 +192,16 @@ namespace ForgottenIsle.UI.Controllers
             // publishes nothing, so nothing appears; a close from any source takes it down.
             _screen.SetRadioVisible(signal.IsOpen);
 
+            if (!signal.IsOpen)
+            {
+                return;
+            }
+
+            // The caption names a station only on a lock. Below that the player knows something
+            // human is in there and not what -- which is the pull the puzzle is built on, and a
+            // label would hand it to them at twelve kilohertz.
             var stationText = string.Empty;
-            if (!string.IsNullOrEmpty(signal.StationId))
+            if (signal.Reception == Reception.Locked && !string.IsNullOrEmpty(signal.StationId))
             {
                 // "radio.the_voice" -> "ui.radio.station.the_voice". The station id is the tail of
                 // the key, so a station added to the table needs one row and no code.
@@ -204,41 +210,36 @@ namespace ForgottenIsle.UI.Controllers
                     : signal.StationId;
                 stationText = _loc.Get(new LocKey("ui.radio.station." + tail));
             }
-
-            if (signal.IsOpen)
+            else if (signal.Reception != Reception.Grass)
             {
-                _screen.Radio.SetState(signal.Mhz, (Reception)signal.Reception, stationText);
+                stationText = _loc.Get(new LocKey("ui.radio.station.something"));
             }
 
-            if (signal.Kind == RadioChangeKind.Heard && signal.StationId == Stations.TheVoice)
+            _screen.SetRadioState(signal.Mhz, signal.Reception, stationText);
+        }
+
+        private void OnNarrationSequence(NarrationSequenceSignal signal)
+        {
+            // The game composed it; this only translates and paces it.
+            _sequence.Clear();
+            for (var i = 0; i < signal.LineKeys.Count; i++)
             {
-                // The transmission, and then Nadia working it out. The tune handler has already
-                // published the first-hearing line; this is what follows it.
-                _sequence.Clear();
-                for (var i = 1; i <= 5; i++)
+                var key = signal.LineKeys[i];
+                if (string.IsNullOrEmpty(key))
                 {
-                    _sequence.Add(_loc.Get(new LocKey("narration.radio.transmission." + i)));
+                    continue;
                 }
 
-                for (var i = 1; i <= 4; i++)
+                var line = _loc.Get(new LocKey(key));
+                _sequence.Add(line);
+
+                if (_log != null && line.StartsWith("#", StringComparison.Ordinal))
                 {
-                    _sequence.Add(_loc.Get(new LocKey("narration.radio.after." + i)));
+                    _log.Warn(LogCode.MissingLocKey, key);
                 }
-
-                // Behind the first-hearing line, which the tune handler publishes right after
-                // this signal and which must be read before the voice starts.
-                _screen.ShowNarrationSequence(_sequence, TransmissionLineMs, TransmissionLineMs);
             }
 
-            if (signal.Kind == RadioChangeKind.PoweredUp && !string.IsNullOrEmpty(signal.LineKey))
-            {
-                // The click, the amber lamp, the hiss -- after the line for the fix that did it,
-                // which is the one with the inscription on the battery door in it. The use
-                // handler publishes that line right after this signal; the delay lets it be read.
-                _sequence.Clear();
-                _sequence.Add(_loc.Get(new LocKey(signal.LineKey)));
-                _screen.ShowNarrationSequence(_sequence, TransmissionLineMs, HudScreen.VisibleMsFor(_loc.Get(new LocKey("narration.radio.fixed.power"))));
-            }
+            _screen.ShowNarrationSequence(_sequence);
         }
 
         private void OnRadioTuneRequested(float mhz)
