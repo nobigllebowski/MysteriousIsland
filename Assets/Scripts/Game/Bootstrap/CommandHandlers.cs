@@ -7,7 +7,9 @@ using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Core.State;
 using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Core.Items;
+using ForgottenIsle.Core.Radio;
 using ForgottenIsle.Game.Items;
+using ForgottenIsle.Game.Radio;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
@@ -45,14 +47,20 @@ namespace ForgottenIsle.Game.Bootstrap
         /// a determinism test can pin the seed without the handler knowing it is under test.
         /// </param>
         private readonly ProgressService _progress;
+        private readonly InventoryService _inventory;
+        private readonly RadioService _radio;
 
         /// <param name="progress">Progression, wiped so a new run starts with nothing found.</param>
-        public StartNewGameHandler(GameStateMachine states, SessionService session, ZoneRegistry zones, ProgressService progress, ICoreLog log, Func<int> seedSource = null)
+        public StartNewGameHandler(
+            GameStateMachine states, SessionService session, ZoneRegistry zones, ProgressService progress,
+            ICoreLog log, Func<int> seedSource = null, InventoryService inventory = null, RadioService radio = null)
         {
             _states = states ?? throw new ArgumentNullException(nameof(states));
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _zones = zones ?? throw new ArgumentNullException(nameof(zones));
             _progress = progress;
+            _inventory = inventory;
+            _radio = radio;
             _log = log;
             _seedSource = seedSource;
         }
@@ -86,6 +94,38 @@ namespace ForgottenIsle.Game.Bootstrap
             return ResultCode.Ok;
         }
 
+        /// <summary>
+        /// Puts every run-scoped service back to the state a new run finds it in, and hands out
+        /// what the player starts holding.
+        /// </summary>
+        /// <remarks>
+        /// EVERY participant, not just progression. The first version reset only progress, so a
+        /// new game after a finished run started with the previous run's pockets full and, later,
+        /// its radio already repaired -- a save-shaped bug that no save file was involved in.
+        /// Static and public so it can be pinned by a test without a zone registry or a scene.
+        /// </remarks>
+        public static void PrepareNewRun(ProgressService progress, InventoryService inventory, RadioService radio)
+        {
+            if (progress != null)
+            {
+                progress.ResetForNewRun();
+            }
+
+            if (inventory != null)
+            {
+                inventory.ResetForNewRun();
+                for (var i = 0; i < ItemIds.StartingKit.Length; i++)
+                {
+                    inventory.Take(ItemIds.StartingKit[i]);
+                }
+            }
+
+            if (radio != null)
+            {
+                radio.ResetForNewRun();
+            }
+        }
+
         /// <inheritdoc />
         public void Execute(in StartNewGameCommand command)
         {
@@ -93,10 +133,7 @@ namespace ForgottenIsle.Game.Bootstrap
             _states.TryTransition(GameStateId.Loading);
             // A new run means nothing found. Wiped here rather than by the caller, so there is no
             // path that starts a run and leaves the previous run's discoveries standing.
-            if (_progress != null)
-            {
-                _progress.ResetForNewRun();
-            }
+            PrepareNewRun(_progress, _inventory, _radio);
             
             _session.BeginNewRun(slot, SessionService.DefaultActId, StartZone, _seedSource != null ? _seedSource() : Environment.TickCount);
 
@@ -860,6 +897,166 @@ namespace ForgottenIsle.Game.Bootstrap
 
             _signals.Publish(new NarrationSignal(
                 string.IsNullOrEmpty(outcome.NarrationKey) ? NoEffectKey : outcome.NarrationKey));
+        }
+    }
+
+    /// <summary>Reaches for the radio: a diagnosis while it is broken, the dial once it works.</summary>
+    public sealed class OpenRadioHandler : ICommandHandler<OpenRadioCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly RadioService _radio;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine.</param>
+        /// <param name="radio">The set.</param>
+        /// <param name="signals">Bus the diagnosis line goes out on. Null tolerated.</param>
+        public OpenRadioHandler(GameStateMachine states, RadioService radio, SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _radio = radio ?? throw new ArgumentNullException(nameof(radio));
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in OpenRadioCommand command)
+        {
+            return _states.Current == GameStateId.InGame ? ResultCode.Ok : ResultCode.NotAllowedInState;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in OpenRadioCommand command)
+        {
+            if (_radio.IsWorking)
+            {
+                _radio.Open();
+                return;
+            }
+
+            // Broken: the act is an inspection, and the inspection is the clue. One fault at a
+            // time, in the order a person opening the set would meet them.
+            var line = _radio.Inspect();
+            if (_signals != null)
+            {
+                _signals.Publish(new NarrationSignal(line));
+            }
+        }
+    }
+
+    /// <summary>Puts the radio down.</summary>
+    public sealed class CloseRadioHandler : ICommandHandler<CloseRadioCommand>
+    {
+        private readonly RadioService _radio;
+
+        /// <param name="radio">The set.</param>
+        public CloseRadioHandler(RadioService radio)
+        {
+            _radio = radio ?? throw new ArgumentNullException(nameof(radio));
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in CloseRadioCommand command)
+        {
+            // Closing is allowed from any state: a pause with the dial open must be able to put
+            // it away, and there is no state in which leaving it up is the right answer.
+            return ResultCode.Ok;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in CloseRadioCommand command)
+        {
+            _radio.Close();
+        }
+    }
+
+    /// <summary>Moves the needle.</summary>
+    /// <remarks>
+    /// Validation is by the set's state, not the requested number: any float is a legal request
+    /// and the service clamps it to the band. A dial that refuses out-of-range drags would stop
+    /// dead at the end stop instead of resting against it, which is not how a dial feels.
+    /// </remarks>
+    public sealed class TuneRadioHandler : ICommandHandler<TuneRadioCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly RadioService _radio;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine.</param>
+        /// <param name="radio">The set.</param>
+        /// <param name="signals">Bus a first hearing's line goes out on. Null tolerated.</param>
+        public TuneRadioHandler(GameStateMachine states, RadioService radio, SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _radio = radio ?? throw new ArgumentNullException(nameof(radio));
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in TuneRadioCommand command)
+        {
+            if (float.IsNaN(command.Mhz) || float.IsInfinity(command.Mhz))
+            {
+                return ResultCode.InvalidArgument;
+            }
+
+            if (_states.Current != GameStateId.InGame)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            return _radio.IsWorking && _radio.IsOpen ? ResultCode.Ok : ResultCode.NotAllowedInState;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in TuneRadioCommand command)
+        {
+            var heardBefore = _radio.Heard.Count;
+            _radio.Tune(command.Mhz);
+
+            if (_signals != null && _radio.Heard.Count > heardBefore)
+            {
+                // A first lock on a station is narrated. The radio signal carries the same key
+                // for the panel; this is the line the HUD shows.
+                _signals.Publish(new NarrationSignal("narration." + _radio.Heard[_radio.Heard.Count - 1]));
+            }
+        }
+    }
+
+    /// <summary>Squeezes the hand-mic.</summary>
+    public sealed class SqueezeMicHandler : ICommandHandler<SqueezeMicCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly RadioService _radio;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine.</param>
+        /// <param name="radio">The set.</param>
+        /// <param name="signals">Bus the line goes out on. Null tolerated.</param>
+        public SqueezeMicHandler(GameStateMachine states, RadioService radio, SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _radio = radio ?? throw new ArgumentNullException(nameof(radio));
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in SqueezeMicCommand command)
+        {
+            if (_states.Current != GameStateId.InGame)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            return _radio.IsWorking && _radio.IsOpen ? ResultCode.Ok : ResultCode.NotAllowedInState;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in SqueezeMicCommand command)
+        {
+            var line = _radio.SqueezeMic();
+            if (_signals != null)
+            {
+                _signals.Publish(new NarrationSignal(line));
+            }
         }
     }
 }

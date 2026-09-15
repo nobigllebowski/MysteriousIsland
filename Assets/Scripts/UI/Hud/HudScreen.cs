@@ -25,10 +25,20 @@ namespace ForgottenIsle.UI.Hud
         private static readonly LocKey InventoryTabKey = new LocKey("ui.hud.inventory_open");
         private static readonly LocKey InventoryHeadingKey = new LocKey("ui.hud.inventory");
         private static readonly LocKey InventoryHintKey = new LocKey("ui.hud.combine_hint");
+        private static readonly LocKey RadioCloseKey = new LocKey("ui.radio.close");
+        private static readonly LocKey RadioMicKey = new LocKey("ui.radio.mic");
+        private static readonly LocKey RadioFineKey = new LocKey("ui.radio.fine");
+        private static readonly LocKey RadioUnitKey = new LocKey("ui.radio.unit");
         private static readonly LocKey InventoryEmptyKey = new LocKey("ui.hud.inventory_empty");
 
-        /// <summary>Seconds a narration line stays up before fading.</summary>
-        private const long NarrationVisibleMs = 6400;
+        /// <summary>Milliseconds a narration line stays up before it has been read at all.</summary>
+        private const long NarrationBaseMs = 3200;
+
+        /// <summary>Milliseconds per character on top of the base. ~45 is a comfortable reading pace.</summary>
+        private const long NarrationPerCharMs = 45;
+
+        /// <summary>Longest any one line stays up. The battery-door inscription is the case.</summary>
+        private const long NarrationMaxMs = 14000;
 
         private readonly System.Action _onPause;
 
@@ -41,6 +51,8 @@ namespace ForgottenIsle.UI.Hud
         private VisualElement _narrationCard;
         private TouchControls _touch;
         private InventoryPanel _inventory;
+        private RadioPanel _radio;
+        private IVisualElementScheduledItem _sequenceTimer;
         private IVisualElementScheduledItem _narrationTimer;
 
         /// <param name="context">Localization and logging.</param>
@@ -67,6 +79,18 @@ namespace ForgottenIsle.UI.Hud
         /// </remarks>
         public event System.Action<string, string> CombineRequested;
 
+        /// <summary>The tuning band. Null until the screen has been built.</summary>
+        public RadioPanel Radio => _radio;
+
+        /// <summary>Raised with the frequency the thumb asks for on the dial.</summary>
+        public event System.Action<float> RadioTuneRequested;
+
+        /// <summary>Raised when the mic is squeezed.</summary>
+        public event System.Action RadioMicSqueezed;
+
+        /// <summary>Raised when the player puts the radio down.</summary>
+        public event System.Action RadioCloseRequested;
+
         /// <inheritdoc />
         protected override void Build(VisualElement root)
         {
@@ -88,6 +112,37 @@ namespace ForgottenIsle.UI.Hud
                 Loc.Get(InventoryEmptyKey),
                 Loc.Get(InventoryHintKey));
             _inventory.Combine += RaiseCombineRequested;
+
+            _radio = new RadioPanel(
+                root,
+                Loc.Get(RadioCloseKey),
+                Loc.Get(RadioMicKey),
+                Loc.Get(RadioFineKey),
+                Loc.Get(RadioUnitKey));
+            _radio.TuneRequested += mhz =>
+            {
+                var handler = RadioTuneRequested;
+                if (handler != null)
+                {
+                    handler(mhz);
+                }
+            };
+            _radio.MicSqueezed += () =>
+            {
+                var handler = RadioMicSqueezed;
+                if (handler != null)
+                {
+                    handler();
+                }
+            };
+            _radio.CloseRequested += () =>
+            {
+                var handler = RadioCloseRequested;
+                if (handler != null)
+                {
+                    handler();
+                }
+            };
         }
 
         /// <summary>Sets the objective line. Empty hides the whole block.</summary>
@@ -153,7 +208,15 @@ namespace ForgottenIsle.UI.Hud
             _narrationTimer?.Pause();
             _narrationTimer = _narrationCard.schedule
                 .Execute(() => _narrationCard.style.display = DisplayStyle.None)
-                .StartingIn(NarrationVisibleMs);
+                .StartingIn(VisibleMsFor(text));
+        }
+
+        /// <summary>How long a line stays up: long enough to read, scaled by its length, capped.</summary>
+        public static long VisibleMsFor(string text)
+        {
+            var length = text != null ? text.Length : 0;
+            var ms = NarrationBaseMs + NarrationPerCharMs * length;
+            return ms > NarrationMaxMs ? NarrationMaxMs : ms;
         }
 
         /// <summary>Shows or hides the touch controls.</summary>
@@ -171,6 +234,70 @@ namespace ForgottenIsle.UI.Hud
             // the handler is going to refuse for being out of state, which reads as a broken
             // button rather than as a rule.
             _inventory?.SetVisible(visible);
+
+            if (!visible)
+            {
+                // The dial goes down with the controls. Its own open/closed state is the game's,
+                // and the controller will put it back up if the game still says it is open.
+                _radio?.SetVisible(false);
+            }
+        }
+
+        /// <summary>Shows or hides the tuning band.</summary>
+        public void SetRadioVisible(bool visible)
+        {
+            if (!IsBuilt)
+            {
+                return;
+            }
+
+            _radio.SetVisible(visible);
+        }
+
+        /// <summary>
+        /// Shows several lines of narration one after another.
+        /// </summary>
+        /// <remarks>
+        /// For the transmission, which is forty-four seconds of someone reading a list and cannot
+        /// be one card. Each line replaces the last after <paramref name="perLineMs"/>; a new
+        /// single line from elsewhere cancels the sequence rather than interleaving with it.
+        /// </remarks>
+        /// <param name="lines">Already-localized lines, in order.</param>
+        /// <param name="perLineMs">How long each line stays up.</param>
+        /// <param name="firstDelayMs">
+        /// Wait before the first line. Used when a single line has just been shown by another
+        /// route and must be read before the sequence replaces it — the first hearing of a
+        /// station, then its transmission.
+        /// </param>
+        public void ShowNarrationSequence(
+            System.Collections.Generic.IReadOnlyList<string> lines, long perLineMs, long firstDelayMs)
+        {
+            if (!IsBuilt || lines == null || lines.Count == 0)
+            {
+                return;
+            }
+
+            // A new sequence replaces a running one. A single line from elsewhere does not: it
+            // shows at once and the sequence takes the card back on its next step, so a stray
+            // prompt during the transmission costs one line, not the transmission.
+            _sequenceTimer?.Pause();
+
+            var index = -1;
+            System.Action step = () =>
+            {
+                index++;
+                if (index < lines.Count)
+                {
+                    ShowNarration(lines[index]);
+                }
+            };
+
+            var startIn = firstDelayMs > 0 ? firstDelayMs : 0;
+            _sequenceTimer = _narrationCard.schedule
+                .Execute(step)
+                .StartingIn(startIn)
+                .Every(perLineMs)
+                .Until(() => index >= lines.Count - 1);
         }
 
         /// <summary>Replaces what the tray shows.</summary>

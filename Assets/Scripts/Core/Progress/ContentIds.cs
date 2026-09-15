@@ -54,6 +54,11 @@ namespace ForgottenIsle.Core.Progress
         /// </summary>
         public const string MechanismTapeDeck = "mechanism.tape_deck";
 
+        // --- The radio (one object; the prologue's spine) -------------------------------------
+
+        /// <summary>The 1970s marine set on the crate inside the trawler hull.</summary>
+        public const string RadioSet = "radio.set";
+
         // --- Gates (travel points) ----------------------------------------------------------
 
         /// <summary>The gully mouth in the Ribcage that leads inland.</summary>

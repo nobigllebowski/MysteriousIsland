@@ -23,5 +23,8 @@ namespace ForgottenIsle.Core.Save
 
         /// <summary>Section owned by the inventory service: what the player is carrying.</summary>
         public const string Inventory = "inventory";
+
+        /// <summary>The radio: its faults, its needle, and what has been heard on it.</summary>
+        public const string Radio = "radio";
     }
 }

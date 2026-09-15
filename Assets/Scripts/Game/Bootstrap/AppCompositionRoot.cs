@@ -10,6 +10,7 @@ using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Localization;
 using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Items;
+using ForgottenIsle.Game.Radio;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
@@ -62,6 +63,7 @@ namespace ForgottenIsle.Game.Bootstrap
             var dispatcher = new CommandDispatcher(log);
             var progress = new ProgressService(signals, log);
             var inventory = new InventoryService(signals, log);
+            var radio = new RadioService(signals, inventory, log);
             var interactions = new InteractionSystem(progress, inventory, dispatcher, signals, log);
 
             // ADR-0011: every phase adds its participant in the same pull
@@ -72,9 +74,11 @@ namespace ForgottenIsle.Game.Bootstrap
             // restored discovery only means anything once the run and its position exist.
             // Phase 3 adds the fourth: the inventory, last, because what the player carries is only
             // meaningful once the run, the position and the progression it was earned against exist.
-            var participants = new List<ISaveParticipant>(4)
+            // Phase 6 adds the fifth: the radio, after the inventory, because which parts went
+            // into the set only means anything once the pockets they came out of exist.
+            var participants = new List<ISaveParticipant>(5)
             {
-                session, session.PlayerParticipant, progress, inventory
+                session, session.PlayerParticipant, progress, inventory, radio
             };
             for (var i = 0; i < participants.Count; i++)
             {
@@ -85,7 +89,7 @@ namespace ForgottenIsle.Game.Bootstrap
             // rather than cosmetic: ResumeSavedRunHandler restores a run by calling SaveSlotService.Load,
             // which walks the participant register. A handler wired before the register was filled would
             // resume into an empty world and report success.
-            dispatcher.Register<StartNewGameCommand>(new StartNewGameHandler(states, session, zones, progress, log));
+            dispatcher.Register<StartNewGameCommand>(new StartNewGameHandler(states, session, zones, progress, log, null, inventory, radio));
             dispatcher.Register<InspectCommand>(new InspectHandler(states, progress, signals));
             dispatcher.Register<CollectCommand>(new CollectHandler(states, progress, signals));
             dispatcher.Register<ResumeSavedRunCommand>(new ResumeSavedRunHandler(states, slots, session, zones, log));
@@ -95,8 +99,12 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<TakeItemCommand>(new TakeItemHandler(states, inventory, signals));
             dispatcher.Register<CombineItemsCommand>(new CombineItemsHandler(states, inventory, signals));
             dispatcher.Register<UseItemCommand>(new UseItemHandler(states, inventory, interactions, signals));
+            dispatcher.Register<OpenRadioCommand>(new OpenRadioHandler(states, radio, signals));
+            dispatcher.Register<CloseRadioCommand>(new CloseRadioHandler(radio));
+            dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));
+            dispatcher.Register<SqueezeMicCommand>(new SqueezeMicHandler(states, radio, signals));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, participants);
         }
 
         /// <summary>

@@ -9,6 +9,58 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the radio (Phase 6 slice): one set, three faults, one frequency list, one transmission
+
+The prologue's spine, built to `design/04-first-30-minutes.md` §15:00–§27:00 and §3.
+
+**In the world.** A hole cut in a trawler's flank on the rise toward the ridge — a shell of slabs
+with the open side facing the shore, a swept floor (the island's own sand), a crate for a table,
+the set on it, and eleven brass tags on eleven nails with a dead torch hanging among them.
+
+**Three things wrong with it, and you have three things.** Power (the torch's cells, or the field
+recorder's own — the prologue's one real decision, never flagged as one, and remembered), contacts
+(the multitool), fuse (the torch's copper spring, which the player is holding the moment they take
+the torch apart for its cells). Diagnosis is by inspection, one fault at a time, in any order; no
+minigame. Closing the battery door reveals the inscription. `RadioRepair` in Core owns the table
+of what fixes what, for the same reason `Mechanism` does: it is the set that knows what fits it.
+
+**The dial.** A full-width band in the bottom third: the strip drags with inertia and friction at
+the design's coarse rate (180 kHz per screen-width), the right fifth is the fine knob at ten times
+the resolution with no mode switch, and above it the spectrogram ribbon — phosphor green on black,
+grass for noise, a vertical line for a carrier. The ribbon draws from `RadioTuner.Spectrum`, the
+same Core arithmetic the lock rule uses, so what the player sees and what the game grants cannot
+disagree. Tolerance is the design's ladder: ±0.8 kHz lock (with a magnetic detent so the lock
+cannot be lost by breathing on the screen), ±4 detuned, ±12 smudge, grass beyond.
+
+**On the band.** Two honest false positives — the hull's own pressure cycle at 8.291 (the game's
+thesis, hidden in a red herring) and a Portuguese weather bulletin at 12.510 for a sea area nine
+hundred kilometres away — and the signal at **5.240**: the one line on the list written without a
+unit, in a list whose every other line is in kHz. A reading puzzle, not a trivia puzzle. First
+lock on the voice plays the forty-four-second transmission as a sequence of narration lines,
+then Nadia working it out; it is recorded on first hearing and never lost.
+
+**The mic.** Press to talk. Five different things to say, each less formal; hiss every time. The
+world lets the player do the thing they want and still does not give them what they want.
+
+Architecture: `RadioService` is the **fifth `ISaveParticipant`**, registered in this change
+(ADR-0011). `RadioSet` is its presence in the world and holds no state. Four commands
+(`OpenRadio`, `CloseRadio`, `TuneRadio`, `SqueezeMic`) and one signal carrying the full tuning
+state. `HudController` pauses the dial through a command like any other change.
+
+**Fixed on the way — a new game inherited the previous run's pockets.** `StartNewGameHandler`
+reset progression and nothing else, so a second run started with the first run's items and, now,
+its repaired radio. Every participant resets; the starting kit (multitool, field recorder) is
+handed out there.
+
+Deviations from the design, all UNCONFIRMED and named: the phone's real microphone is not opened
+(no permission flow yet); the hint escalation timers (§3.5) are not built; the Field Slate is not
+built, so the transmission is narration rather than an entry; the frequencies are the design's own
+and flagged there for clearance.
+
+**IMPLEMENTED BUT NOT RUNTIME VERIFIED.** Both CI gates pass. Twenty-three EditMode cases cover
+the tolerance ladder, the snap, the spectrum, the repair table, the save round trip, the
+new-game reset and the drag arithmetic. Nothing has been compiled or played.
+
 ### Fixed — the island was built 440–730 m under the sea
 
 The first run after the graphics pass showed nothing but sky. The player was not falling and the

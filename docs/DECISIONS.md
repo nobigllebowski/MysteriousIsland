@@ -37,7 +37,7 @@ Full text and rationale in [`architecture/00-decisions.md`](architecture/00-deci
 | 0006 | `SurvivalStat` = `{Health, Energy, Hydration, Satiation, CoreTemp}` | Decided — **CONFLICT-2**, data doc still stale |
 | 0007 | One inventory model: items, not resources. `ResourceDefinition` deleted | **Implemented** (Phase 3) — **CONFLICT-3**, data doc still stale |
 | 0008 | Locomotion is a floating joystick; tap-to-move is accessibility-only | **Implemented** — **CONFLICT-4**, prologue/roadmap still stale |
-| 0009 | 14 save participants at completion; `GameState` must cover all owned state | Partial — 4 registered (session, player, progress, inventory), by design |
+| 0009 | 14 save participants at completion; `GameState` must cover all owned state | Partial — 5 registered (session, player, progress, inventory, radio), by design |
 | 0010 | Two anti-softlock holes closed: diesel renewable; Ash Throat valve order gets an Act-3-reachable second hint | Design-level, not yet built |
 | 0011 | Save spine in Phase 1 (= D-2) | **Implemented** |
 | 0012 | Hand-wired composition; no service locator. VContainer is a Phase 2 go/no-go | **Implemented** — go/no-go still not taken |
@@ -50,6 +50,7 @@ Full text and rationale in [`architecture/00-decisions.md`](architecture/00-deci
 | 0019 | A failed combination consumes nothing — the anti-soft-lock rule | **Implemented** (Phase 3), asserted by name |
 | 0020 | Inventory is a top-of-screen tray; combining is tap-then-tap, with tap-again to cancel | **Implemented** (Phase 3) |
 | 0021 | The world is drawn with this project's own shaders, kept under `Resources` | **Implemented** — **never compiled** |
+| 0022 | The radio: one service (5th save participant), one world object, one shared piece of tuning arithmetic | **Implemented** (Phase 6 slice) |
 
 **Why 0014 reversed:** the uGUI choice assumed a greenfield start. It was not one — the team's
 NATION: WORLD ORDER project already contained a working, code-built UI Toolkit mobile framework at

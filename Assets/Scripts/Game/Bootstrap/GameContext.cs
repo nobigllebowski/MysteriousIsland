@@ -15,6 +15,7 @@ using ForgottenIsle.Core.Time;
 using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Items;
+using ForgottenIsle.Game.Radio;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
@@ -65,6 +66,7 @@ namespace ForgottenIsle.Game.Bootstrap
             ProgressService progress,
             InteractionSystem interactions,
             InventoryService inventory,
+            RadioService radio,
             IReadOnlyList<ISaveParticipant> saveParticipants)
         {
             if (log == null)
@@ -135,6 +137,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Progress = progress ?? throw new ArgumentNullException(nameof(progress));
             Interactions = interactions ?? throw new ArgumentNullException(nameof(interactions));
             Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
+            Radio = radio ?? throw new ArgumentNullException(nameof(radio));
             Input = input;
 
             // Copied defensively. The participant list is what a save iterates; handing out the
@@ -192,6 +195,9 @@ namespace ForgottenIsle.Game.Bootstrap
 
         /// <summary>What the player is carrying. The fourth save participant.</summary>
         public InventoryService Inventory { get; }
+
+        /// <summary>The radio: faults, needle, and what has been heard. Fifth save participant.</summary>
+        public RadioService Radio { get; }
 
         /// <summary>
         /// Player input, already gated on the state machine so it reads as centred outside

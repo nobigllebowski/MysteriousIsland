@@ -166,7 +166,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Application.targetFrameRate = TargetFrameRate;
 
             Context = AppCompositionRoot.Build(this);
-            _furnisher = new ZoneFurnisher(Context.Session, Context.Input, Context.Interactions, Context.Log);
+            _furnisher = new ZoneFurnisher(Context.Session, Context.Input, Context.Interactions, Context.Log, Context.Radio);
 
             // Announced here, before the transitions below, so that a listener is already wired when
             // MainMenu (and, on the self-heal path, Loading and InGame) is published and does not have to

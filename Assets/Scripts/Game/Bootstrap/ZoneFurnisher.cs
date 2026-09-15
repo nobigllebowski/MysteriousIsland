@@ -5,6 +5,7 @@ using ForgottenIsle.Game.Player;
 using ForgottenIsle.Game.Scenes;
 using ForgottenIsle.Game.Diagnostics;
 using ForgottenIsle.Game.Interaction;
+using ForgottenIsle.Game.Radio;
 using ForgottenIsle.Game.Session;
 using ForgottenIsle.Game.World;
 using UnityEngine;
@@ -62,6 +63,7 @@ namespace ForgottenIsle.Game.Bootstrap
         private readonly InputRouter _input;
         private readonly InteractionSystem _interactions;
         private readonly ICoreLog _log;
+        private readonly RadioService _radio;
 
         /// <param name="session">Run state the rig reads and writes its pose through.</param>
         /// <param name="input">Input source handed to the rig.</param>
@@ -70,13 +72,16 @@ namespace ForgottenIsle.Game.Bootstrap
         /// Interaction system the zone's markers, pickups and gates register with. Null tolerated,
         /// which yields a zone that can be walked but not acted on.
         /// </param>
+        /// <param name="radio">The radio the Ribcage's set reports into. Null yields a zone without one.</param>
         public ZoneFurnisher(
-            SessionService session, InputRouter input, InteractionSystem interactions, ICoreLog log)
+            SessionService session, InputRouter input, InteractionSystem interactions, ICoreLog log,
+            RadioService radio = null)
         {
             _session = session;
             _input = input;
             _interactions = interactions;
             _log = log;
+            _radio = radio;
         }
 
         /// <summary>
@@ -739,7 +744,7 @@ namespace ForgottenIsle.Game.Bootstrap
             }
 
             var root = FurnishedRoot(scene).transform;
-            return ZoneBuilder.Build(scene.name, root, _interactions);
+            return ZoneBuilder.Build(scene.name, root, _interactions, _radio);
         }
 
         private void EnsureGround(Scene scene, ZoneEntryAnchor anchor)

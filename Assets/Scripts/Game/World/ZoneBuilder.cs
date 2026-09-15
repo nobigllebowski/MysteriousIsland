@@ -1,6 +1,7 @@
 using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Game.Interaction;
+using ForgottenIsle.Game.Radio;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -189,8 +190,9 @@ namespace ForgottenIsle.Game.World
         /// <param name="zoneKey">Scene key naming which zone to build.</param>
         /// <param name="root">Parent for everything created.</param>
         /// <param name="interactions">System the zone's interactables register with. Null tolerated.</param>
+        /// <param name="radio">The radio the Ribcage's set reports into. Null yields no set.</param>
         /// <returns>The world position the player should spawn at.</returns>
-        public static Vector3 Build(string zoneKey, Transform root, InteractionSystem interactions)
+        public static Vector3 Build(string zoneKey, Transform root, InteractionSystem interactions, RadioService radio = null)
         {
             var fernmaw = zoneKey == ContentIds.ZoneFernmaw;
             var recipe = fernmaw ? FernmawRecipe : RibcageRecipe;
@@ -211,6 +213,7 @@ namespace ForgottenIsle.Game.World
             else
             {
                 BuildRibcageContent(root, recipe, stoneMaterial, interactions);
+                BuildTrawlerHull(root, recipe, stoneMaterial, interactions, radio);
             }
 
             return new Vector3(0f, Height(0f, 0f, recipe) + 1.2f, 0f);
@@ -592,6 +595,113 @@ namespace ForgottenIsle.Game.World
                 "interactable.gully_mouth",
                 ContentIds.ZoneFernmaw,
                 gatePos);
+        }
+
+
+        // --- The trawler hull ------------------------------------------------------------------
+
+        /// <summary>
+        /// The only sheltered structure on the route: a hole cut in a trawler's flank, a swept
+        /// floor, a crate for a table, and the radio on it.
+        /// </summary>
+        /// <remarks>
+        /// From <c>design/04-first-30-minutes.md</c> §15:00. The hull is a shell of flat slabs
+        /// rather than a modelled boat because the brief is a place to stand in and a doorway to
+        /// look through, and that is what a shell provides. The cut door faces the spawn so the
+        /// player sees a dark opening in a wall of rust before they see anything inside it.
+        /// <para>
+        /// Beside the set, the nail row: the dead torch hangs there, which is where a person keeps
+        /// a torch. It is the answer to two of the radio's three faults and the player finds that
+        /// out by taking it apart.
+        /// </para>
+        /// </remarks>
+        private static void BuildTrawlerHull(
+            Transform root, Recipe recipe, Material stone, InteractionSystem interactions, RadioService radio)
+        {
+            var hull = new GameObject("Trawler Hull").transform;
+            hull.SetParent(root, false);
+
+            // Off the critical path to the gate, far enough that it is found by looking. On the
+            // rise toward the ridge so the doorway reads against the sky from the shore.
+            var at = new Vector3(15f, 0f, 17f);
+            at.y = Height(at.x, at.z, recipe);
+            hull.position = at;
+            hull.rotation = Quaternion.Euler(0f, -28f, 0f);
+
+            var rust = CreatePropMaterial(new Color(0.34f, 0.22f, 0.16f), "HullRust");
+            var deck = CreatePropMaterial(new Color(0.26f, 0.24f, 0.21f), "HullDeck");
+
+            // Three walls and a roof, the fourth side open: a section of flank three metres
+            // across, leaning the way a beached hull leans. The floor is the island's own sand,
+            // swept — the ground mesh is the floor.
+            Slab(hull, rust, "Flank", new Vector3(0f, 1.7f, 1.6f), new Vector3(4.2f, 3.4f, 0.22f), new Vector3(-8f, 0f, 0f));
+            Slab(hull, rust, "Bulkhead port", new Vector3(-2.1f, 1.7f, 0f), new Vector3(0.22f, 3.4f, 3.2f), Vector3.zero);
+            Slab(hull, rust, "Bulkhead starboard", new Vector3(2.1f, 1.7f, 0f), new Vector3(0.22f, 3.4f, 3.2f), Vector3.zero);
+            Slab(hull, deck, "Deck over", new Vector3(0f, 3.35f, 0.1f), new Vector3(4.4f, 0.24f, 3.6f), new Vector3(-6f, 0f, 0f));
+
+            // The cut: the open side is the door, and two short lips either side of it are the
+            // edges of the hole — cut, not torn, the slag beads still sharp.
+            Slab(hull, rust, "Cut edge left", new Vector3(-1.6f, 1.7f, -1.55f), new Vector3(1.0f, 3.4f, 0.2f), Vector3.zero);
+            Slab(hull, rust, "Cut edge right", new Vector3(1.6f, 1.7f, -1.55f), new Vector3(1.0f, 3.4f, 0.2f), Vector3.zero);
+
+            // The crate, upside down, used as a table. Against the bulkhead.
+            var crate = Slab(hull, CreatePropMaterial(new Color(0.16f, 0.24f, 0.30f), "Crate"), "Crate",
+                new Vector3(0.9f, 0.32f, 0.9f), new Vector3(0.7f, 0.64f, 0.5f), Vector3.zero);
+
+            // The set. A cream body, a black panel, a perspex window, a handle: four boxes, and
+            // enough that a player who has seen a 1970s marine set recognises one.
+            var setRoot = new GameObject("Radio " + ContentIds.RadioSet);
+            setRoot.transform.SetParent(hull, false);
+            setRoot.transform.localPosition = crate.localPosition + new Vector3(0f, 0.32f + 0.14f, 0f);
+            setRoot.transform.localRotation = Quaternion.Euler(0f, 12f, 0f);
+
+            var cream = CreatePropMaterial(new Color(0.78f, 0.74f, 0.62f), "RadioCream");
+            var panel = CreatePropMaterial(new Color(0.09f, 0.09f, 0.09f), "RadioPanel");
+            Slab(setRoot.transform, cream, "Body", new Vector3(0f, 0f, 0f), new Vector3(0.46f, 0.28f, 0.30f), Vector3.zero);
+            Slab(setRoot.transform, panel, "Face", new Vector3(0f, 0.02f, -0.16f), new Vector3(0.40f, 0.20f, 0.02f), Vector3.zero);
+            Slab(setRoot.transform, CreateMaterial(new Color(0.80f, 0.60f, 0.22f), "DialWindow"), "Dial",
+                new Vector3(0f, 0.05f, -0.175f), new Vector3(0.26f, 0.06f, 0.01f), Vector3.zero);
+            Slab(setRoot.transform, panel, "Handle", new Vector3(0f, 0.19f, 0f), new Vector3(0.30f, 0.03f, 0.03f), Vector3.zero);
+
+            var set = setRoot.AddComponent<RadioSet>();
+            set.Configure(radio, "interactable.radio_set");
+            if (interactions != null && radio != null)
+            {
+                interactions.Register(set);
+            }
+
+            // The nail row: eleven tags on eleven nails, hung like keys, and the torch among them.
+            var tagBrass = CreateMaterial(new Color(0.68f, 0.56f, 0.24f), "Tag");
+            for (var i = 0; i < 11; i++)
+            {
+                Slab(hull, tagBrass, "Tag " + (i + 1),
+                    new Vector3(-1.95f, 1.2f + (i % 2) * 0.12f, -1.1f + i * 0.2f),
+                    new Vector3(0.02f, 0.06f, 0.04f), Vector3.zero);
+            }
+
+            var torchAt = hull.TransformPoint(new Vector3(-1.9f, 1.55f, 0.6f));
+            CreateItem(
+                root, interactions,
+                ItemIds.DeadTorch,
+                "item.dead_torch",
+                torchAt,
+                new Color(0.12f, 0.12f, 0.13f),
+                new Vector3(0.06f, 0.22f, 0.06f));
+        }
+
+        /// <summary>One flat box, parented, positioned and dressed. The hull is made of these.</summary>
+        private static Transform Slab(
+            Transform parent, Material material, string name, Vector3 localPosition, Vector3 scale, Vector3 tilt)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            Object.Destroy(go.GetComponent<Collider>());
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localRotation = Quaternion.Euler(tilt);
+            go.transform.localScale = scale;
+            Dress(go.GetComponent<MeshRenderer>(), material);
+            return go.transform;
         }
 
         // --- Fernmaw ---------------------------------------------------------------------------

@@ -4,6 +4,7 @@ using ForgottenIsle.Core.Commands;
 using ForgottenIsle.Core.Localization;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.Primitives;
+using ForgottenIsle.Core.Radio;
 using ForgottenIsle.Core.Signals;
 using ForgottenIsle.UI.Core;
 using ForgottenIsle.UI.Hud;
@@ -31,6 +32,10 @@ namespace ForgottenIsle.UI.Controllers
         private readonly CommandDispatcher _commands;
         private readonly List<IDisposable> _subscriptions = new List<IDisposable>(4);
         private readonly List<InventoryItemView> _itemViews = new List<InventoryItemView>(8);
+        private readonly List<string> _sequence = new List<string>(10);
+
+        /// <summary>Milliseconds each line of the transmission stays up. Forty-four seconds over nine lines.</summary>
+        private const long TransmissionLineMs = 4900;
 
         private bool _disposed;
 
@@ -55,6 +60,9 @@ namespace ForgottenIsle.UI.Controllers
             // Subscribed before the screen has been built. The event lives on the screen rather
             // than on the tray for exactly this reason -- the tray does not exist yet.
             _screen.CombineRequested += OnCombineRequested;
+            _screen.RadioTuneRequested += OnRadioTuneRequested;
+            _screen.RadioMicSqueezed += OnRadioMicSqueezed;
+            _screen.RadioCloseRequested += OnRadioCloseRequested;
 
             if (signals == null)
             {
@@ -65,6 +73,7 @@ namespace ForgottenIsle.UI.Controllers
             _subscriptions.Add(signals.Subscribe<InteractionTargetChangedSignal>(OnTargetChanged));
             _subscriptions.Add(signals.Subscribe<NarrationSignal>(OnNarration));
             _subscriptions.Add(signals.Subscribe<InventoryChangedSignal>(OnInventoryChanged));
+            _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(OnRadioChanged));
         }
 
         /// <summary>The HUD view, so the installer can push it onto the screen stack.</summary>
@@ -111,6 +120,13 @@ namespace ForgottenIsle.UI.Controllers
                 // The prompt describes something the player can act on right now. While paused they
                 // cannot, so leaving it up would advertise a button that does nothing.
                 _screen.SetPrompt(string.Empty, string.Empty, false);
+
+                // And the radio is put down. The dial is game state, so this goes through the
+                // dispatcher like any other change; the close handler accepts it from any mode.
+                if (_commands != null)
+                {
+                    _commands.Dispatch(new CloseRadioCommand());
+                }
             }
         }
 
@@ -124,6 +140,9 @@ namespace ForgottenIsle.UI.Controllers
 
             _disposed = true;
             _screen.CombineRequested -= OnCombineRequested;
+            _screen.RadioTuneRequested -= OnRadioTuneRequested;
+            _screen.RadioMicSqueezed -= OnRadioMicSqueezed;
+            _screen.RadioCloseRequested -= OnRadioCloseRequested;
 
             for (var i = 0; i < _subscriptions.Count; i++)
             {
@@ -167,6 +186,83 @@ namespace ForgottenIsle.UI.Controllers
             // handler decides, refuses through a result code, and answers the player with a line of
             // narration either way -- including when the answer is that nothing happened.
             _commands.Dispatch(new CombineItemsCommand(first, second));
+        }
+
+        private void OnRadioChanged(RadioChangedSignal signal)
+        {
+            // The band follows the game's idea of open, not the panel's. A refused open (paused)
+            // publishes nothing, so nothing appears; a close from any source takes it down.
+            _screen.SetRadioVisible(signal.IsOpen);
+
+            var stationText = string.Empty;
+            if (!string.IsNullOrEmpty(signal.StationId))
+            {
+                // "radio.the_voice" -> "ui.radio.station.the_voice". The station id is the tail of
+                // the key, so a station added to the table needs one row and no code.
+                var tail = signal.StationId.StartsWith("radio.", StringComparison.Ordinal)
+                    ? signal.StationId.Substring("radio.".Length)
+                    : signal.StationId;
+                stationText = _loc.Get(new LocKey("ui.radio.station." + tail));
+            }
+
+            if (signal.IsOpen)
+            {
+                _screen.Radio.SetState(signal.Mhz, (Reception)signal.Reception, stationText);
+            }
+
+            if (signal.Kind == RadioChangeKind.Heard && signal.StationId == Stations.TheVoice)
+            {
+                // The transmission, and then Nadia working it out. The tune handler has already
+                // published the first-hearing line; this is what follows it.
+                _sequence.Clear();
+                for (var i = 1; i <= 5; i++)
+                {
+                    _sequence.Add(_loc.Get(new LocKey("narration.radio.transmission." + i)));
+                }
+
+                for (var i = 1; i <= 4; i++)
+                {
+                    _sequence.Add(_loc.Get(new LocKey("narration.radio.after." + i)));
+                }
+
+                // Behind the first-hearing line, which the tune handler publishes right after
+                // this signal and which must be read before the voice starts.
+                _screen.ShowNarrationSequence(_sequence, TransmissionLineMs, TransmissionLineMs);
+            }
+
+            if (signal.Kind == RadioChangeKind.PoweredUp && !string.IsNullOrEmpty(signal.LineKey))
+            {
+                // The click, the amber lamp, the hiss -- after the line for the fix that did it,
+                // which is the one with the inscription on the battery door in it. The use
+                // handler publishes that line right after this signal; the delay lets it be read.
+                _sequence.Clear();
+                _sequence.Add(_loc.Get(new LocKey(signal.LineKey)));
+                _screen.ShowNarrationSequence(_sequence, TransmissionLineMs, HudScreen.VisibleMsFor(_loc.Get(new LocKey("narration.radio.fixed.power"))));
+            }
+        }
+
+        private void OnRadioTuneRequested(float mhz)
+        {
+            if (_commands != null)
+            {
+                _commands.Dispatch(new TuneRadioCommand(mhz));
+            }
+        }
+
+        private void OnRadioMicSqueezed()
+        {
+            if (_commands != null)
+            {
+                _commands.Dispatch(new SqueezeMicCommand());
+            }
+        }
+
+        private void OnRadioCloseRequested()
+        {
+            if (_commands != null)
+            {
+                _commands.Dispatch(new CloseRadioCommand());
+            }
         }
 
         private void OnObjectiveChanged(ObjectiveChangedSignal signal)

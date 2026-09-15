@@ -17,6 +17,30 @@ namespace ForgottenIsle.Core.Items
     /// </remarks>
     public static class ItemIds
     {
+        // --- Carried from the wreck ---------------------------------------------------------
+
+        /// <summary>The multitool. Never consumed; a tool.</summary>
+        public const string Multitool = "item.multitool";
+
+        /// <summary>
+        /// The field recorder, dried out, warm, at nine per cent. Its cells fit a radio.
+        /// </summary>
+        /// <remarks>
+        /// Spending them is the prologue's one real decision, and it is never flagged as one.
+        /// </remarks>
+        public const string FieldRecorder = "item.field_recorder";
+
+        /// <summary>What a new run starts holding.</summary>
+        public static readonly string[] StartingKit = { Multitool, FieldRecorder };
+
+        // --- Found in the trawler hull --------------------------------------------------------
+
+        /// <summary>A dead hand-torch off the nail row. Two D-cells and a copper spring inside.</summary>
+        public const string DeadTorch = "item.dead_torch";
+
+        /// <summary>The torch's spring. Not a fuse: a decision to trust the wiring.</summary>
+        public const string CopperSpring = "item.copper_spring";
+
         // --- Found on the shore -------------------------------------------------------------
 
         /// <summary>The brass maintenance tag, stamped 11.04.97 and two initials.</summary>

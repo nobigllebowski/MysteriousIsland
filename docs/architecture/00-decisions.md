@@ -464,6 +464,36 @@ the editor" failure. A folder under `Resources` is a guarantee of inclusion rath
 
 ---
 
+## ADR-0022 — The radio is one service, one world object, and one shared piece of arithmetic
+
+**Status.** Accepted. Implemented as `Core.Radio.*`, `Game.Radio.RadioService`,
+`Game.Interaction.RadioSet`, `UI.Hud.RadioPanel`.
+
+**Decision.** The radio's state lives in `RadioService`, the fifth save participant. `RadioSet` is
+that service's presence in the scene and holds nothing: a zone is rebuilt on every entry, and a
+scene object that remembered anything would be forgetting it on every entry. The tuning band draws
+its spectrogram from `RadioTuner.Spectrum`, and the lock rule the game grants comes from
+`RadioTuner.Receive` — the same Core arithmetic, so the ribbon a player reads and the rule that
+judges them cannot drift apart. What fixes which fault is a table in `RadioRepair`, in Core, next
+to the faults, for the reason `Mechanism` already established: it is the set that knows what fits.
+
+**Why.** The prologue's climax is a frequency-matching puzzle read off a live spectrogram. If the
+picture and the rule were two implementations, the first time one was tuned without the other the
+puzzle would become either unfair or unreadable, and nobody would know which. One function, two
+readers.
+
+**Consequence.**
+- Opening, closing, tuning and squeezing the mic are commands. The dial is game state, not UI
+  state: a pause puts the set down through the dispatcher, and a refused tune leaves the needle
+  where the game says it is rather than where the thumb wanted it.
+- `RadioChangedSignal` carries the full tuning state on every publish, so the panel — UI, which
+  may not read a service — always has what it needs to draw.
+- A first lock on a station is recorded and never removed. The record is never lost in this game.
+- The panel exposes one static function, `MhzForDrag`, pinning the design's coarse rate, fine
+  ratio and drag direction in a test.
+
+---
+
 ---
 
 ## Open items — tracked, not resolved

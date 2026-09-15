@@ -226,4 +226,82 @@ namespace ForgottenIsle.Core.Signals
             Items = items ?? System.Array.Empty<string>();
         }
     }
+
+    /// <summary>What the radio just did.</summary>
+    public enum RadioChangeKind : byte
+    {
+        /// <summary>The set was inspected while broken. <see cref="RadioChangedSignal.LineKey"/> carries the diagnosis.</summary>
+        Diagnosed = 0,
+
+        /// <summary>A fault was cleared. <see cref="RadioChangedSignal.LineKey"/> carries the line for it.</summary>
+        Repaired = 1,
+
+        /// <summary>The last fault was cleared and the set powered up.</summary>
+        PoweredUp = 2,
+
+        /// <summary>The dial is open on screen.</summary>
+        Opened = 3,
+
+        /// <summary>The dial was closed.</summary>
+        Closed = 4,
+
+        /// <summary>The needle moved. Frequency and reception fields are current.</summary>
+        Tuned = 5,
+
+        /// <summary>The needle locked onto a station for the first time. <see cref="RadioChangedSignal.StationId"/> says which.</summary>
+        Heard = 6,
+
+        /// <summary>The mic was squeezed. <see cref="RadioChangedSignal.LineKey"/> is what was said.</summary>
+        MicSqueezed = 7
+    }
+
+    /// <summary>Raised by the radio handlers for every change the HUD needs to reflect.</summary>
+    /// <remarks>
+    /// Carries the full tuning state on every publish rather than just what changed, for the
+    /// same reason the inventory signal carries a snapshot: the panel that renders this is UI and
+    /// may not read the service.
+    /// </remarks>
+    public readonly struct RadioChangedSignal : ISignal
+    {
+        /// <summary>What happened.</summary>
+        public readonly RadioChangeKind Kind;
+
+        /// <summary>Needle position in MHz.</summary>
+        public readonly float Mhz;
+
+        /// <summary>Signal strength at the needle, 0..1.</summary>
+        public readonly float Strength;
+
+        /// <summary>Reception tier at the needle, as <c>Core.Radio.Reception</c> cast to a byte.</summary>
+        public readonly byte Reception;
+
+        /// <summary>Nearest station within range, or null.</summary>
+        public readonly string StationId;
+
+        /// <summary>A narration key to show for this change, or null.</summary>
+        public readonly string LineKey;
+
+        /// <summary>True while the dial is open on screen.</summary>
+        public readonly bool IsOpen;
+
+        /// <param name="kind">What happened.</param>
+        /// <param name="mhz">Needle position.</param>
+        /// <param name="strength">Signal strength at the needle.</param>
+        /// <param name="reception">Reception tier at the needle.</param>
+        /// <param name="stationId">Nearest station within range, or null.</param>
+        /// <param name="lineKey">A narration key for this change, or null.</param>
+        /// <param name="isOpen">Whether the dial is open.</param>
+        public RadioChangedSignal(
+            RadioChangeKind kind, float mhz, float strength, byte reception,
+            string stationId, string lineKey, bool isOpen)
+        {
+            Kind = kind;
+            Mhz = mhz;
+            Strength = strength;
+            Reception = reception;
+            StationId = stationId;
+            LineKey = lineKey;
+            IsOpen = isOpen;
+        }
+    }
 }

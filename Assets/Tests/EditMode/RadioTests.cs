@@ -1,0 +1,338 @@
+using ForgottenIsle.Core.Commands;
+using ForgottenIsle.Core.Items;
+using ForgottenIsle.Core.Primitives;
+using ForgottenIsle.Core.Radio;
+using ForgottenIsle.Core.Save;
+using ForgottenIsle.Core.Signals;
+using ForgottenIsle.Core.State;
+using ForgottenIsle.Game.Bootstrap;
+using ForgottenIsle.Game.Items;
+using ForgottenIsle.Game.Radio;
+using ForgottenIsle.UI.Hud;
+using NUnit.Framework;
+
+namespace ForgottenIsle.Tests.EditMode
+{
+    /// <summary>
+    /// CORE and GAME tiers. The radio: what is heard where, what fixes what, and what survives a save.
+    /// </summary>
+    /// <remarks>
+    /// The tolerance ladder is pinned by number because the design pins it by number (§3.3), and
+    /// a puzzle whose lock window drifts is a puzzle whose difficulty drifts. The reading-comprehension
+    /// clue — 5 2 4 0 with no unit, in a list otherwise in kHz — is pinned as a station at 5.240.
+    /// </remarks>
+    [TestFixture]
+    public sealed class RadioTests
+    {
+        // --- the band -----------------------------------------------------------------------
+
+        [Test]
+        public void TheSignal_IsAt5240_AndInsideTheBand()
+        {
+            Station voice;
+            Assert.That(Stations.TryGet(Stations.TheVoice, out voice), Is.True);
+            Assert.That(voice.Mhz, Is.EqualTo(5.240f).Within(0.0001f), "5 2 4 0, read in kHz.");
+            Assert.That(voice.IsTheSignal, Is.True);
+            Assert.That(voice.Mhz, Is.GreaterThan(RadioBand.MinMhz).And.LessThan(RadioBand.MaxMhz));
+        }
+
+        [Test]
+        public void EveryStation_IsInsideTheBand_AndTheTableIsNotEmpty()
+        {
+            Assert.That(Stations.Count, Is.GreaterThanOrEqualTo(3));
+            for (var i = 0; i < Stations.All.Length; i++)
+            {
+                Assert.That(Stations.All[i].Mhz, Is.GreaterThan(RadioBand.MinMhz).And.LessThan(RadioBand.MaxMhz),
+                    Stations.All[i].Id + " sits against a stop.");
+            }
+        }
+
+        // --- tolerance ----------------------------------------------------------------------
+
+        [TestCase(0.0f, Reception.Locked)]
+        [TestCase(0.0007f, Reception.Locked)]
+        [TestCase(0.0009f, Reception.Detuned)]
+        [TestCase(0.0039f, Reception.Detuned)]
+        [TestCase(0.0041f, Reception.Smudge)]
+        [TestCase(0.0119f, Reception.Smudge)]
+        [TestCase(0.0121f, Reception.Grass)]
+        [TestCase(0.5f, Reception.Grass)]
+        public void Reception_FollowsTheDesignsLadder(float offsetMhz, Reception expected)
+        {
+            string id;
+            Assert.That(RadioTuner.Receive(5.240f + offsetMhz, out id), Is.EqualTo(expected));
+            Assert.That(RadioTuner.Receive(5.240f - offsetMhz, out id), Is.EqualTo(expected), "The ladder is symmetric.");
+        }
+
+        [Test]
+        public void InTheGrass_ThereIsNoStation()
+        {
+            string id;
+            RadioTuner.Receive(3.000f, out id);
+            Assert.That(id, Is.Null);
+        }
+
+        [Test]
+        public void Snap_SettlesInsideTheLockWindow_AndNowhereElse()
+        {
+            Assert.That(RadioTuner.Snap(5.2405f), Is.EqualTo(5.240f).Within(0.00001f), "Inside the window: on the carrier.");
+            Assert.That(RadioTuner.Snap(5.2430f), Is.EqualTo(5.2430f).Within(0.00001f), "Outside it: untouched.");
+        }
+
+        [Test]
+        public void Strength_FallsAwayFromTheCarrier_AndNeverExceedsOne()
+        {
+            var on = RadioTuner.Strength(5.240f);
+            var near = RadioTuner.Strength(5.244f);
+            var far = RadioTuner.Strength(5.300f);
+            Assert.That(on, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(near, Is.LessThan(on).And.GreaterThan(far));
+            Assert.That(far, Is.LessThan(0.02f));
+        }
+
+        [Test]
+        public void Spectrum_ShowsACarrierAsALine_AndGrassAsGrass()
+        {
+            var columns = new float[61];
+            RadioTuner.Spectrum(5.240f, 120f, 7, columns);
+
+            // Column 30 is the needle, on the carrier. The edges are 60 kHz out: grass.
+            Assert.That(columns[30], Is.GreaterThan(0.9f));
+            Assert.That(columns[0], Is.LessThan(0.35f));
+            Assert.That(columns[60], Is.LessThan(0.35f));
+
+            // Deterministic for a seed, different for another: that is what makes it scroll.
+            var again = new float[61];
+            RadioTuner.Spectrum(5.240f, 120f, 7, again);
+            Assert.That(again[5], Is.EqualTo(columns[5]));
+            var other = new float[61];
+            RadioTuner.Spectrum(5.240f, 120f, 8, other);
+            Assert.That(other[5], Is.Not.EqualTo(columns[5]));
+        }
+
+        // --- repair -------------------------------------------------------------------------
+
+        [Test]
+        public void ThreeFaults_ClearedInAnyOrder_MakeTheSetWork()
+        {
+            var repair = new RadioRepair();
+            RadioFault cleared;
+
+            Assert.That(repair.IsWorking, Is.False);
+            Assert.That(repair.TryApply(ItemIds.CopperSpring, out cleared), Is.True);
+            Assert.That(cleared, Is.EqualTo(RadioFault.Fuse));
+            Assert.That(repair.TryApply(ItemIds.Multitool, out cleared), Is.True);
+            Assert.That(repair.IsWorking, Is.False, "Two of three.");
+            Assert.That(repair.TryApply(ItemIds.DeadTorch, out cleared), Is.True);
+            Assert.That(repair.IsWorking, Is.True);
+        }
+
+        [Test]
+        public void TheWrongItem_DoesNothing_AndAFixedFaultCannotBeFixedAgain()
+        {
+            var repair = new RadioRepair();
+            RadioFault cleared;
+
+            Assert.That(repair.TryApply(ItemIds.DrySpindle, out cleared), Is.False);
+            Assert.That(repair.TryApply(ItemIds.Multitool, out cleared), Is.True);
+            Assert.That(repair.TryApply(ItemIds.Multitool, out cleared), Is.False, "Already clean.");
+        }
+
+        [Test]
+        public void TheRecordersCells_PowerTheSet_AndAreRemembered()
+        {
+            // The prologue's one real decision, never flagged as one.
+            var repair = new RadioRepair();
+            RadioFault cleared;
+            repair.TryApply(ItemIds.FieldRecorder, out cleared);
+
+            Assert.That(cleared, Is.EqualTo(RadioFault.Power));
+            Assert.That(repair.UsedRecorderCells, Is.True);
+            Assert.That(RadioRepair.ConsumesItem(ItemIds.FieldRecorder), Is.False, "The recorder stays carried, dead.");
+            Assert.That(RadioRepair.ConsumesItem(ItemIds.DeadTorch), Is.True, "The torch is taken apart.");
+        }
+
+        [Test]
+        public void Repair_SurvivesACaptureAndRestore()
+        {
+            var source = new RadioRepair();
+            RadioFault cleared;
+            source.TryApply(ItemIds.FieldRecorder, out cleared);
+            source.TryApply(ItemIds.CopperSpring, out cleared);
+
+            var target = new RadioRepair();
+            target.Restore(source.Capture());
+
+            Assert.That(target.Outstanding, Is.EqualTo(RadioFault.Contacts));
+            Assert.That(target.UsedRecorderCells, Is.True);
+        }
+
+        // --- the service --------------------------------------------------------------------
+
+        private static RadioService NewService(out InventoryService inventory)
+        {
+            var signals = new SignalBus();
+            inventory = new InventoryService(signals, null);
+            return new RadioService(signals, inventory, null);
+        }
+
+        [Test]
+        public void TakingTheTorchApart_PutsItsSpringInThePlayersHands()
+        {
+            InventoryService inventory;
+            var radio = NewService(out inventory);
+            inventory.Take(ItemIds.DeadTorch);
+
+            var outcome = radio.Apply(ItemIds.DeadTorch);
+
+            Assert.That(outcome.Succeeded, Is.True);
+            Assert.That(outcome.ConsumesItem, Is.True);
+            Assert.That(inventory.Has(ItemIds.CopperSpring), Is.True, "The spring is how most players find the fuse.");
+        }
+
+        [Test]
+        public void Inspecting_GivesTheFirstLook_ThenOneFaultAtATime()
+        {
+            InventoryService inventory;
+            var radio = NewService(out inventory);
+
+            Assert.That(radio.Inspect(), Is.EqualTo("narration.radio.found"));
+            Assert.That(radio.Inspect(), Is.EqualTo("narration.radio.fault.power"));
+            radio.Apply(ItemIds.DeadTorch);
+            Assert.That(radio.Inspect(), Is.EqualTo("narration.radio.fault.contacts"));
+        }
+
+        [Test]
+        public void AWorkingSet_OpensTunesAndRecordsAFirstHearing()
+        {
+            InventoryService inventory;
+            var radio = NewService(out inventory);
+            radio.Apply(ItemIds.DeadTorch);
+            radio.Apply(ItemIds.Multitool);
+            radio.Apply(ItemIds.CopperSpring);
+
+            Assert.That(radio.IsWorking, Is.True);
+            Assert.That(radio.Open(), Is.True);
+            radio.Tune(5.2404f);
+
+            Assert.That(radio.Mhz, Is.EqualTo(5.240f).Within(0.00001f), "Snapped.");
+            Assert.That(radio.TransmissionReceived, Is.True);
+            Assert.That(radio.Heard.Count, Is.EqualTo(1));
+
+            radio.Tune(5.2401f);
+            Assert.That(radio.Heard.Count, Is.EqualTo(1), "Heard once; recorded once.");
+        }
+
+        [Test]
+        public void ABrokenSet_CannotBeOpenedOrTuned()
+        {
+            InventoryService inventory;
+            var radio = NewService(out inventory);
+
+            Assert.That(radio.Open(), Is.False);
+            Assert.That(radio.Tune(5.240f), Is.False);
+            Assert.That(radio.IsOpen, Is.False);
+        }
+
+        [Test]
+        public void TheRadio_SurvivesACaptureAndRestore()
+        {
+            InventoryService inventory;
+            var source = NewService(out inventory);
+            source.Inspect();
+            source.Apply(ItemIds.FieldRecorder);
+            source.Apply(ItemIds.Multitool);
+            source.Apply(ItemIds.CopperSpring);
+            source.Open();
+            source.Tune(8.291f);
+            source.SqueezeMic();
+
+            var doc = new SaveDocument();
+            source.Capture(doc);
+
+            InventoryService other;
+            var target = NewService(out other);
+            target.Restore(doc);
+
+            Assert.That(target.IsFound, Is.True);
+            Assert.That(target.IsWorking, Is.True);
+            Assert.That(target.Repair.UsedRecorderCells, Is.True);
+            Assert.That(target.Mhz, Is.EqualTo(8.291f).Within(0.0001f));
+            Assert.That(target.Heard, Does.Contain(Stations.HullThump));
+            Assert.That(target.IsOpen, Is.False, "A run resumes with the set put down.");
+        }
+
+        [Test]
+        public void Restore_FromASaveWithNoRadioSection_IsAnOlderRun()
+        {
+            InventoryService inventory;
+            var radio = NewService(out inventory);
+            radio.Apply(ItemIds.DeadTorch);
+
+            radio.Restore(new SaveDocument());
+
+            Assert.That(radio.IsWorking, Is.False);
+            Assert.That(radio.Repair.Outstanding, Is.EqualTo(RadioFault.All));
+        }
+
+        // --- the command layer --------------------------------------------------------------
+
+        [Test]
+        public void ANewGame_StartsWithTheKit_AndABrokenRadio()
+        {
+            var signals = new SignalBus();
+            var inventory = new InventoryService(signals, null);
+            var radio = new RadioService(signals, inventory, null);
+            inventory.Take(ItemIds.SluiceKey);
+            radio.Apply(ItemIds.DeadTorch);
+
+            // The reset is a static step of the handler, tested directly: the handler itself
+            // needs a zone registry and a scene, which is a PlayMode concern.
+            StartNewGameHandler.PrepareNewRun(null, inventory, radio);
+
+            Assert.That(inventory.Has(ItemIds.SluiceKey), Is.False, "The previous run's pockets are emptied.");
+            Assert.That(inventory.Has(ItemIds.Multitool), Is.True);
+            Assert.That(inventory.Has(ItemIds.FieldRecorder), Is.True);
+            Assert.That(radio.Repair.Outstanding, Is.EqualTo(RadioFault.All));
+        }
+
+        [Test]
+        public void Tuning_IsRefused_UntilTheDialIsOpen()
+        {
+            var signals = new SignalBus();
+            var states = new GameStateMachine(null, signals);
+            var inventory = new InventoryService(signals, null);
+            var radio = new RadioService(signals, inventory, null);
+            radio.Apply(ItemIds.DeadTorch);
+            radio.Apply(ItemIds.Multitool);
+            radio.Apply(ItemIds.CopperSpring);
+
+            var dispatcher = new CommandDispatcher(null);
+            dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));
+            dispatcher.Register<OpenRadioCommand>(new OpenRadioHandler(states, radio, signals));
+
+            states.TryTransition(GameStateId.MainMenu);
+            states.TryTransition(GameStateId.Loading);
+            states.TryTransition(GameStateId.InGame);
+
+            Assert.That(dispatcher.Dispatch(new TuneRadioCommand(5.24f)).Code, Is.EqualTo(ResultCode.NotAllowedInState));
+            Assert.That(dispatcher.Dispatch(new OpenRadioCommand()).Success, Is.True);
+            Assert.That(dispatcher.Dispatch(new TuneRadioCommand(5.24f)).Success, Is.True);
+            Assert.That(radio.TransmissionReceived, Is.True);
+        }
+
+        // --- the panel's one piece of arithmetic --------------------------------------------
+
+        [Test]
+        public void DraggingTheStripLeft_MovesTheNeedleUpTheBand_AtTheDesignsRate()
+        {
+            // A full screen-width of coarse drag is 180 kHz, per design §3.2; fine is a tenth.
+            var coarse = RadioPanel.MhzForDrag(-400f, 400f, false);
+            var fine = RadioPanel.MhzForDrag(-400f, 400f, true);
+
+            Assert.That(coarse, Is.EqualTo(0.180f).Within(0.00001f));
+            Assert.That(fine, Is.EqualTo(0.018f).Within(0.00001f));
+            Assert.That(RadioPanel.MhzForDrag(10f, 0f, false), Is.EqualTo(0f), "No width, no movement, no divide.");
+        }
+    }
+}

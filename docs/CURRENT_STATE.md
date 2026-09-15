@@ -33,10 +33,11 @@ write (flush→rename) and `.bak` rotation; 3 save slots + autosave; engine-free
 localization with `#key#` fallback; New Input System routing; placeholder capsule player rig;
 dev overlay; UI Toolkit framework, theme, and menu/pause/settings screens.
 
-**Commands registered (10):** `StartNewGame`, `ResumeSavedRun`, `SaveGame`, `QuitToMenu`,
-`TravelToZone`, `Inspect`, `Collect`, `TakeItem`, `CombineItems`, `UseItem`.
-**Save participants registered (4):** session, player, progress, inventory. ADR-0009 targets 14 at
-completion; each later phase adds its own.
+**Commands registered (14):** `StartNewGame`, `ResumeSavedRun`, `SaveGame`, `QuitToMenu`,
+`TravelToZone`, `Inspect`, `Collect`, `TakeItem`, `CombineItems`, `UseItem`, `OpenRadio`,
+`CloseRadio`, `TuneRadio`, `SqueezeMic`.
+**Save participants registered (5):** session, player, progress, inventory, radio. ADR-0009
+targets 14 at completion; each later phase adds its own.
 
 **Added in Phase 1.5:** the `ForgottenIsle.Editor` assembly (ADR-0001's fifth, previously missing);
 `Vardholm → Setup Project` / `Validate Project` / `Open Bootstrap Scene` menu commands; a first-run
@@ -81,8 +82,13 @@ the bottom edge), opened by a tab. Combining is tap-then-tap, with tap-again to 
 `InventoryChangedSignal` carries a snapshot so the panel never reads a service; `HudController`
 turns a reported pair into a `CombineItemsCommand`. ADR-0019, ADR-0020, ADR-0021 recorded.
 
-**Still not implemented.** Crafting, survival meters, camp, weather, dialogue, story beyond the
-current narration lines, and any audio content.
+**Added — the Phase 6 radio slice.** The trawler hull, the set with its three faults, the tuning
+band with inertia, fine knob and spectrogram ribbon, three stations and the transmission at 5.240.
+`RadioService` is the fifth save participant. See the changelog for what the slice deliberately
+leaves out (phone mic, hint timers, the Field Slate).
+
+**Still not implemented.** The Field Slate, survival meters, camp (Phase 5, blocked on
+CONFLICT-6), weather, hint escalation, and any audio content.
 
 ## 2. Verification status — read this before trusting anything
 
@@ -97,7 +103,7 @@ current narration lines, and any audio content.
 | **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
 | **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
 | **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
-| **Tests** | **UNCONFIRMED — 266 tests written (252 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
+| **Tests** | **UNCONFIRMED — 289 tests written (275 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
 | **Third editor open (graphics pass)** | **2026-09-15** — the project compiled and ran; the five shaders compiled (a procedural sky was on screen). The game view showed only sky: the island had been built 440–730 m under the sea by a `Mathf.SmoothStep` misuse in the new coastline. Root-caused by reading, fixed, **re-run pending.** |
 | **Shaders** | Compiled once (2026-09-15, sky visible on screen). Subsequent edits **not recompiled.** The five files under `Assets/Resources/Shaders` have not been through Unity's shader compiler, and neither CI gate can look at them — both read C#. A shader that fails to compile renders magenta, so this is visible immediately in the editor and invisible until then. |
 

@@ -254,3 +254,44 @@ ui.hud.inventory,CARRYING
 ui.hud.inventory_empty,Nothing yet.
 ui.hud.inventory_open,Items
 ui.hud.combine_hint,Tap two to put them together.
+# --- Phase 6: the radio -------------------------------------------------------
+item.multitool,Multitool
+item.field_recorder,Field Recorder
+item.dead_torch,Dead Torch
+item.copper_spring,Copper Spring
+interactable.radio_set,Marine Radio
+interact.tune,TUNE
+ui.radio.close,Put down
+ui.radio.mic,PRESS TO TALK
+ui.radio.fine,FINE
+ui.radio.unit,MHz
+ui.radio.station.hull_thump,The hull
+ui.radio.station.bulletin,Weather bulletin — Portuguese
+ui.radio.station.the_voice,A voice
+narration.radio.found,"A radio. Cream and black, phenolic knobs, an analogue dial behind scratched perspex. It is clean. Somebody wiped it. There is a row of brass tags on nails beside it, and the newest is dated three weeks ago."
+narration.radio.fault.power,"The battery bay is empty and clean. No corrosion. It was emptied on purpose, for storage — that is what you do if you are keeping gear alive for decades."
+narration.radio.fault.contacts,"Green bloom on the spring terminals. That is not dirt. That is a bad connection."
+narration.radio.fault.fuse,"The fuse holder is empty. Somebody pulled a dead one and never had a spare. Open circuit somewhere."
+narration.radio.fixed.power,"The torch comes apart in my hands. Two D-cells, still holding something. They go into the bay. And on the inside of the battery door, scratched with a knife point, not stamped: IF YOU ARE READING THIS I AM PROBABLY DEAD. THE SET WORKS. THE ISLAND DOESN'T. — T.R."
+narration.radio.fixed.power_recorder,"The recorder's cells. Nine per cent, dry, warm. They fit. The recorder goes dark. On the inside of the battery door, scratched with a knife point: IF YOU ARE READING THIS I AM PROBABLY DEAD. THE SET WORKS. THE ISLAND DOESN'T. — T.R."
+narration.radio.fixed.contacts,"Scrape, and the bloom comes away. Bright metal under it. That is a connection again."
+narration.radio.fixed.fuse,"The torch's spring, bent across the holder. That is not a fuse. That is a decision to trust the wiring."
+narration.radio.working,"A click, heavy, phenolic. The dial lamp comes up amber behind the perspex. Then hiss — wide, loud, filling everything. The needle sits mid-band, on nothing."
+narration.radio.list,"Taped under the carry handle, out of the weather, in a small tidy hand: 2182. 4125. 6215. 8291. 12510. And one more, written smaller, no unit: 5 2 4 0."
+narration.radio.hull_thump,"A slow, hollow thump. Eleven minutes apart, if I had to guess. That is not radio. That is the hull. The hull is doing that."
+narration.radio.bulletin,"Portuguese. A weather bulletin, read flat, for a sea area nine hundred kilometres from here. The set works. Nobody is looking."
+narration.radio.the_voice,"The grass parts around one hard line. The hiss ducks. A woman's voice, close, unhurried, slightly hoarse — reading a list aloud because there is no one to read it to."
+narration.radio.transmission.1,"...tide table corrected for the twelfth. Gate two, ballast at four. Gate three, ballast at four. Gate four is stiff again, I'll get to it."
+narration.radio.transmission.2,"Lantern seven replaced. Bridge two re-roped — new line, the hemp, not the steel. Steel's gone at the eye."
+narration.radio.transmission.3,"Day eleven thousand, five hundred and ninety-one."
+narration.radio.transmission.4,"No vessel."
+narration.radio.transmission.5,"The carrier stays open. Four full seconds. She is still there, not speaking. Then a click, and the hiss comes back."
+narration.radio.after.1,"Eleven thousand, five hundred and ninety-one days. That's thirty-one years. Thirty-one years and eight months."
+narration.radio.after.2,"She's on a schedule. She's reading a list. She said 'no vessel' like she says it every day."
+narration.radio.after.3,"And that signal was strong. That was a local carrier. She's not far away, and she's not on a boat, and she's been here since I was ten years old."
+narration.radio.after.4,"Doing what?"
+narration.radio.mic.1,"This is Nadia Vesk. I'm on the island. Please respond. — Hiss."
+narration.radio.mic.2,"Hello. — Hiss."
+narration.radio.mic.3,"I heard you. — Hiss."
+narration.radio.mic.4,"I know you're there. — Hiss."
+narration.radio.mic.5,"Why aren't you answering."

@@ -175,4 +175,40 @@ namespace ForgottenIsle.Core.Commands
             TargetId = targetId;
         }
     }
+
+    /// <summary>Interact with the radio: diagnose it when broken, open its dial when working.</summary>
+    /// <remarks>
+    /// One command for both, because from the player's side it is one act -- reaching for the set.
+    /// What that act means is the handler's decision, taken from the set's state, not the UI's.
+    /// </remarks>
+    public readonly struct OpenRadioCommand : ICommand
+    {
+    }
+
+    /// <summary>Put the radio down: close the dial.</summary>
+    public readonly struct CloseRadioCommand : ICommand
+    {
+    }
+
+    /// <summary>Move the needle.</summary>
+    public readonly struct TuneRadioCommand : ICommand
+    {
+        /// <summary>Requested needle position, in MHz. Clamped to the band by the handler.</summary>
+        public readonly float Mhz;
+
+        /// <param name="mhz">Requested needle position.</param>
+        public TuneRadioCommand(float mhz)
+        {
+            Mhz = mhz;
+        }
+    }
+
+    /// <summary>Squeeze the hand-mic and speak.</summary>
+    /// <remarks>
+    /// A real verb that will matter again. The world will still not give the player what they
+    /// want: the answer is hiss, every time, and the game lets them try anyway.
+    /// </remarks>
+    public readonly struct SqueezeMicCommand : ICommand
+    {
+    }
 }
