@@ -36,7 +36,9 @@ namespace ForgottenIsle.Game.World
         /// Sized to the camera's far plane, not to the horizon. Water drawn past 260 m would be
         /// clipped away and leave a visible arc where the sea simply stops; at 240 m the fog has
         /// taken it to about five per cent visibility (exp(-(0.0072 · 240)²) = 0.05), so the edge
-        /// is close to gone before the far plane could cut it. Reaching further would mean pushing the far plane out, and the
+        /// is close to gone before the far plane could cut it. The water shader keeps the disc
+        /// centred on the camera, so this radius is always the distance to the rim -- from the
+        /// shore as much as from the middle of the island. Reaching further would mean pushing the far plane out, and the
         /// near/far ratio is exactly what caused the depth-buffer flicker that took a day to find.
         /// </remarks>
         private const float SeaRadius = 240f;

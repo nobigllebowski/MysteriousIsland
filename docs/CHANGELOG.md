@@ -9,6 +9,16 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Changed — the sea follows the camera
+
+The sea was a 240 m disc centred on the island's origin, so from the shore — 60–80 m out — its near
+rim was only 160 m away and the fog had not hidden it. The water shader now shifts every vertex by
+the camera's XZ, re-centring the disc on the viewer each frame: the rim is always the full radius
+out and the dense inner rings are always underfoot. The wave function is evaluated at world
+position, so the surface does not slide, only the sampling grid does. Ring spacing went back to
+dense-at-centre (mostly quadratic), and the mesh's culling bounds are grown by the island's width
+so the sea is never culled from a viewpoint the geometry is actually under (`VERIFY`).
+
 ### Added — the radio (Phase 6 slice): one set, three faults, one frequency list, one transmission
 
 The prologue's spine, built to `design/04-first-30-minutes.md` §15:00–§27:00 and §3.

@@ -92,6 +92,18 @@ Shader "Vardholm/Water"
         {
             UNITY_INITIALIZE_OUTPUT(Input, o);
 
+            // THE SEA FOLLOWS THE CAMERA. The mesh is a disc of rings centred on its own origin,
+            // and the zone's origin is the middle of the island: from the shore, 60-80 m out, the
+            // near rim of a 240 m disc is only 160 m away and the fog has not hidden it. Shifting
+            // every vertex by the camera's XZ re-centres the disc on the viewer each frame, so the
+            // rim is always the full radius out and the dense inner rings are always underfoot.
+            // The wave function is evaluated at WORLD position, so the surface itself does not
+            // slide -- only the sampling grid does, which on a smooth surface is invisible.
+            //
+            // Only valid because ZoneBuilder places the Sea object with identity rotation and
+            // scale: an object-space XZ offset is then a world-space one. VERIFY if that changes.
+            v.vertex.xz += _WorldSpaceCameraPos.xz;
+
             float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
             float k = 6.2831853 / max(_WaveLength, 0.001);
 

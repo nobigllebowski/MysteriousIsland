@@ -270,15 +270,15 @@ namespace ForgottenIsle.Game.World
         /// wider than the waves, so the swell under the player's feet is lost; sized to resolve the
         /// swell it stops a hundred metres out and the player can see the edge of the sea.
         /// <para>
-        /// So the rings are even out to a little past the coastline — a couple of metres apart,
-        /// which comfortably resolves an 11 m swell — and then sprint to the horizon, where all
-        /// that is needed is colour. Normals and tangents are written flat and uniform because the shader displaces
+        /// So the rings are dense at the centre — and the centre is the camera, because the water
+        /// shader re-centres the disc on the viewer — and coarse toward the rim, where all that
+        /// is needed is colour. Normals and tangents are written flat and uniform because the shader displaces
         /// the surface itself and derives its own normal from that displacement — the mesh is only
         /// the sampling grid, and the shader's tangent-space assumption is documented there.
         /// </para>
         /// </remarks>
         /// <param name="radius">How far the sheet reaches.</param>
-        /// <param name="rings">Concentric divisions. 64 is ample: 44 of them fall on the near water.</param>
+        /// <param name="rings">Concentric divisions. 64 is ample: half of them fall inside 70 m.</param>
         /// <param name="segments">Divisions around. 48 keeps the outer ring from reading polygonal.</param>
         /// <returns>A new mesh. The caller owns it.</returns>
         public static Mesh BuildWater(float radius, int rings, int segments)
@@ -296,21 +296,18 @@ namespace ForgottenIsle.Game.World
             tangents[0] = new Vector4(1f, 0f, 0f, -1f);
             uvs[0] = new Vector2(0.5f, 0.5f);
 
-            // Even spacing out to here, then a sprint to the horizon. NOT a curve that packs
-            // vertices around the origin, which was the first version and was exactly wrong: the
-            // origin is the middle of the island, which is dry land. The water the player actually
-            // stands next to is at the coast, 50-85 m out, so that is where the resolution goes.
-            var nearRadius = Mathf.Min(GroundSize * 0.65f, radius);
-            const float NearShare = 0.7f;
-
+            // Dense at the centre, coarse at the rim -- and the centre is the CAMERA, not the
+            // island: the water shader re-centres the disc on the viewer every frame, so the inner
+            // rings are always underfoot wherever the player stands. (The version before that
+            // spaced the rings for the coastline because the disc sat on the island's origin; with
+            // the shift that is no longer where the near water is.) Mostly quadratic, with a small
+            // linear term so the first rings are half a metre rather than centimetres apart.
             for (var ring = 1; ring <= rings; ring++)
             {
                 // `ringT` and not `t`: the triangle cursor below is named `t` in this same method,
                 // and C# refuses the pair outright (CS0136) even though they never overlap.
                 var ringT = ring / (float)rings;
-                var ringRadius = ringT <= NearShare
-                    ? nearRadius * (ringT / NearShare)
-                    : Mathf.Lerp(nearRadius, radius, Mathf.Pow((ringT - NearShare) / (1f - NearShare), 2f));
+                var ringRadius = radius * (0.15f * ringT + 0.85f * ringT * ringT);
 
                 for (var segment = 0; segment < segments; segment++)
                 {
@@ -364,6 +361,15 @@ namespace ForgottenIsle.Game.World
             mesh.uv = uvs;
             mesh.triangles = triangles;
             mesh.RecalculateBounds();
+
+            // The shader moves the vertices by the camera's XZ, which culling cannot see: it tests
+            // the mesh's stored bounds against the frustum. Grown by the island's full width on
+            // each side, so the sea is never culled from a viewpoint the geometry is actually
+            // under. VERIFY: Mesh.bounds is the culling volume in local space
+            // (https://docs.unity3d.com/ScriptReference/Mesh-bounds.html).
+            var bounds = mesh.bounds;
+            bounds.Expand(new Vector3(GroundSize * 2f, 4f, GroundSize * 2f));
+            mesh.bounds = bounds;
             return mesh;
         }
 
