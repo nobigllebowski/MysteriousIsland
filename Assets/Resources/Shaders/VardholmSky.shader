@@ -15,8 +15,9 @@ Shader "Vardholm/Sky"
         _GroundColor  ("Below horizon", Color)    = (0.22, 0.23, 0.22, 1)
         _SunColor     ("Sun", Color)              = (1.00, 0.96, 0.88, 1)
         _SunDirection ("Sun direction", Vector)   = (0.4, 0.5, 0.75, 0)
-        _SunSize      ("Sun size", Range(0.001, 0.2))     = 0.02
-        _SunGlow      ("Sun glow falloff", Range(2, 512))  = 96
+        _SunAngle     ("Sun angular radius (deg)", Range(0.1, 6)) = 0.8
+        _SunGlowWidth ("Sun glow width (deg)", Range(0.5, 40))   = 9
+        _SunHaloWidth ("Sun halo width (deg)", Range(5, 120))    = 55
         _HorizonPower ("Horizon tightness", Range(0.2, 6)) = 1.4
         _CloudColor   ("Cloud", Color)            = (0.86, 0.87, 0.88, 1)
         _CloudCover   ("Cloud cover", Range(0, 1))         = 0.45
@@ -45,8 +46,9 @@ Shader "Vardholm/Sky"
             fixed4 _GroundColor;
             fixed4 _SunColor;
             float4 _SunDirection;
-            float  _SunSize;
-            float  _SunGlow;
+            float  _SunAngle;
+            float  _SunGlowWidth;
+            float  _SunHaloWidth;
             float  _HorizonPower;
             fixed4 _CloudColor;
             float  _CloudCover;
@@ -120,15 +122,33 @@ Shader "Vardholm/Sky"
                 clouds = smoothstep(1.0 - _CloudCover, 1.0 - _CloudCover + _CloudSharp, clouds);
                 col = lerp(col, _CloudColor.rgb, clouds * horizonFade * 0.85);
 
-                // The sun: a hard disc for the body, a wide power falloff for the glow around it.
+                // The sun: a small hard disc, a glow around it, and a broad halo over the sky.
                 // The glow is what ties the sky to the directional light -- without it the light
                 // has no visible source and the scene looks lit from nowhere.
+                //
+                // MEASURED AS A CHORD, NOT AS A DOT PRODUCT, and the previous version being a dot
+                // product is why the first screenshot had a sun 43 times too wide. An angular size
+                // written as `1 - _SunSize` has to be inverted through acos to mean anything:
+                // _SunSize = 0.02 reads as a plausible "2%" and is an 11.5 degree disc, against the
+                // real sun's 0.27. Worse, the honest value is unusable that way -- cos(0.27 deg) is
+                // 0.99998896, and comparing numbers that close to 1 falls apart in fp32 and is
+                // hopeless in the half precision a phone GPU may use here.
+                //
+                // The chord |d - sunDir| is 2*sin(theta/2), which for a small angle IS the angle in
+                // radians, stays far from 1, and loses no precision. So the sun is specified in
+                // degrees and compared in chord space.
                 float3 sunDir = normalize(_SunDirection.xyz);
-                float sd = saturate(dot(d, sunDir));
-                float disc = smoothstep(1.0 - _SunSize, 1.0 - _SunSize * 0.25, sd);
-                float glow = pow(sd, _SunGlow);
-                float halo = pow(sd, 6.0) * 0.12;
-                col += _SunColor.rgb * (disc * 3.0 + glow * 0.8 + halo);
+                float chord = length(d - sunDir);
+
+                float discEdge = radians(_SunAngle);
+                float disc = 1.0 - smoothstep(discEdge * 0.72, discEdge, chord);
+                float glow = exp(-chord / max(radians(_SunGlowWidth), 1e-4));
+                float halo = exp(-chord / max(radians(_SunHaloWidth), 1e-4)) * 0.16;
+
+                // Nothing shines from under the world. The sun sets with the light rather than
+                // burning through the sea, and the glow fades with it rather than snapping off.
+                float aboveHorizon = smoothstep(-0.06, 0.04, sunDir.y);
+                col += _SunColor.rgb * (disc * 2.0 + glow * 0.55 + halo) * aboveHorizon;
 
                 // A pinch of dither. A smooth gradient across a whole screen is the one case where
                 // 8-bit output bands visibly, and banding is a tell that reads as cheap.
