@@ -167,23 +167,14 @@ namespace ForgottenIsle.Game.Audio
                 return;
             }
 
-            if (_ambient != null && _ambient.clip != null && !_ambient.isPlaying)
+            Start(_ambient);
+
+            if (_pressure != null && _pressure.clip == null)
             {
-                _ambient.Play();
+                _pressure.clip = Clip(EffectPrefix + "pressure", "pressure");
             }
 
-            if (_pressure != null)
-            {
-                if (_pressure.clip == null)
-                {
-                    _pressure.clip = Clip(EffectPrefix + "pressure", "pressure");
-                }
-
-                if (_pressure.clip != null && !_pressure.isPlaying)
-                {
-                    _pressure.Play();
-                }
-            }
+            Start(_pressure);
 
             if (signal.From == GameStateId.Loading)
             {
@@ -195,9 +186,9 @@ namespace ForgottenIsle.Game.Audio
             }
 
             // Resuming from a pause: pick the loops back up where they were.
-            Resume(_hiss);
-            Resume(_carrier);
-            Resume(_fire);
+            Start(_hiss);
+            Start(_carrier);
+            Start(_fire);
         }
 
         private void OnTick()
@@ -515,11 +506,26 @@ namespace ForgottenIsle.Game.Audio
             }
         }
 
-        private static void Resume(AudioSource source)
+        /// <summary>Plays a loop, or unpauses it where it stopped. Nothing without a clip.</summary>
+        /// <remarks>
+        /// ⚠ VERIFY: whether Play() after Pause() restarts from the first sample; UnPause() is
+        /// documented to continue (https://docs.unity3d.com/ScriptReference/AudioSource.UnPause.html),
+        /// so a paused source is unpaused and only a fresh one is played.
+        /// </remarks>
+        private static void Start(AudioSource source)
         {
-            if (source != null && source.clip != null && !source.isPlaying && source.time > 0f)
+            if (source == null || source.clip == null || source.isPlaying)
+            {
+                return;
+            }
+
+            if (source.time > 0f)
             {
                 source.UnPause();
+            }
+            else
+            {
+                source.Play();
             }
         }
 
