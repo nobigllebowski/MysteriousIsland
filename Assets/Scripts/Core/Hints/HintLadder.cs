@@ -19,14 +19,22 @@ namespace ForgottenIsle.Core.Hints
         /// </summary>
         public readonly string RecordsMarkerId;
 
+        /// <summary>
+        /// True when the tier also leaves the radio sweeping by itself: the design's tier 4
+        /// safety net, the one hint that does something as well as says something.
+        /// </summary>
+        public readonly bool BeginsSweep;
+
         /// <param name="remarkId">The remark said when due.</param>
         /// <param name="afterSeconds">Seconds of play after the last start or reset.</param>
         /// <param name="recordsMarkerId">A marker recorded as the tier speaks, or null.</param>
-        public HintTier(string remarkId, double afterSeconds, string recordsMarkerId = null)
+        /// <param name="beginsSweep">Whether the tier starts the radio's self-sweep.</param>
+        public HintTier(string remarkId, double afterSeconds, string recordsMarkerId = null, bool beginsSweep = false)
         {
             RemarkId = remarkId;
             AfterSeconds = afterSeconds;
             RecordsMarkerId = recordsMarkerId;
+            BeginsSweep = beginsSweep;
         }
     }
 
@@ -190,15 +198,16 @@ namespace ForgottenIsle.Core.Hints
 
         /// <summary>
         /// The radio's ladder (§3.5), from the moment the set powers up. Tier 1 at 3:00, tier 3 at
-        /// 10:00. Tier 2 (the set turns itself over in inspect view) needs an inspect view, and
-        /// tier 4 (the set sweeps on its own) needs the dial to move by itself; neither is built,
-        /// and neither is faked here with words.
+        /// 10:00, and the tier 4 safety net at 16:00: she leaves the set on and it sweeps the band
+        /// by itself. Tier 2 (the set turns itself over in inspect view) needs an inspect view,
+        /// which does not exist; it is absent, not faked with words.
         /// </summary>
         public static HintLadder Radio()
         {
             return new HintLadder(
                 new HintTier(ContentIds.RemarkRadioWroteDown, 180d),
-                new HintTier(ContentIds.RemarkRadioReadsList, 600d));
+                new HintTier(ContentIds.RemarkRadioReadsList, 600d),
+                new HintTier(ContentIds.RemarkRadioSweep, 960d, null, beginsSweep: true));
         }
     }
 }

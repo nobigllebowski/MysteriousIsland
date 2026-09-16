@@ -79,6 +79,9 @@ namespace ForgottenIsle.UI.Hud
         /// <summary>Raised with the frequency the thumb asks for on the dial.</summary>
         public event System.Action<float> RadioTuneRequested;
 
+        /// <summary>Raised with the shown frequency when a thumb lands on the dial.</summary>
+        public event System.Action<float> RadioTouched;
+
         /// <summary>Raised when the mic is squeezed.</summary>
         public event System.Action RadioMicSqueezed;
 
@@ -139,6 +142,14 @@ namespace ForgottenIsle.UI.Hud
             _radio.TuneRequested += mhz =>
             {
                 var handler = RadioTuneRequested;
+                if (handler != null)
+                {
+                    handler(mhz);
+                }
+            };
+            _radio.Touched += mhz =>
+            {
+                var handler = RadioTouched;
                 if (handler != null)
                 {
                     handler(mhz);

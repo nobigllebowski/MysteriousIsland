@@ -426,5 +426,160 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(fine, Is.EqualTo(0.018f).Within(0.00001f));
             Assert.That(RadioPanel.MhzForDrag(10f, 0f, false), Is.EqualTo(0f), "No width, no movement, no divide.");
         }
+
+        // --- the self-sweep (hint tier 4) ---------------------------------------------------
+
+        private static RadioService WorkingService(out InventoryService inventory)
+        {
+            var radio = NewService(out inventory);
+            RadioFault cleared;
+            radio.Repair.TryApply(ItemIds.DeadTorch, out cleared);
+            radio.Repair.TryApply(ItemIds.CopperSpring, out cleared);
+            radio.Repair.TryApply(ItemIds.Multitool, out cleared);
+            Assert.That(radio.IsWorking, Is.True, "Test setup: the set should work.");
+            return radio;
+        }
+
+        [Test]
+        public void Sweep_FromRest_PassesTheSignal_InAboutNinetySeconds()
+        {
+            InventoryService inventory;
+            var radio = WorkingService(out inventory);
+            Assert.That(radio.BeginSweep(), Is.True);
+            Assert.That(radio.IsSweeping, Is.True);
+
+            var seconds = 0f;
+            while (radio.IsSweeping && seconds < 300f)
+            {
+                radio.Sweep(0.1f);
+                seconds += 0.1f;
+            }
+
+            Assert.That(radio.TransmissionReceived, Is.True, "The sweep finds her.");
+            Assert.That(radio.IsSweeping, Is.False, "And stops on her.");
+            Assert.That(seconds, Is.EqualTo(89f).Within(3f), "About ninety seconds later (§3.5, tier 4).");
+            Assert.That(radio.HasHeard(Stations.HullThump), Is.True, "It locked onto the hull on the way, as a thumb would.");
+        }
+
+        [Test]
+        public void Sweep_DoesNotStickOnTheHull()
+        {
+            InventoryService inventory;
+            var radio = WorkingService(out inventory);
+            radio.Tune(8.6f);
+            radio.BeginSweep();
+
+            for (var i = 0; i < 400; i++)
+            {
+                radio.Sweep(0.1f);
+            }
+
+            Assert.That(radio.Mhz, Is.LessThan(8.291f - RadioBand.LockHalfWidthKhz / 1000f),
+                "The snapped needle must not pull the sweep back onto the carrier every tick.");
+        }
+
+        [Test]
+        public void AHandOnTheDial_StopsTheSweep_EvenWithoutMovingIt()
+        {
+            InventoryService inventory;
+            var radio = WorkingService(out inventory);
+            radio.BeginSweep();
+            radio.Sweep(1f);
+            var where = radio.Mhz;
+
+            radio.Tune(where);
+
+            Assert.That(radio.IsSweeping, Is.False);
+            Assert.That(radio.Sweep(1f), Is.False);
+            Assert.That(radio.Mhz, Is.EqualTo(where).Within(0.0001f));
+        }
+
+        [Test]
+        public void PuttingTheSetDown_StopsTheSweep()
+        {
+            InventoryService inventory;
+            var radio = WorkingService(out inventory);
+            radio.Open();
+            radio.BeginSweep();
+
+            radio.Close();
+
+            Assert.That(radio.IsSweeping, Is.False);
+        }
+
+        [Test]
+        public void Sweep_BouncesAtTheStops()
+        {
+            InventoryService inventory;
+            var radio = WorkingService(out inventory);
+
+            // She is already heard, so passing her does not end the sweep and it can reach a stop.
+            radio.Tune(5.24f);
+            Assert.That(radio.TransmissionReceived, Is.True, "Test setup.");
+            radio.Tune(RadioBand.MinMhz + 0.3f);
+            radio.BeginSweep();
+
+            // Direction is toward the signal (up): 30 MHz of travel crosses the top stop and comes back.
+            var highest = 0f;
+            var cameBack = false;
+            for (var i = 0; i < 6000; i++)
+            {
+                Assert.That(radio.Sweep(0.1f), Is.True, "Still sweeping at step " + i);
+                Assert.That(radio.Mhz, Is.GreaterThanOrEqualTo(RadioBand.MinMhz).And.LessThanOrEqualTo(RadioBand.MaxMhz));
+                if (radio.Mhz > highest)
+                {
+                    highest = radio.Mhz;
+                }
+                else if (highest >= RadioBand.MaxMhz - 0.001f && radio.Mhz < highest - 1f)
+                {
+                    cameBack = true;
+                }
+            }
+
+            Assert.That(highest, Is.EqualTo(RadioBand.MaxMhz).Within(0.001f), "Reached the top stop.");
+            Assert.That(cameBack, Is.True, "And turned round.");
+        }
+
+        [Test]
+        public void Sweep_CannotJumpOverACarrier()
+        {
+            InventoryService inventory;
+            var radio = WorkingService(out inventory);
+            radio.Tune(5.30f);
+            radio.BeginSweep();
+
+            // One long step of a whole second: 50 kHz, thirty lock windows wide.
+            radio.Sweep(1f);
+
+            Assert.That(radio.Mhz, Is.EqualTo(5.24f).Within(0.0001f), "The step lands on the carrier it crosses.");
+            Assert.That(radio.TransmissionReceived, Is.True);
+        }
+
+        [Test]
+        public void ABrokenSet_CannotSweep()
+        {
+            InventoryService inventory;
+            var radio = NewService(out inventory);
+
+            Assert.That(radio.BeginSweep(), Is.False);
+            Assert.That(radio.IsSweeping, Is.False);
+        }
+
+        [Test]
+        public void TheSweep_IsNotSaved()
+        {
+            InventoryService inventory;
+            var radio = WorkingService(out inventory);
+            radio.BeginSweep();
+            var doc = new SaveDocument();
+            radio.Capture(doc);
+
+            InventoryService other;
+            var restored = WorkingService(out other);
+            restored.Restore(doc);
+
+            Assert.That(restored.IsSweeping, Is.False, "A run resumes with the set put down (ADR-0025).");
+            Assert.That(restored.IsWorking, Is.True);
+        }
     }
 }

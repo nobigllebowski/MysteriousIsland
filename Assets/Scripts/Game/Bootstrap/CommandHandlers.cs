@@ -1037,24 +1037,35 @@ namespace ForgottenIsle.Game.Bootstrap
         {
             var heardBefore = _radio.Heard.Count;
             _radio.Tune(command.Mhz);
+            AnnounceNewHearing(_radio, _signals, heardBefore);
+        }
 
-            if (_signals == null || _radio.Heard.Count <= heardBefore)
+        /// <summary>
+        /// Narrates a station heard for the first time by this move, if there was one. Shared
+        /// with the self-sweep so a lock found by the set alone is told exactly as a hand-found one.
+        /// </summary>
+        /// <param name="radio">The set, after the move.</param>
+        /// <param name="signals">Bus the line goes out on. Null tolerated.</param>
+        /// <param name="heardBefore">How many stations were heard before the move.</param>
+        internal static void AnnounceNewHearing(RadioService radio, SignalBus signals, int heardBefore)
+        {
+            if (signals == null || radio.Heard.Count <= heardBefore)
             {
                 return;
             }
 
-            var station = _radio.Heard[_radio.Heard.Count - 1];
+            var station = radio.Heard[radio.Heard.Count - 1];
             if (station != Stations.TheVoice)
             {
                 // A false positive is one line: the hull, or a forecast for somewhere else.
-                _signals.Publish(new NarrationSignal("narration." + station));
+                signals.Publish(new NarrationSignal("narration." + station));
                 return;
             }
 
             // THE TRANSMISSION. The first hearing, the forty-four seconds of her reading the list,
             // and Nadia working it out -- composed here, in the game, because a story beat is
             // content and content is not the HUD's to assemble. The HUD only paces it.
-            _signals.Publish(new NarrationSequenceSignal(TransmissionKeys));
+            signals.Publish(new NarrationSequenceSignal(TransmissionKeys));
         }
 
         /// <summary>The voice, in order: first hearing, five lines of transmission, four of deduction.</summary>
@@ -1149,6 +1160,95 @@ namespace ForgottenIsle.Game.Bootstrap
             }
 
             _inventory.Hold(command.ItemId);
+        }
+    }
+
+    /// <summary>
+    /// Leaves the set on and sweeping: opens the dial if it is down, then starts the needle.
+    /// </summary>
+    /// <remarks>
+    /// Refused when the set does not work or the transmission is already received. The dial is
+    /// opened here rather than by a second command from the director because "the spectrogram is
+    /// live" is part of what tier 4 is, not a separate act.
+    /// </remarks>
+    public sealed class BeginSweepHandler : ICommandHandler<BeginSweepCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly RadioService _radio;
+
+        /// <param name="states">Mode machine.</param>
+        /// <param name="radio">The set.</param>
+        public BeginSweepHandler(GameStateMachine states, RadioService radio)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _radio = radio ?? throw new ArgumentNullException(nameof(radio));
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in BeginSweepCommand command)
+        {
+            if (_states.Current != GameStateId.InGame)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            return _radio.IsWorking && !_radio.TransmissionReceived ? ResultCode.Ok : ResultCode.NotAllowedInState;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in BeginSweepCommand command)
+        {
+            if (!_radio.IsOpen)
+            {
+                _radio.Open();
+            }
+
+            _radio.BeginSweep();
+        }
+    }
+
+    /// <summary>
+    /// Steps the self-sweeping needle. Refused when nothing is sweeping, so a stale tick after a
+    /// hand has stopped it moves nothing.
+    /// </summary>
+    public sealed class SweepRadioHandler : ICommandHandler<SweepRadioCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly RadioService _radio;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine.</param>
+        /// <param name="radio">The set.</param>
+        /// <param name="signals">Bus a first hearing's line goes out on. Null tolerated.</param>
+        public SweepRadioHandler(GameStateMachine states, RadioService radio, SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _radio = radio ?? throw new ArgumentNullException(nameof(radio));
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in SweepRadioCommand command)
+        {
+            if (!(command.Seconds > 0f) || float.IsInfinity(command.Seconds))
+            {
+                return ResultCode.InvalidArgument;
+            }
+
+            if (_states.Current != GameStateId.InGame)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            return _radio.IsSweeping ? ResultCode.Ok : ResultCode.NotAllowedInState;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in SweepRadioCommand command)
+        {
+            var heardBefore = _radio.Heard.Count;
+            _radio.Sweep(command.Seconds);
+            TuneRadioHandler.AnnounceNewHearing(_radio, _signals, heardBefore);
         }
     }
 

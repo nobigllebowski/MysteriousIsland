@@ -65,6 +65,7 @@ namespace ForgottenIsle.Core.Progress
                 case RemarkHullLineUnprompted:
                 case RemarkRadioWroteDown:
                 case RemarkRadioReadsList:
+                case RemarkRadioSweep:
                     return ContentKind.Remark;
                 default:
                     return ContentKind.Unknown;
@@ -137,6 +138,9 @@ namespace ForgottenIsle.Core.Progress
 
         /// <summary>Radio hint tier 3: she reads the list out, and reasons out loud, incompletely.</summary>
         public const string RemarkRadioReadsList = "remark.radio.reads_list";
+
+        /// <summary>Radio hint tier 4: she leaves the set on and it sweeps by itself.</summary>
+        public const string RemarkRadioSweep = "remark.radio.sweep";
 
         /// <summary>
         /// How many lines a remark is said in. One means the key is "narration." + id; more means

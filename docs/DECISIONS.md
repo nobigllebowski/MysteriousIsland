@@ -53,7 +53,7 @@ Full text and rationale in [`architecture/00-decisions.md`](architecture/00-deci
 | 0022 | The radio: one service (5th save participant), one world object, one shared piece of tuning arithmetic | **Implemented** (Phase 6 slice) |
 | 0023 | The Field Slate is a derived view of progression and the radio; not a save participant | **Implemented** (Phase 6 slice) |
 | 0024 | A remark is a command that records nothing: hints answer an act through the dispatcher, never through progression | **Implemented** (partial hull line) |
-| 0025 | Hint timers count play seconds, forget everything on entering the world, and are not a save participant — the one deliberate exception to ADR-0011 | **Implemented** (hull line 6:00; radio tiers 1 and 3) |
+| 0025 | Hint timers count play seconds, forget everything on entering the world, and are not a save participant — the one deliberate exception to ADR-0011 | **Implemented** (hull line 6:00; radio tiers 1, 3 and 4) |
 
 **Why 0014 reversed:** the uGUI choice assumed a greenfield start. It was not one — the team's
 NATION: WORLD ORDER project already contained a working, code-built UI Toolkit mobile framework at

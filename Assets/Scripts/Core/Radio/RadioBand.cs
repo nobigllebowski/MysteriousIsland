@@ -43,6 +43,17 @@ namespace ForgottenIsle.Core.Radio
         /// <summary>Within this there is a smudge on the ribbon and a warble under the hiss.</summary>
         public const float SmudgeHalfWidthKhz = 12f;
 
+        /// <summary>
+        /// How fast the set sweeps the band on its own (hint tier 4), in MHz per second of play.
+        /// </summary>
+        /// <remarks>
+        /// From the resting position (9.700) to the signal (5.240) is 4.46 MHz; at this rate the
+        /// needle passes through it about 89 seconds after the sweep begins, which is the design's
+        /// "approximately 90 seconds later" (§3.5, tier 4). Coarse on purpose: a sweep that crawled
+        /// at fine-knob speed would take a quarter of an hour to cross the band.
+        /// </remarks>
+        public const float SweepMhzPerSecond = 0.05f;
+
         /// <summary>Clamps a frequency to the dial.</summary>
         public static float Clamp(float mhz)
         {

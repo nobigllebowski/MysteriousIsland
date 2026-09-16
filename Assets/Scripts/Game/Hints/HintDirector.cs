@@ -30,7 +30,8 @@ namespace ForgottenIsle.Game.Hints
     /// the needle past <see cref="HintLadders.CoarseDragMhz"/>; the signal reports positions, not
     /// gestures, so travel is the proxy), reading the taped list, taking a brass tag, and locking
     /// onto either false positive. Hearing the voice stops it. Aligning the hull line stops that
-    /// ladder. Entering the world -- a new run or a load -- forgets everything, which is the
+    /// ladder. The last rung of the radio's ladder leaves the set sweeping by itself; while it
+    /// does, every tick steps the needle through <see cref="SweepRadioCommand"/>. Entering the world -- a new run or a load -- forgets everything, which is the
     /// design's "timers reset to zero on load"; so this holds nothing worth saving and is not a
     /// save participant. (ADR-0025)
     /// </para>
@@ -166,6 +167,14 @@ namespace ForgottenIsle.Game.Hints
             {
                 Say(due);
             }
+
+            if (_radio.IsSweeping)
+            {
+                // The set sweeps in play time, through the dispatcher, so a lock on the way is
+                // heard and narrated exactly as a hand-found one. Refused means a hand got there
+                // first this tick; nothing to do.
+                _commands.Dispatch(new SweepRadioCommand((float)delta));
+            }
         }
 
         private void OnRadioChanged(RadioChangedSignal signal)
@@ -248,6 +257,18 @@ namespace ForgottenIsle.Game.Hints
             }
 
             Said++;
+
+            if (tier.BeginsSweep)
+            {
+                // Tier 4 does something as well as says something. Refused (the set stopped
+                // working is not a thing, but the voice being heard between rungs is) means the
+                // words stand and the set stays put.
+                var sweep = _commands.Dispatch(new BeginSweepCommand());
+                if (!sweep.Success && _log != null)
+                {
+                    _log.Warn(LogCode.UnknownCommand, "sweep refused: " + sweep.Code);
+                }
+            }
         }
     }
 }

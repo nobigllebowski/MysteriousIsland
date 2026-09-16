@@ -581,8 +581,10 @@ the set works; the voice is heard), so nothing about them can be lost.
   reports positions, not gestures. Slow fine tuning back and forth will also reset the ladder
   eventually, which is acceptable: the player is engaging.
 - A rung already said is not said again after a reset; only a load makes it sayable again.
-- Tiers that need a mechanism the game does not have (tier 2's inspect view, tier 4's auto-sweep)
-  are absent, not approximated with a line.
+- A tier that needs a mechanism the game does not have (tier 2's inspect view) is absent, not
+  approximated with a line. Tier 4's auto-sweep is a radio state (`RadioService.IsSweeping`),
+  driven by the director through `SweepRadioCommand` each tick, ended by any hand on the dial,
+  and not saved for the same reason the ladders are not.
 - `InspectCommand.SaidAs` accepts only a `ContentKind.Remark` id; the handler refuses anything else.
 
 ---

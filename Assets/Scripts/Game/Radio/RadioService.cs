@@ -50,6 +50,15 @@ namespace ForgottenIsle.Game.Radio
         private float _mhz = RestingMhz;
         private int _micAttempts;
 
+        // The self-sweep (hint tier 4). Not saved: a run resumes with the set put down, and the
+        // hint state it belongs to is forgotten on load anyway (ADR-0025). The raw position is
+        // kept apart from the needle because the needle snaps onto a carrier inside the lock
+        // window; a sweep stepped from the snapped value would be pulled back onto the hull
+        // every tick and never leave it.
+        private bool _sweeping;
+        private float _sweepMhz;
+        private float _sweepDirection = -1f;
+
         /// <param name="signals">Bus the radio signal is published on. Null tolerated.</param>
         /// <param name="inventory">For the parts a repair yields. Null tolerated.</param>
         /// <param name="log">Diagnostics sink. Null tolerated.</param>
@@ -77,6 +86,9 @@ namespace ForgottenIsle.Game.Radio
 
         /// <summary>Needle position.</summary>
         public float Mhz => _mhz;
+
+        /// <summary>True while the needle is crawling across the band by itself.</summary>
+        public bool IsSweeping => _sweeping;
 
         /// <summary>Stations the needle has locked onto at least once, in the order heard.</summary>
         public IReadOnlyList<string> Heard => _heard;
@@ -197,6 +209,7 @@ namespace ForgottenIsle.Game.Radio
             }
 
             _open = false;
+            _sweeping = false;
             Publish(RadioChangeKind.Closed, null);
         }
 
@@ -211,8 +224,97 @@ namespace ForgottenIsle.Game.Radio
                 return false;
             }
 
+            // A hand on the dial ends the sweep, whatever the hand does: the design's "tap once
+            // to stop the sweep" is any tune at all, including one to where the needle already is.
+            _sweeping = false;
             _mhz = RadioTuner.Snap(RadioBand.Clamp(mhz));
+            Settle();
+            return true;
+        }
 
+        /// <summary>
+        /// Leaves the set on and lets the needle sweep by itself, toward the signal's side of the band.
+        /// </summary>
+        /// <remarks>
+        /// Toward the signal, not blindly: the design promises the carrier rises about ninety
+        /// seconds in, and a sweep that set off the wrong way would take four minutes to bounce
+        /// back. It still passes every station on the way and locks onto each as a thumb would.
+        /// </remarks>
+        /// <returns>False when the set is not working.</returns>
+        public bool BeginSweep()
+        {
+            if (!_repair.IsWorking)
+            {
+                return false;
+            }
+
+            Station voice;
+            var target = Stations.TryGet(Stations.TheVoice, out voice) ? voice.Mhz : RadioBand.MinMhz;
+            _sweepDirection = target < _mhz ? -1f : 1f;
+            _sweepMhz = _mhz;
+            _sweeping = true;
+            return true;
+        }
+
+        /// <summary>
+        /// Moves the self-sweeping needle by <paramref name="seconds"/> of play, bouncing at the
+        /// band's stops. Stops by itself when the transmission locks.
+        /// </summary>
+        /// <returns>False when the set is not sweeping.</returns>
+        public bool Sweep(float seconds)
+        {
+            if (!_sweeping || !(seconds > 0f) || float.IsInfinity(seconds))
+            {
+                return false;
+            }
+
+            var from = _sweepMhz;
+            var to = from + _sweepDirection * RadioBand.SweepMhzPerSecond * seconds;
+            if (to > RadioBand.MaxMhz)
+            {
+                to = RadioBand.MaxMhz;
+                _sweepDirection = -1f;
+            }
+            else if (to < RadioBand.MinMhz)
+            {
+                to = RadioBand.MinMhz;
+                _sweepDirection = 1f;
+            }
+
+            // A step is 5 kHz at ten ticks a second and the lock window is 1.6 kHz wide: a sweep
+            // that only sampled its end points would jump clean over every carrier on the band.
+            // So a step that crosses a carrier lands on it, and the next step leaves it -- which
+            // is also what a needle does: the carrier rises as it passes through.
+            var landed = to;
+            var stations = Stations.All;
+            for (var i = 0; i < stations.Length; i++)
+            {
+                var carrier = stations[i].Mhz;
+                var crosses = (carrier - from) * (carrier - to) <= 0f && carrier != from;
+                if (crosses && (landed == to || (carrier - from) * (carrier - from) < (landed - from) * (landed - from)))
+                {
+                    landed = carrier;
+                }
+            }
+
+            _sweepMhz = landed;
+            _mhz = RadioTuner.Snap(_sweepMhz);
+
+            var heardBefore = _heard.Count;
+            Settle();
+
+            if (_heard.Count > heardBefore && _heard[_heard.Count - 1] == Stations.TheVoice)
+            {
+                // Found what it was left on for. The needle stays on her; the transmission plays.
+                _sweeping = false;
+            }
+
+            return true;
+        }
+
+        /// <summary>Records a first lock at the needle and announces the move.</summary>
+        private void Settle()
+        {
             string stationId;
             var reception = RadioTuner.Receive(_mhz, out stationId);
 
@@ -222,11 +324,10 @@ namespace ForgottenIsle.Game.Radio
                 // game. A player who finds the signal and wanders off mid-transmission still has it.
                 _heard.Add(stationId);
                 Publish(RadioChangeKind.Heard, "narration." + stationId);
-                return true;
+                return;
             }
 
             Publish(RadioChangeKind.Tuned, null);
-            return true;
         }
 
         /// <summary>
@@ -250,6 +351,7 @@ namespace ForgottenIsle.Game.Radio
             _found = false;
             _listRead = false;
             _open = false;
+            _sweeping = false;
             _mhz = RestingMhz;
             _micAttempts = 0;
         }

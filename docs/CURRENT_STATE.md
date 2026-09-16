@@ -22,7 +22,7 @@ was planned. When it disagrees with a design document, this file and the shipped
 | `ForgottenIsle.Core` (engine-free) | 39 | 4,525 | Written, never compiled |
 | `ForgottenIsle.Game` | 32 | 9,613 | Written, never compiled |
 | `ForgottenIsle.UI` (UI Toolkit) | 19 | 4,507 | Written, never compiled |
-| Tests (330 EditMode cases, 30 PlayMode) | 23 | 7,462 | Written, **never executed** |
+| Tests (340 EditMode cases, 30 PlayMode) | 23 | 7,695 | Written, **never executed** |
 | `ForgottenIsle.Editor` | 2 | 443 | Written, never compiled |
 | Documentation | 20 | — | 9 predate the ADRs, unreconciled |
 
@@ -104,12 +104,13 @@ count is the quest system and the HUD's Slate tab shows it. Handwriting, sketche
 crew-list page are art tasks, not faked.
 
 **Added — hint escalation.** `HintLadder` (Core) and `HintDirector` (Game): the hull line's 6:00
-fallback and the radio's tier 1 (3:00) and tier 3 (10:00), reset by the design's actions, stopped
-by the voice, forgotten on entering the world (ADR-0025). Radio tiers 2 and 4 are not built.
+fallback and the radio's tier 1 (3:00), tier 3 (10:00) and tier 4 (16:00, the set left on and
+sweeping by itself until a hand touches the dial or she locks), reset by the design's actions,
+stopped by the voice, forgotten on entering the world (ADR-0025). Radio tier 2 is not built.
 
 **Still not implemented.** Survival meters, camp (Phase 5, blocked on CONFLICT-6), weather, radio
-hint tiers 2 (inspect-view staging) and 4 (auto-sweep), a proper slot picker (a two-tap overwrite
-stands in), and any audio content.
+hint tier 2 (inspect-view staging), a proper slot picker (a two-tap overwrite stands in), and any
+audio content.
 
 ## 2. Verification status — read this before trusting anything
 
@@ -124,7 +125,7 @@ stands in), and any audio content.
 | **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
 | **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
 | **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
-| **Tests** | **UNCONFIRMED — 360 tests written (330 EditMode + 30 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
+| **Tests** | **UNCONFIRMED — 370 tests written (340 EditMode + 30 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
 | **Third editor open (graphics pass)** | **2026-09-15** — the project compiled and ran; the five shaders compiled (a procedural sky was on screen). The game view showed only sky: the island had been built 440–730 m under the sea by a `Mathf.SmoothStep` misuse in the new coastline. Root-caused by reading, fixed, **re-run pending.** |
 | **Shaders** | Compiled once (2026-09-15, sky visible on screen). Subsequent edits **not recompiled.** The five files under `Assets/Resources/Shaders` have not been through Unity's shader compiler, and neither CI gate can look at them — both read C#. A shader that fails to compile renders magenta, so this is visible immediately in the editor and invisible until then. |
 

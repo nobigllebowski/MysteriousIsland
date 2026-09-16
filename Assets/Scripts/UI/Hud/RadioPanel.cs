@@ -225,6 +225,17 @@ namespace ForgottenIsle.UI.Hud
         /// <summary>Raised with the frequency the thumb is asking for. The controller decides.</summary>
         public event Action<float> TuneRequested;
 
+        /// <summary>
+        /// Raised with the shown frequency the moment a thumb lands on the strip, before any drag.
+        /// </summary>
+        /// <remarks>
+        /// A hand on the dial is itself an act: it is how the player stops the set sweeping by
+        /// itself ("tap once to stop the sweep"). The controller turns it into a tune to where the
+        /// needle already is, which the game reads as a hand on the dial and the panel reads as
+        /// nothing at all.
+        /// </remarks>
+        public event Action<float> Touched;
+
         /// <summary>Raised when the mic is squeezed.</summary>
         public event Action MicSqueezed;
 
@@ -332,6 +343,12 @@ namespace ForgottenIsle.UI.Hud
 
                 _strip.CapturePointer(evt.pointerId);
                 evt.StopPropagation();
+
+                var touched = Touched;
+                if (touched != null)
+                {
+                    touched(_requestedMhz);
+                }
             });
 
             _strip.RegisterCallback<PointerMoveEvent>(evt =>

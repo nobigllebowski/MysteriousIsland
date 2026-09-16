@@ -212,6 +212,37 @@ namespace ForgottenIsle.Core.Commands
         }
     }
 
+    /// <summary>
+    /// Leave the set on and let it sweep the band by itself (hint tier 4, §3.5).
+    /// </summary>
+    /// <remarks>
+    /// The safety net: Nadia sets the radio down and the needle crawls across the band on its own
+    /// until a hand touches the dial or the signal locks. Opens the dial if it is not open, so the
+    /// spectrogram is live while it sweeps. Refused once the transmission has been received: there
+    /// is nothing left to sweep for.
+    /// </remarks>
+    public readonly struct BeginSweepCommand : ICommand
+    {
+    }
+
+    /// <summary>Advance the self-sweeping needle by this much play time.</summary>
+    /// <remarks>
+    /// Dispatched by the hint director on every tick while the set sweeps, so the needle moves
+    /// through the same handler path a thumb does and a lock on the way is heard and narrated
+    /// exactly as a hand-tuned one is.
+    /// </remarks>
+    public readonly struct SweepRadioCommand : ICommand
+    {
+        /// <summary>Seconds of play since the last sweep step.</summary>
+        public readonly float Seconds;
+
+        /// <param name="seconds">Seconds of play since the last step.</param>
+        public SweepRadioCommand(float seconds)
+        {
+            Seconds = seconds;
+        }
+    }
+
     /// <summary>Squeeze the hand-mic and speak.</summary>
     /// <remarks>
     /// A real verb that will matter again. The world will still not give the player what they

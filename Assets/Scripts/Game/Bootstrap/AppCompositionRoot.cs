@@ -124,6 +124,8 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<CloseRadioCommand>(new CloseRadioHandler(radio));
             dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));
             dispatcher.Register<SqueezeMicCommand>(new SqueezeMicHandler(states, radio, signals));
+            dispatcher.Register<BeginSweepCommand>(new BeginSweepHandler(states, radio));
+            dispatcher.Register<SweepRadioCommand>(new SweepRadioHandler(states, radio, signals));
 
             return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, slate, hints, participants);
         }

@@ -1,5 +1,6 @@
 using ForgottenIsle.Core.Commands;
 using ForgottenIsle.Core.Hints;
+using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Core.Radio;
 using ForgottenIsle.Core.Signals;
@@ -110,6 +111,10 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(radio.Tiers[0].AfterSeconds, Is.EqualTo(180d), "T+3:00 tier 1.");
             Assert.That(radio.Tiers[1].AfterSeconds, Is.EqualTo(600d), "T+10:00 tier 3.");
             Assert.That(radio.Tiers[1].RecordsMarkerId, Is.Null, "Reading the list records nothing.");
+            Assert.That(radio.Tiers[2].AfterSeconds, Is.EqualTo(960d), "T+16:00 tier 4, the safety net.");
+            Assert.That(radio.Tiers[2].BeginsSweep, Is.True, "The one hint that does something.");
+            Assert.That(radio.Tiers[0].BeginsSweep, Is.False);
+            Assert.That(radio.Tiers[1].BeginsSweep, Is.False);
         }
 
         // --- The director, against play time --------------------------------------------------
@@ -135,6 +140,10 @@ namespace ForgottenIsle.Tests.EditMode
             _dispatcher = new CommandDispatcher(null);
             _dispatcher.Register<InspectCommand>(new InspectHandler(_states, _progress, _signals));
             _dispatcher.Register<RemarkCommand>(new RemarkHandler(_states, _signals));
+            _dispatcher.Register<OpenRadioCommand>(new OpenRadioHandler(_states, _radio, _signals));
+            _dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(_states, _radio, _signals));
+            _dispatcher.Register<BeginSweepCommand>(new BeginSweepHandler(_states, _radio));
+            _dispatcher.Register<SweepRadioCommand>(new SweepRadioHandler(_states, _radio, _signals));
             _hints = new HintDirector(_session, _states, _progress, _radio, _dispatcher, _signals, null);
             _said = new System.Collections.Generic.List<string>();
             _signals.Subscribe<NarrationSignal>(s => _said.Add(s.LineKey));
@@ -283,6 +292,75 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(_said, Is.Empty);
             Assert.That(_hints.Radio.IsRunning, Is.False);
             Assert.That(_hints.Radio.Elapsed, Is.Zero);
+        }
+
+        private void MakeTheSetWork()
+        {
+            RadioFault cleared;
+            _radio.Repair.TryApply(ItemIds.DeadTorch, out cleared);
+            _radio.Repair.TryApply(ItemIds.CopperSpring, out cleared);
+            _radio.Repair.TryApply(ItemIds.Multitool, out cleared);
+            Assert.That(_radio.IsWorking, Is.True, "Test setup: the set should work.");
+        }
+
+        [Test]
+        public void Radio_TierFour_LeavesTheSetOnAndSweeping_AndTheSweepFindsHer()
+        {
+            EnterTheWorld();
+            MakeTheSetWork();
+            _signals.Publish(new RadioChangedSignal(RadioChangeKind.PoweredUp, RadioService.RestingMhz, 0f, Reception.Static, null, null, false));
+
+            Play(959d);
+            Assert.That(_radio.IsSweeping, Is.False);
+            Assert.That(_said.Count, Is.EqualTo(3), "Tiers 1 and 3 only, so far.");
+
+            Play(2d);
+            Assert.That(_said[3], Is.EqualTo("narration." + ContentIds.RemarkRadioSweep));
+            Assert.That(_radio.IsOpen, Is.True, "The spectrogram is live.");
+            Assert.That(_radio.IsSweeping, Is.True);
+
+            Play(100d);
+            Assert.That(_radio.TransmissionReceived, Is.True, "About ninety seconds later the carrier rises.");
+            Assert.That(_radio.IsSweeping, Is.False, "And the needle stays on her.");
+            Assert.That(_said, Does.Contain("narration.radio.the_voice"), "Told exactly as a hand-found lock is.");
+            Assert.That(_hints.Radio.IsRunning, Is.False, "Hearing her stops the ladder.");
+        }
+
+        [Test]
+        public void Radio_TierFour_AHandOnTheDial_StopsTheSweep()
+        {
+            EnterTheWorld();
+            MakeTheSetWork();
+            _signals.Publish(new RadioChangedSignal(RadioChangeKind.PoweredUp, RadioService.RestingMhz, 0f, Reception.Static, null, null, false));
+            Play(961d);
+            Play(10d);
+            Assert.That(_radio.IsSweeping, Is.True);
+
+            // A tap: a tune to where the needle already is.
+            _dispatcher.Dispatch(new TuneRadioCommand(_radio.Mhz));
+            var where = _radio.Mhz;
+            Play(60d);
+
+            Assert.That(_radio.IsSweeping, Is.False);
+            Assert.That(_radio.Mhz, Is.EqualTo(where).Within(0.0001f), "Nothing moved it afterwards.");
+            Assert.That(_radio.TransmissionReceived, Is.False);
+        }
+
+        [Test]
+        public void Radio_TierFour_IsRefused_OnceSheIsHeard()
+        {
+            EnterTheWorld();
+            MakeTheSetWork();
+            _signals.Publish(new RadioChangedSignal(RadioChangeKind.PoweredUp, RadioService.RestingMhz, 0f, Reception.Static, null, null, false));
+            Play(700d);
+            _radio.Open();
+            _dispatcher.Dispatch(new TuneRadioCommand(5.24f));
+            Assert.That(_radio.TransmissionReceived, Is.True, "Test setup: she is heard.");
+
+            Play(400d);
+
+            Assert.That(_radio.IsSweeping, Is.False);
+            Assert.That(_said, Does.Not.Contain("narration." + ContentIds.RemarkRadioSweep));
         }
 
         [Test]

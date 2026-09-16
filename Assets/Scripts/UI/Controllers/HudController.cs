@@ -64,6 +64,7 @@ namespace ForgottenIsle.UI.Controllers
             // than on the tray for exactly this reason -- the tray does not exist yet.
             _screen.ItemTapped += OnItemTapped;
             _screen.RadioTuneRequested += OnRadioTuneRequested;
+            _screen.RadioTouched += OnRadioTuneRequested;
             _screen.RadioMicSqueezed += OnRadioMicSqueezed;
             _screen.RadioCloseRequested += OnRadioCloseRequested;
             _screen.InteractRequested += OnInteractRequested;
@@ -158,6 +159,7 @@ namespace ForgottenIsle.UI.Controllers
             _disposed = true;
             _screen.ItemTapped -= OnItemTapped;
             _screen.RadioTuneRequested -= OnRadioTuneRequested;
+            _screen.RadioTouched -= OnRadioTuneRequested;
             _screen.RadioMicSqueezed -= OnRadioMicSqueezed;
             _screen.RadioCloseRequested -= OnRadioCloseRequested;
             _screen.InteractRequested -= OnInteractRequested;
@@ -338,6 +340,10 @@ namespace ForgottenIsle.UI.Controllers
             _screen.SetPrompt(_loc.Get(new LocKey(_targetNameKey)), verb, true);
         }
 
+        /// <summary>
+        /// A drag asks for a frequency; a touch asks for the one already shown. Both are a hand
+        /// on the dial, and the game treats a hand on the dial as ending a self-sweep.
+        /// </summary>
         private void OnRadioTuneRequested(float mhz)
         {
             if (_commands != null)

@@ -28,9 +28,20 @@ stopped by the voice. Entering the world — new run or load — forgets everyth
 design's "timers reset to zero on load"; so the director holds nothing worth saving and is not a
 participant, the one deliberate exception to ADR-0011, recorded as ADR-0025.
 
-**Not built:** tier 2 (the set turns itself over in inspect view; no inspect view exists) and
-tier 4 (the dial sweeps on its own; the needle cannot yet move by itself). Neither is faked with
-words. Tests: `HintTests` (16 cases). 360 written, none executed.
+**Tier 4, the safety net (T+16:00):** Nadia says *"I'm going to leave it on and sweep it,"* the
+dial opens if it is down, and the needle crawls across the band by itself at 50 kHz a second,
+toward the signal's side, locking onto each station on the way exactly as a thumb would — the
+hull is heard, then, about ninety seconds in, her. `RadioService.BeginSweep/Sweep/IsSweeping`;
+`BeginSweepCommand`, `SweepRadioCommand` (dispatched by the director every tick while sweeping,
+so a lock found by the set alone is narrated by the same code as a hand-found one). Any hand on
+the dial ends it: the panel raises `Touched` on pointer-down and the controller turns it into a
+tune to the shown frequency. The sweep keeps its raw position apart from the snapped needle, or
+the hull's lock window would have pulled it back every tick and it would never have left. Not
+saved: a run resumes with the set put down.
+
+**Not built:** tier 2 (the set turns itself over in inspect view; no inspect view exists). It is
+absent, not faked with words. Tests: `HintTests` (19 cases), eight sweep cases in `RadioTests`.
+370 written, none executed.
 
 ### Added — the partial line: "Three of them. Try the far end."
 
