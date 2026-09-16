@@ -251,6 +251,16 @@ namespace ForgottenIsle.Game.Interaction
         /// <param name="playerPosition">Where the player is standing, this frame.</param>
         public void Tick(Vector3 playerPosition)
         {
+            Tick(playerPosition, 0f);
+        }
+
+        /// <summary>
+        /// Picks the nearest offerable interactable and observes every passive one.
+        /// </summary>
+        /// <param name="playerPosition">The rig's position.</param>
+        /// <param name="yawDegrees">The rig's heading, for sightlines.</param>
+        public void Tick(Vector3 playerPosition, float yawDegrees)
+        {
             if (_suppressed)
             {
                 return;
@@ -270,7 +280,29 @@ namespace ForgottenIsle.Game.Interaction
                     continue;
                 }
 
-                if (!candidate.isActiveAndEnabled || !candidate.CanInteract(this))
+                if (!candidate.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                if (candidate.IsPassive)
+                {
+                    // A sightline: no prompt, no press. It fires itself the first time the player
+                    // stands right and looks right, through the same dispatcher a press would use.
+                    var observed = candidate.Observe(playerPosition, yawDegrees, this);
+                    if (observed != null && _commands != null)
+                    {
+                        var result = Dispatch(observed);
+                        if (result.Success)
+                        {
+                            candidate.OnInteracted(this);
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (!candidate.CanInteract(this))
                 {
                     continue;
                 }

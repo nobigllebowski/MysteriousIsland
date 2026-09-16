@@ -31,6 +31,12 @@ namespace ForgottenIsle.Core.Progress
         /// <summary>The standing stone at the centre of the hull line.</summary>
         public const string MarkerRibStone = "marker.rib_stone";
 
+        /// <summary>
+        /// Six wrecked hulls on one line, seen by standing at the bow of the nearest and looking
+        /// down the beach. Recorded by looking, not by a prompt.
+        /// </summary>
+        public const string MarkerHullLine = "marker.hull_line";
+
         /// <summary>The graded channel wall in Fernmaw, cut too regularly to be natural.</summary>
         public const string MarkerAqueductCut = "marker.aqueduct_cut";
 

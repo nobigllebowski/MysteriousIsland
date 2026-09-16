@@ -305,6 +305,12 @@ ui.slate.tab.people,PEOPLE
 ui.slate.tab.unresolved,UNRESOLVED
 ui.slate.empty,Nothing written here yet.
 ui.slate.hint,TAP THE PAGE TO CLOSE
+interactable.hull_line,Six Hulls
+narration.marker.hull_line,"Six hulls, one line, forty metres off the break. Deliberate? Or I'm pattern-matching because I'm concussed. Check again when the light changes."
+slate.observed.marker.hull_line,"SIX HULLS, ONE LINE"
+slate.observed.marker.hull_line.body,"Six wrecks along the beach, wildly different eras, half-buried at different angles. Stand at the near bow and they are on one straight line, forty metres off the break. Wrecks do not queue up. Somebody parked them."
+slate.unresolved.six_hulls_one_line,"SIX HULLS, ONE LINE"
+slate.unresolved.six_hulls_one_line.body,"Deliberate? A breakwater? Or I'm pattern-matching because I'm concussed. Check again when the light changes."
 slate.observed.marker.rib_stone,STANDING STONE
 slate.observed.marker.rib_stone.body,"Set upright, faced to the water. Not fallen there. Placed, by someone who wanted it seen from a boat."
 slate.observed.discovery.brass_tag,"BOOTS, PAIRED. BRASS TAG."

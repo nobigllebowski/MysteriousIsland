@@ -171,7 +171,7 @@ UNITY_TYPES = {
     "GradientColorKey", "GradientAlphaKey", "Space", "LayerMask",
     # Assets and rendering
     "Texture", "Texture2D", "Sprite", "Material", "Shader", "Mesh", "Renderer",
-    "MeshRenderer", "SkinnedMeshRenderer", "Camera", "Light", "RenderTexture",
+    "MeshRenderer", "SkinnedMeshRenderer", "LineRenderer", "Camera", "Light", "RenderTexture",
     "TextAsset", "AudioClip", "AudioSource", "AudioListener", "Font",
     "CameraClearFlags", "LightType", "ShadowCastingMode", "QualitySettings",
     # Physics

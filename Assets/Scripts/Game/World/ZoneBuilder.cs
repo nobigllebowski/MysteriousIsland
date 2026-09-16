@@ -216,6 +216,7 @@ namespace ForgottenIsle.Game.World
             {
                 BuildRibcageContent(root, recipe, stoneMaterial, interactions);
                 BuildTrawlerHull(root, recipe, stoneMaterial, interactions, radio);
+                BuildHullLine(root, recipe, interactions);
             }
 
             return new Vector3(0f, Height(0f, 0f, recipe) + 1.2f, 0f);
@@ -599,6 +600,109 @@ namespace ForgottenIsle.Game.World
                 gatePos);
         }
 
+
+
+        // --- The six hulls ---------------------------------------------------------------------
+
+        /// <summary>
+        /// Six wrecked hulls along the Ribcage, on one straight line, and the sightline that finds it.
+        /// </summary>
+        /// <remarks>
+        /// <c>design/04-first-30-minutes.md</c> §2:40. Half-buried, at different angles, different
+        /// eras -- the composition reads as chaos until the player stands at the bow of the nearest
+        /// and looks down the beach, and then it does not. Wrecks do not queue up. Somebody parked
+        /// them. The hulls are shells of slabs at six angles; the line they share is exact.
+        /// <para>
+        /// The stand point is a few metres off the first hull's bow along the axis, and the axis
+        /// runs through every hull's centre, so a player who lines up the near bow with the far
+        /// ones is looking down it. Tolerance is the design's ±4°.
+        /// </para>
+        /// </remarks>
+        private static void BuildHullLine(Transform root, Recipe recipe, InteractionSystem interactions)
+        {
+            var group = new GameObject("The Six Hulls").transform;
+            group.SetParent(root, false);
+
+            // Seaward of the spawn, along the shore, so the line runs across the player's view when
+            // they turn to the water. Direction chosen so the far end vanishes into the fog.
+            var start = new Vector3(-36f, 0f, -17f);
+            var axis = new Vector3(1f, 0f, 0.14f).normalized;
+            const float Spacing = 13.5f;
+            const int Count = 6;
+
+            var rust = CreatePropMaterial(new Color(0.36f, 0.24f, 0.18f), "WreckRust");
+            var timber = CreatePropMaterial(new Color(0.30f, 0.25f, 0.18f), "WreckTimber");
+            var glass = CreatePropMaterial(new Color(0.58f, 0.58f, 0.52f), "WreckFibreglass");
+
+            var random = new System.Random(recipe.Seed + 613);
+            for (var i = 0; i < Count; i++)
+            {
+                var centre = start + axis * (Spacing * i);
+                centre.y = Mathf.Max(Height(centre.x, centre.z, recipe), ZoneMeshes.SeaLevel + 0.2f);
+
+                var hull = new GameObject("Hull " + (i + 1)).transform;
+                hull.SetParent(group, false);
+                hull.position = centre;
+
+                // Each hull leans its own way: heel, yaw off the line, and a different build.
+                var yaw = (float)(random.NextDouble() - 0.5) * 70f;
+                var heel = (float)(random.NextDouble() - 0.5) * 40f;
+                hull.rotation = Quaternion.Euler(0f, yaw, heel);
+
+                var material = i % 3 == 0 ? rust : i % 3 == 1 ? timber : glass;
+                var length = 7f + (float)random.NextDouble() * 5f;
+                var beam = 2.2f + (float)random.NextDouble() * 1.2f;
+
+                // A keel slab, two flank slabs leaning in, and a stem: enough to read as a boat
+                // on its side from twenty metres, which is the distance this is seen from.
+                Slab(hull, material, "Keel", new Vector3(0f, 0.3f, 0f), new Vector3(length, 0.5f, beam * 0.6f), Vector3.zero, solid: true);
+                Slab(hull, material, "Flank port", new Vector3(0f, 1.2f, beam * 0.45f), new Vector3(length * 0.9f, 2.2f, 0.18f), new Vector3(-22f, 0f, 0f), solid: true);
+                Slab(hull, material, "Flank starboard", new Vector3(0f, 1.0f, -beam * 0.45f), new Vector3(length * 0.8f, 1.8f, 0.18f), new Vector3(24f, 0f, 0f), solid: true);
+                Slab(hull, material, "Stem", new Vector3(length * 0.5f, 1.3f, 0f), new Vector3(0.3f, 2.6f, beam * 0.5f), new Vector3(0f, 0f, -12f));
+            }
+
+            // THE SIGHTLINE. Stand a little past the first hull's bow, look along the axis.
+            var standAt = start - axis * 5f;
+            standAt.y = Height(standAt.x, standAt.z, recipe);
+
+            var sightline = new GameObject("Sightline " + ContentIds.MarkerHullLine);
+            sightline.transform.SetParent(group, false);
+            sightline.transform.position = standAt;
+
+            // The chalk line: a thought, drawn as a thin white stroke through all six, hovering at
+            // eye height so it reads against the hulls rather than the sand.
+            var chalk = new GameObject("Chalk");
+            chalk.transform.SetParent(sightline.transform, false);
+            var line = chalk.AddComponent<LineRenderer>();
+            line.useWorldSpace = true;
+            line.positionCount = 2;
+            var from = start - axis * 2f;
+            var to = start + axis * (Spacing * (Count - 1) + 6f);
+            from.y = standAt.y + 1.5f;
+            to.y = from.y;
+            line.SetPosition(0, from);
+            line.SetPosition(1, to);
+            line.startWidth = 0.035f;
+            line.endWidth = 0.035f;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.sharedMaterial = CreateMaterial(new Color(0.96f, 0.96f, 0.92f), "Chalk");
+            line.enabled = false;
+
+            var observer = sightline.AddComponent<Sightline>();
+            observer.Configure(
+                ContentIds.MarkerHullLine,
+                "interactable.hull_line",
+                standAt,
+                axis,
+                standRadius: 4.5f,
+                toleranceDegrees: 4f);
+
+            if (interactions != null)
+            {
+                interactions.Register(observer);
+            }
+        }
 
         // --- The trawler hull ------------------------------------------------------------------
 

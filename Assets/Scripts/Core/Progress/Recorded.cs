@@ -14,6 +14,7 @@ namespace ForgottenIsle.Core.Progress
         /// <summary>Every content id that counts toward the record. Add here when content is added.</summary>
         public static readonly string[] Recordable =
         {
+            ContentIds.MarkerHullLine,
             ContentIds.MarkerRibStone,
             ContentIds.MarkerAqueductCut,
             ContentIds.DiscoveryBrassTag,

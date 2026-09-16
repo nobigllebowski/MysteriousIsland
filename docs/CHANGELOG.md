@@ -9,6 +9,21 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — six hulls, one line: the sightline
+
+The design's first discovery (§2:40), and the game's foundational observation verb. Six wrecked
+hulls along the Ribcage, half-buried at six angles in three materials, on one exact straight line.
+Stand a few metres off the near bow and look down the beach: when the heading is within the
+design's ±4° of the axis a thin chalk stroke snaps in through all six and holds while the angle
+holds. No prompt, no press. The first time it holds, the observation is recorded — through the
+same inspect command a standing stone uses — and SIX HULLS, ONE LINE becomes the notebook's first
+entry and its first open question.
+
+`Interactable` gains a passive kind: never a prompt target, observed every tick with the rig's
+position and heading (`InteractionSystem.Tick` now takes the yaw). `SightlineMath` in Core holds
+the compass arithmetic so the rule is pinned by tests rather than by a quaternion. Not built: the
+"three of them, try the far end" partial line from the wrong hull.
+
 ### Added — the aimed use: a selected item, then the prompt (O-10)
 
 With a chip selected in the tray, tapping the prompt uses that item on the thing in front of the

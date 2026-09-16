@@ -70,6 +70,24 @@ namespace ForgottenIsle.Game.Interaction
         public abstract ICommand BuildCommand(IInteractionServices services);
 
         /// <summary>
+        /// True for an interactable that is never offered as a prompt and instead watches the
+        /// player: a sightline. The system calls <see cref="Observe"/> on these every tick.
+        /// </summary>
+        public virtual bool IsPassive => false;
+
+        /// <summary>
+        /// For a passive interactable: looks at where the player is and which way they face, and
+        /// returns a command to dispatch, or null when nothing should happen this tick.
+        /// </summary>
+        /// <param name="playerPosition">The rig's position.</param>
+        /// <param name="yawDegrees">The rig's heading, 0 along +Z and 90 along +X.</param>
+        /// <param name="services">What the world knows.</param>
+        public virtual ICommand Observe(Vector3 playerPosition, float yawDegrees, IInteractionServices services)
+        {
+            return null;
+        }
+
+        /// <summary>
         /// Called after the command succeeded, for purely visual consequences.
         /// </summary>
         /// <remarks>

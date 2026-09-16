@@ -96,9 +96,8 @@ namespace ForgottenIsle.Core.Progress
     /// save. "The record is never lost in this game" is a property of this function, not a promise.
     /// <para>
     /// The UNRESOLVED titles are the design's (<c>design/04-first-30-minutes.md</c> §3:30, §12:00,
-    /// §26:10). SIX HULLS, ONE LINE is not derived yet: the hull-sightline beat it comes from is
-    /// not built, and tying it to another observation would put a question in the notebook that
-    /// the player never asked. WHO KEEPS THE MAINS ALIVE is this slice's own, from the tape deck.
+    /// §26:10). SIX HULLS, ONE LINE comes from the sightline beat and is the notebook's first
+    /// entry. WHO KEEPS THE MAINS ALIVE is this slice's own, from the tape deck.
     /// </para>
     /// </remarks>
     public static class Slate
@@ -106,6 +105,7 @@ namespace ForgottenIsle.Core.Progress
         // Observed entries, in the order a player meets them on the slice's route.
         private static readonly string[] ObservedOrder =
         {
+            ContentIds.MarkerHullLine,
             ContentIds.MarkerRibStone,
             ContentIds.DiscoveryBrassTag,
             ContentIds.MarkerAqueductCut,
@@ -207,6 +207,12 @@ namespace ForgottenIsle.Core.Progress
             }
 
             // UNRESOLVED. Nothing here is resolved in the prologue; the flag exists for Act 2.
+            if (progress != null && progress.HasInspected(ContentIds.MarkerHullLine))
+            {
+                // Stays unresolved until Act 3. Do not resolve it in the prologue.
+                unresolved.Add(new SlateLine("slate.unresolved.six_hulls_one_line", false));
+            }
+
             if (haveTag)
             {
                 unresolved.Add(new SlateLine("slate.unresolved.who_rewicks_a_lantern", false));

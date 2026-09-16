@@ -454,7 +454,7 @@ namespace ForgottenIsle.Game.Player
 
             if (_interactions != null)
             {
-                _interactions.Tick(transform.position);
+                _interactions.Tick(transform.position, _yawDegrees);
             }
         }
 
