@@ -98,8 +98,13 @@ namespace ForgottenIsle.Tests.PlayMode
             var lee = FindSite(ContentIds.FireSiteLee);
             Assert.That(lee.transform.Find("Kit").gameObject.activeSelf, Is.True, "Something is laid.");
 
+            var chalk = FindInteractable<FirelitMark>();
+            Assert.That(chalk, Is.Not.Null, "The chalk on the plate.");
+            Assert.That(chalk.CanInteract(context.Interactions), Is.False, "Not readable in flat daylight.");
+
             Assert.That(context.Commands.Dispatch(new UseItemCommand(ItemIds.ChertNodule, ContentIds.FireSiteLee)).Success, Is.True);
             Assert.That(context.Fire.IsLit, Is.True, "The real FireSite reached the service.");
+            Assert.That(chalk.CanInteract(context.Interactions), Is.True, "Readable by firelight.");
             Assert.That(context.Progress.HasSolved(ContentIds.MechanismFire), Is.True, "And marked the record.");
             Assert.That(lee.transform.Find("Flame").gameObject.activeSelf, Is.True);
             Assert.That(lee.transform.Find("Kit").gameObject.activeSelf, Is.False);

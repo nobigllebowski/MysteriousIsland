@@ -445,6 +445,10 @@ slate.observed.marker.cut_vine,THE CUT VINE
 slate.observed.marker.cut_vine.body,"The vine across the gully mouth, cut with one stroke of a heavy blade. The cut face is wet. Days old, not decades. The only way inland, and somebody has just used it."
 slate.unresolved.who_cut_the_vine,WHO CUT THE VINE
 slate.unresolved.who_cut_the_vine.body,"That's this week. Somebody with a blade went in ahead of me, and the only way off this beach is after them."
+interactable.chalk_frequency,Chalk on the Plate
+narration.marker.chalk_frequency,"In chalk, on the plate beside the crate, half rained off and only there at all in this light: 5240. Under it a tally of five-bar gates, dozens, faded to almost nothing. Somebody counted the times they got through."
+slate.observed.marker.chalk_frequency,5240 IN CHALK
+slate.observed.marker.chalk_frequency.body,"On the trawler's plate, by firelight: 5240, and a tally of five-bar gates below it, dozens deep. The same number as the list, kept where a hand could reach it in the dark."
 narration.radio.fixed.fuse_cord,"The mic's curly cord: a loop of it stripped bare with the blade and bent across the holder. That is not a fuse either. The mic still keys. It is a long cord."
 slate.observed.radio.working_cord,THE SET WORKS
 slate.observed.radio.working_cord.body,"Torch cells, a scraped terminal, a bare loop of the mic cord across the fuse holder. Inside the battery door, scratched with a knife: THE SET WORKS. THE ISLAND DOESN'T. — T.R."

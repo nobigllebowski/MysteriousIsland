@@ -56,6 +56,7 @@ namespace ForgottenIsle.Core.Progress
                 case MarkerBroomArc:
                 case MarkerCanvasSquare:
                 case MarkerCutVine:
+                case MarkerChalkFrequency:
                     return ContentKind.Marker;
                 case DiscoveryBrassTag:
                 case DiscoveryWaterloggedReel:
@@ -144,6 +145,12 @@ namespace ForgottenIsle.Core.Progress
         /// The hook (§28:20, §2).
         /// </summary>
         public const string MarkerCutVine = "marker.cut_vine";
+
+        /// <summary>
+        /// Chalk on the trawler's plate: 5240 and a tally of five-bar gates. Readable by firelight
+        /// only. The radio puzzle's second redundant source (§3.1).
+        /// </summary>
+        public const string MarkerChalkFrequency = "marker.chalk_frequency";
 
         // --- Discoveries (collected once, then gone) ---------------------------------------
 

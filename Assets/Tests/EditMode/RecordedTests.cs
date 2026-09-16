@@ -29,16 +29,15 @@ namespace ForgottenIsle.Tests.EditMode
         }
 
         [Test]
-        public void FourOfFifteen_ReadsTwentySeven_NotTwentySix()
+        public void ThreeOfSixteen_ReadsNineteen_NotEighteen()
         {
             var progress = new WorldProgress();
             progress.Inspect(ContentIds.MarkerRibStone);
             progress.Inspect(ContentIds.MarkerBootPrint);
-            progress.Inspect(ContentIds.MarkerLegBand);
-            progress.Inspect(ContentIds.MarkerCutVine);
+            progress.Inspect(ContentIds.MarkerChalkFrequency);
 
-            Assert.That(Recorded.Recordable.Length, Is.EqualTo(15), "The slice's recordable content.");
-            Assert.That(Recorded.Percent(progress), Is.EqualTo(27), "Rounded, not truncated.");
+            Assert.That(Recorded.Recordable.Length, Is.EqualTo(16), "The slice's recordable content.");
+            Assert.That(Recorded.Percent(progress), Is.EqualTo(19), "Rounded, not truncated.");
         }
 
         [Test]

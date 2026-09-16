@@ -24,6 +24,7 @@ namespace ForgottenIsle.Core.Progress
             ContentIds.MarkerBroomArc,
             ContentIds.MarkerCanvasSquare,
             ContentIds.MarkerCutVine,
+            ContentIds.MarkerChalkFrequency,
             ContentIds.DiscoveryBrassTag,
             ContentIds.DiscoveryWaterloggedReel,
             ContentIds.MechanismSluice,

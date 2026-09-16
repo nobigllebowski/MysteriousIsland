@@ -217,7 +217,7 @@ namespace ForgottenIsle.Game.World
             else
             {
                 BuildRibcageContent(root, recipe, stoneMaterial, interactions);
-                BuildTrawlerHull(root, recipe, stoneMaterial, interactions, radio);
+                BuildTrawlerHull(root, recipe, stoneMaterial, interactions, radio, fire);
                 BuildHullLine(root, recipe, interactions);
                 BuildWrack(root, recipe, interactions, fire);
                 BuildFireSites(root, recipe, interactions, fire);
@@ -700,12 +700,30 @@ namespace ForgottenIsle.Game.World
                 CreateRock(wrack, interactions, fire, cobble, chert, "rock.chert." + (i + 1), chertAt[i], recipe, true, recipe.Seed + i);
             }
 
+            // Basalt scattered by seed, but never inside a fire ring or on top of a chert: a rock
+            // sitting in the hollow a fire is laid in reads as a bug, not as a beach.
             var random = new System.Random(recipe.Seed + 4441);
-            for (var i = 0; i < 12; i++)
+            var keepClear = new[] { FireSiteLeeAt, FireSiteOpenAAt, FireSiteOpenBAt, chertAt[0], chertAt[1], chertAt[2] };
+            var placed = 0;
+            for (var attempt = 0; placed < 12 && attempt < 200; attempt++)
             {
                 var x = -30f + (float)random.NextDouble() * 26f;
                 var z = -10f + (float)random.NextDouble() * 18f;
-                CreateRock(wrack, interactions, fire, cobble, basalt, "rock.basalt." + (i + 1), new Vector3(x, 0f, z), recipe, false, recipe.Seed + 100 + i);
+                var clear = true;
+                for (var k = 0; clear && k < keepClear.Length; k++)
+                {
+                    var dx = keepClear[k].x - x;
+                    var dz = keepClear[k].z - z;
+                    clear = dx * dx + dz * dz > 2.5f * 2.5f;
+                }
+
+                if (!clear)
+                {
+                    continue;
+                }
+
+                placed++;
+                CreateRock(wrack, interactions, fire, cobble, basalt, "rock.basalt." + placed, new Vector3(x, 0f, z), recipe, false, recipe.Seed + 100 + placed);
             }
 
             // "Basalt. Basalt. That's not basalt." -- said within three metres of the chert nearest
@@ -761,10 +779,15 @@ namespace ForgottenIsle.Game.World
             var parent = new GameObject("Fire Sites").transform;
             parent.SetParent(root, false);
 
-            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteLee, "interactable.fire_lee", ContentIds.RemarkFireLee, new Vector3(-9.6f, 0f, -10f), recipe);
-            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenA, "interactable.fire_open", ContentIds.RemarkFireOpenA, new Vector3(-2f, 0f, -5f), recipe);
-            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenB, "interactable.fire_open", ContentIds.RemarkFireOpenB, new Vector3(-18f, 0f, 1f), recipe);
+            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteLee, "interactable.fire_lee", ContentIds.RemarkFireLee, FireSiteLeeAt, recipe);
+            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenA, "interactable.fire_open", ContentIds.RemarkFireOpenA, FireSiteOpenAAt, recipe);
+            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenB, "interactable.fire_open", ContentIds.RemarkFireOpenB, FireSiteOpenBAt, recipe);
         }
+
+        // Where the fire can be laid. Shared with the rock scatter, which keeps clear of them.
+        private static readonly Vector3 FireSiteLeeAt = new Vector3(-9.6f, 0f, -10f);
+        private static readonly Vector3 FireSiteOpenAAt = new Vector3(-2f, 0f, -5f);
+        private static readonly Vector3 FireSiteOpenBAt = new Vector3(-18f, 0f, 1f);
 
         private static void CreateFireSite(
             Transform parent, InteractionSystem interactions, FireService fire, string siteId, string nameKey, string examineRemarkId, Vector3 at, Recipe recipe)
@@ -995,7 +1018,7 @@ namespace ForgottenIsle.Game.World
         /// </para>
         /// </remarks>
         private static void BuildTrawlerHull(
-            Transform root, Recipe recipe, Material stone, InteractionSystem interactions, RadioService radio)
+            Transform root, Recipe recipe, Material stone, InteractionSystem interactions, RadioService radio, FireService fire)
         {
             var hull = new GameObject("Trawler Hull").transform;
             hull.SetParent(root, false);
@@ -1079,6 +1102,24 @@ namespace ForgottenIsle.Game.World
                 hull.rotation * Quaternion.Euler(-8f, 0f, 0f),
                 new Vector3(0.5f, 0.42f, 0.015f),
                 new Color(0.93f, 0.92f, 0.86f));
+
+            // The chalk on the plate beside the crate (§3.1, redundant source 2): 5240 and a tally
+            // of five-bar gates, half rained off. Readable by firelight only, so it is offered only
+            // while a fire burns; in flat grey daylight it is not a thing the eye finds.
+            var chalkMark = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            chalkMark.name = "Inspectable " + ContentIds.MarkerChalkFrequency;
+            StripCollider(chalkMark);
+            chalkMark.transform.SetParent(root, false);
+            chalkMark.transform.position = hull.TransformPoint(new Vector3(1.55f, 1.3f, 1.42f));
+            chalkMark.transform.rotation = hull.rotation * Quaternion.Euler(-8f, 0f, 0f);
+            chalkMark.transform.localScale = new Vector3(0.42f, 0.3f, 0.012f);
+            Dress(chalkMark.GetComponent<MeshRenderer>(), CreatePropMaterial(new Color(0.80f, 0.79f, 0.74f), "ChalkFrequency"));
+            var firelit = chalkMark.AddComponent<FirelitMark>();
+            firelit.Configure(ContentIds.MarkerChalkFrequency, "interactable.chalk_frequency", fire);
+            if (interactions != null)
+            {
+                interactions.Register(firelit);
+            }
 
             CreateInspectable(
                 root, interactions,

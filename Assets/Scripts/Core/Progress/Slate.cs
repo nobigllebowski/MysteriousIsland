@@ -120,6 +120,7 @@ namespace ForgottenIsle.Core.Progress
             ContentIds.MarkerOxySlag,
             ContentIds.MarkerBroomArc,
             ContentIds.MarkerCanvasSquare,
+            ContentIds.MarkerChalkFrequency,
             ContentIds.MarkerAqueductCut,
             ContentIds.DiscoveryWaterloggedReel,
             ContentIds.MechanismSluice,
@@ -137,7 +138,8 @@ namespace ForgottenIsle.Core.Progress
             ContentIds.MarkerOxySlag,
             ContentIds.MarkerBroomArc,
             ContentIds.MarkerCanvasSquare,
-            ContentIds.MarkerCutVine
+            ContentIds.MarkerCutVine,
+            ContentIds.MarkerChalkFrequency
         };
 
         /// <summary>

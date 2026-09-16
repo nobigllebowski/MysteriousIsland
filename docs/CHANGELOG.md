@@ -9,6 +9,14 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — 5240 in chalk, by firelight
+
+The radio puzzle's second redundant source (§3.1): on the trawler's plate beside the crate, in
+chalk half rained off, `5240` and a tally of five-bar gates dozens deep. `FirelitMark` is offered
+only while a fire burns; in flat daylight it is not a thing the prompt finds. A marker like any
+other once read, in the Slate as 5240 IN CHALK. Basalt now scatters clear of the fire rings and
+the chert. The record pins sixteen ids.
+
 ### Added — PlayMode tests for the world half of the puzzles
 
 `WorldPuzzleTests`: the Ribcage builds three fire sites, fifteen rocks (three chert), the

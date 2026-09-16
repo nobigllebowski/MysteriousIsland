@@ -117,6 +117,7 @@ notebook; the fire's hint ladders and blow-out counts. `FireService` is the sixt
 **Added — the beachcomber's Ribcage.** Seven optional inspectables (boot print, ringed cormorant,
 tide marks, oxy slag, broom arc, canvas square, and the cut vine at the gully mouth — the hook),
 Slate entries only; SOMEONE appears from any sign of a hand. The mic cord is the other fuse fix.
+5240 in chalk on the trawler's plate is readable by firelight only.
 
 **Still not implemented.** Survival meters, camp and fuel burn-down (Phase 5, blocked on
 CONFLICT-6), the recorder drying (it ships dry), the strike swipe (the chert is a use), weather,
