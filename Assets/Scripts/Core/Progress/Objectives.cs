@@ -17,6 +17,37 @@ namespace ForgottenIsle.Core.Progress
     /// smallest thing that answers "why am I walking this way".
     /// </para>
     /// </remarks>
+    /// <summary>What the objective needs to know that progression does not carry.</summary>
+    /// <remarks>
+    /// Plain booleans handed in from the Game-side services, as <see cref="SlateFacts"/> are, so
+    /// the derivation stays engine-free and a test can state a situation as a literal.
+    /// </remarks>
+    public readonly struct ObjectiveFacts
+    {
+        public readonly bool RadioFound;
+        public readonly bool RadioWorking;
+        public readonly bool HeardTheVoice;
+
+        /// <summary>Something has been laid or tried at a fire site this run.</summary>
+        public readonly bool FireEngaged;
+        public readonly bool FireLit;
+
+        public ObjectiveFacts(bool radioFound, bool radioWorking, bool heardTheVoice, bool fireEngaged, bool fireLit)
+        {
+            RadioFound = radioFound;
+            RadioWorking = radioWorking;
+            HeardTheVoice = heardTheVoice;
+            FireEngaged = fireEngaged;
+            FireLit = fireLit;
+        }
+
+        public bool Equals(ObjectiveFacts other)
+        {
+            return RadioFound == other.RadioFound && RadioWorking == other.RadioWorking
+                && HeardTheVoice == other.HeardTheVoice && FireEngaged == other.FireEngaged && FireLit == other.FireLit;
+        }
+    }
+
     public static class Objectives
     {
         /// <summary>Shown while the player has no run at all.</summary>
@@ -37,7 +68,27 @@ namespace ForgottenIsle.Core.Progress
         /// <param name="progress">What the player has found so far. Null yields <see cref="None"/>.</param>
         /// <param name="zoneId">The zone the player is standing in.</param>
         /// <returns>A localization key, or <see cref="LocKey.Empty"/> when nothing should be shown.</returns>
+        private static readonly LocKey MakeFire = new LocKey("objective.make_fire");
+        private static readonly LocKey FixTheSet = new LocKey("objective.fix_the_set");
+        private static readonly LocKey FindTheFrequency = new LocKey("objective.find_the_frequency");
+
+        /// <summary>The objective from progression alone: no radio, no fire.</summary>
         public static LocKey Current(WorldProgress progress, string zoneId)
+        {
+            return Current(progress, zoneId, default(ObjectiveFacts));
+        }
+
+        /// <summary>
+        /// The one line on the HUD: what a player who has done what the record says would do next.
+        /// </summary>
+        /// <remarks>
+        /// Derived, never stored (ADR-0015), and now from the puzzles as well as the record: a
+        /// fire that has been started on and not lit, a set that has been found and not fixed, a
+        /// working set that has not found her. Each is named only once the player has met it --
+        /// the line describes, it never sends. Nothing here is required for progression; the
+        /// tag chain underneath is what opens Fernmaw.
+        /// </remarks>
+        public static LocKey Current(WorldProgress progress, string zoneId, ObjectiveFacts facts)
         {
             if (progress == null)
             {
@@ -67,11 +118,28 @@ namespace ForgottenIsle.Core.Progress
                 return ExploreRibcage;
             }
 
+            if (facts.FireEngaged && !facts.FireLit)
+            {
+                // Something has been laid at a site and nothing burns: the problem, stated once
+                // in her words and then kept on the HUD, is "spark, tinder, shelter".
+                return MakeFire;
+            }
+
             if (!haveTag)
             {
                 // Inspecting the stone is what tells the player a tag is worth looking for, so the
                 // objective only names it after they have read the stone.
                 return FindTheTag;
+            }
+
+            if (facts.RadioFound && !facts.RadioWorking)
+            {
+                return FixTheSet;
+            }
+
+            if (facts.RadioWorking && !facts.HeardTheVoice)
+            {
+                return FindTheFrequency;
             }
 
             if (!haveReel)

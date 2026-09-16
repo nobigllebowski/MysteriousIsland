@@ -74,6 +74,7 @@ namespace ForgottenIsle.Game.Bootstrap
             SlateDirector slate,
             HintDirector hints,
             FireService fire,
+            ObjectiveKeeper objectives,
             IReadOnlyList<ISaveParticipant> saveParticipants)
         {
             if (log == null)
@@ -150,6 +151,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Slate = slate;
             Hints = hints;
             Fire = fire ?? throw new ArgumentNullException(nameof(fire));
+            Objectives = objectives;
             Input = input;
 
             // Copied defensively. The participant list is what a save iterates; handing out the
@@ -225,6 +227,9 @@ namespace ForgottenIsle.Game.Bootstrap
 
         /// <summary>The fire sites: what is laid, what burns, what is drying. Sixth save participant.</summary>
         public FireService Fire { get; }
+
+        /// <summary>Keeps the objective line in step with the radio and the fire. Null tolerated.</summary>
+        public ObjectiveKeeper Objectives { get; }
 
         /// <summary>
         /// Player input, already gated on the state machine so it reads as centred outside

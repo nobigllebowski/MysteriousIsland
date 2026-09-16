@@ -63,6 +63,7 @@ namespace ForgottenIsle.Game.Progress
 
         private string _zoneId = ContentIds.ZoneRibcage;
         private string _objectiveKey = string.Empty;
+        private ObjectiveFacts _facts;
 
         /// <param name="signals">Bus the progression signals are published on. Null tolerated.</param>
         /// <param name="log">Diagnostics sink. Null tolerated.</param>
@@ -70,7 +71,7 @@ namespace ForgottenIsle.Game.Progress
         {
             _signals = signals;
             _log = log;
-            _objectiveKey = Objectives.Current(_progress, _zoneId).Value;
+            _objectiveKey = Objectives.Current(_progress, _zoneId, _facts).Value;
 
             // Subscribed rather than told. SessionService already publishes ZoneChangedSignal from
             // its one SetZone, so every path that moves the player -- new game, travel, a restored
@@ -268,9 +269,27 @@ namespace ForgottenIsle.Game.Progress
             PublishObjectiveIfChanged();
         }
 
+        /// <summary>
+        /// Hands the objective what the radio and the fire know. Republishes only on a change.
+        /// </summary>
+        /// <remarks>
+        /// Set by <c>ObjectiveKeeper</c> from the services' signals; this service does not read
+        /// the radio or the fire itself, so progression stays the one thing it owns.
+        /// </remarks>
+        public void SetObjectiveFacts(ObjectiveFacts facts)
+        {
+            if (_facts.Equals(facts))
+            {
+                return;
+            }
+
+            _facts = facts;
+            PublishObjectiveIfChanged();
+        }
+
         private void PublishObjectiveIfChanged()
         {
-            var next = Objectives.Current(_progress, _zoneId).Value ?? string.Empty;
+            var next = Objectives.Current(_progress, _zoneId, _facts).Value ?? string.Empty;
             if (next == _objectiveKey)
             {
                 return;

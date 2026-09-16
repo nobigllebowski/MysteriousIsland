@@ -9,6 +9,17 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Changed — the objective line follows the puzzles
+
+The HUD's one line named only the tag chain; the fire and the radio, the prologue's two puzzles,
+never appeared on it. `Objectives.Current` now takes `ObjectiveFacts` (radio found, working,
+heard; fire engaged, lit) beside progression: *"Spark, tinder, shelter."* while something is laid
+and nothing burns; *"The set's dead. Power, contacts, fuse."* once the set is found; *"Find her
+on the dial."* once it works. Each is named only after the player has met it — nothing is
+required, and a fire never started on is never asked for. `ObjectiveKeeper` restates the facts to
+`ProgressService` on radio, fire and state signals; the derivation stays engine-free (ADR-0015).
+Three tests.
+
 ### Added — the decision that isn't flagged (§27:00)
 
 The transmission sequence now ends on the consequence of the repair: with the torch's cells in

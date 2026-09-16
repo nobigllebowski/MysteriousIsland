@@ -193,6 +193,9 @@ objective.explore_fernmaw,Explore the channel.
 objective.recover_the_reel,Recover the reel.
 objective.return_to_shore,Return to the shore.
 objective.act_complete,The record is current.
+objective.make_fire,"Spark, tinder, shelter."
+objective.fix_the_set,"The set's dead. Power, contacts, fuse."
+objective.find_the_frequency,Find her on the dial.
 
 # --- Phase 2: interaction verbs ---------------------------------------------
 interact.inspect,INSPECT

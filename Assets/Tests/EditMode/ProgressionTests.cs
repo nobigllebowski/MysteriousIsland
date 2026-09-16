@@ -1,3 +1,4 @@
+using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Core.Save;
 using ForgottenIsle.Core.Signals;
@@ -133,6 +134,65 @@ namespace ForgottenIsle.Tests.EditMode
 
             Assert.That(service.ObjectiveKey, Is.EqualTo("objective.enter_fernmaw"),
                 "Objectives are computed from state, so any order of play yields a valid line.");
+        }
+
+        [Test]
+        public void Objective_NamesTheFire_WhileSomethingIsLaidAndNothingBurns()
+        {
+            var progress = new WorldProgress();
+            progress.Inspect(ContentIds.MarkerRibStone);
+
+            var laid = new ObjectiveFacts(false, false, false, true, false);
+            Assert.That(Objectives.Current(progress, ContentIds.ZoneRibcage, laid).Value, Is.EqualTo("objective.make_fire"));
+
+            var lit = new ObjectiveFacts(false, false, false, true, true);
+            Assert.That(Objectives.Current(progress, ContentIds.ZoneRibcage, lit).Value, Is.EqualTo("objective.find_the_tag"),
+                "Lit, the line goes back to the record's chain.");
+
+            var untouched = new ObjectiveFacts(false, false, false, false, false);
+            Assert.That(Objectives.Current(progress, ContentIds.ZoneRibcage, untouched).Value, Is.EqualTo("objective.find_the_tag"),
+                "A fire never started on is never demanded: nothing is required (§0).");
+        }
+
+        [Test]
+        public void Objective_FollowsTheSet_FoundThenFixedThenHeard()
+        {
+            var progress = new WorldProgress();
+            progress.Inspect(ContentIds.MarkerRibStone);
+            progress.Collect(ContentIds.DiscoveryBrassTag);
+
+            Assert.That(Objectives.Current(progress, ContentIds.ZoneRibcage, new ObjectiveFacts(true, false, false, false, false)).Value,
+                Is.EqualTo("objective.fix_the_set"));
+            Assert.That(Objectives.Current(progress, ContentIds.ZoneRibcage, new ObjectiveFacts(true, true, false, false, false)).Value,
+                Is.EqualTo("objective.find_the_frequency"));
+            Assert.That(Objectives.Current(progress, ContentIds.ZoneRibcage, new ObjectiveFacts(true, true, true, false, false)).Value,
+                Is.EqualTo("objective.enter_fernmaw"));
+        }
+
+        [Test]
+        public void TheKeeper_RestatesTheFacts_OnRadioAndFireSignals()
+        {
+            var signals = new SignalBus();
+            var service = new ProgressService(signals, null);
+            var inventory = new ForgottenIsle.Game.Items.InventoryService(signals, null);
+            var radio = new ForgottenIsle.Game.Radio.RadioService(signals, inventory, null);
+            var fire = new ForgottenIsle.Game.Fire.FireService(signals, inventory, null);
+            var keeper = new ObjectiveKeeper(service, radio, fire, signals);
+            service.Inspect(ContentIds.MarkerRibStone);
+
+            fire.Apply(ContentIds.FireSiteOpenA, ItemIds.DryGrass, true);
+            Assert.That(service.ObjectiveKey, Is.EqualTo("objective.make_fire"));
+
+            service.Collect(ContentIds.DiscoveryBrassTag);
+            radio.Inspect();
+            Assert.That(service.ObjectiveKey, Is.EqualTo("objective.make_fire"), "The fire is nearer than the set.");
+
+            fire.Apply(ContentIds.FireSiteLee, ItemIds.PolyFibre, true);
+            fire.Apply(ContentIds.FireSiteLee, ItemIds.DriftwoodDry, true);
+            fire.Apply(ContentIds.FireSiteLee, ItemIds.ChertNodule, true);
+            Assert.That(service.ObjectiveKey, Is.EqualTo("objective.fix_the_set"));
+
+            keeper.Dispose();
         }
 
         // --- save round trip ----------------------------------------------------------------

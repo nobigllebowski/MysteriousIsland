@@ -82,6 +82,9 @@ namespace ForgottenIsle.Game.Bootstrap
 
             // The notebook: a derived view of progression and the radio, announced on every change.
             var slate = new SlateDirector(progress, radio, signals);
+
+            // The objective line's other inputs: the radio and the fire, restated on their signals.
+            var objectives = new ObjectiveKeeper(progress, radio, fire, signals);
             var interactions = new InteractionSystem(progress, inventory, dispatcher, signals, log);
 
             // The hint timers (design §3.5): count play seconds, say each rung through the
@@ -134,7 +137,7 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<SweepRadioCommand>(new SweepRadioHandler(states, radio, signals));
             dispatcher.Register<CarryFireKitCommand>(new CarryFireKitHandler(states, fire));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, slate, hints, fire, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, slate, hints, fire, objectives, participants);
         }
 
         /// <summary>
