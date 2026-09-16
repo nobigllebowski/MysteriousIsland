@@ -35,6 +35,10 @@ namespace ForgottenIsle.UI.Controllers
         private readonly List<string> _sequence = new List<string>(10);
 
         private bool _disposed;
+        private string _targetId = string.Empty;
+        private string _targetNameKey = string.Empty;
+        private string _targetPromptKey = string.Empty;
+        private bool _hasTarget;
 
         /// <param name="screen">The HUD view this drives.</param>
         /// <param name="signals">Bus carrying the gameplay signals. Null leaves the HUD static.</param>
@@ -61,6 +65,7 @@ namespace ForgottenIsle.UI.Controllers
             _screen.RadioMicSqueezed += OnRadioMicSqueezed;
             _screen.RadioCloseRequested += OnRadioCloseRequested;
             _screen.InteractRequested += OnInteractRequested;
+            _screen.ItemSelectionChanged += OnItemSelectionChanged;
 
             if (signals == null)
             {
@@ -155,6 +160,7 @@ namespace ForgottenIsle.UI.Controllers
             _screen.RadioMicSqueezed -= OnRadioMicSqueezed;
             _screen.RadioCloseRequested -= OnRadioCloseRequested;
             _screen.InteractRequested -= OnInteractRequested;
+            _screen.ItemSelectionChanged -= OnItemSelectionChanged;
 
             for (var i = 0; i < _subscriptions.Count; i++)
             {
@@ -258,11 +264,47 @@ namespace ForgottenIsle.UI.Controllers
 
         private void OnInteractRequested()
         {
+            // THE AIMED USE (O-10). With a chip selected in the tray, tapping the prompt uses that
+            // item on the thing in front of the player -- and the prompt has been reading USE
+            // <item> since the chip was picked, so what will happen is on screen before it does.
+            // This is how the recorder's cells go into the radio: by the player's choice, never by
+            // a lookup that fits whatever they happen to carry.
+            var selected = _screen.SelectedItem;
+            if (!string.IsNullOrEmpty(selected) && _hasTarget && !string.IsNullOrEmpty(_targetId) && _commands != null)
+            {
+                _screen.ClearItemSelection();
+                _commands.Dispatch(new UseItemCommand(selected, _targetId));
+                return;
+            }
+
             var handler = InteractRequested;
             if (handler != null)
             {
                 handler();
             }
+        }
+
+        private void OnItemSelectionChanged(string selectedId)
+        {
+            // The prompt's verb follows the selection: USE <item> while a chip is up, the
+            // target's own verb otherwise.
+            RefreshPrompt();
+        }
+
+        private void RefreshPrompt()
+        {
+            if (!_hasTarget)
+            {
+                _screen.SetPrompt(string.Empty, string.Empty, false);
+                return;
+            }
+
+            var selected = _screen.SelectedItem;
+            var verb = string.IsNullOrEmpty(selected)
+                ? _loc.Get(new LocKey(_targetPromptKey))
+                : _loc.Get(new LocKey("interact.use")) + " " + _loc.Get(new LocKey(selected));
+
+            _screen.SetPrompt(_loc.Get(new LocKey(_targetNameKey)), verb, true);
         }
 
         private void OnRadioTuneRequested(float mhz)
@@ -307,16 +349,11 @@ namespace ForgottenIsle.UI.Controllers
 
         private void OnTargetChanged(InteractionTargetChangedSignal signal)
         {
-            if (!signal.HasTarget)
-            {
-                _screen.SetPrompt(string.Empty, string.Empty, false);
-                return;
-            }
-
-            _screen.SetPrompt(
-                _loc.Get(new LocKey(signal.NameKey)),
-                _loc.Get(new LocKey(signal.PromptKey)),
-                true);
+            _hasTarget = signal.HasTarget;
+            _targetId = signal.ContentId ?? string.Empty;
+            _targetNameKey = signal.NameKey ?? string.Empty;
+            _targetPromptKey = signal.PromptKey ?? string.Empty;
+            RefreshPrompt();
         }
 
         private void OnNarration(NarrationSignal signal)

@@ -400,8 +400,8 @@ namespace ForgottenIsle.Game.Interaction
             }
 
             _signals.Publish(next != null
-                ? new InteractionTargetChangedSignal(next.NameKey, promptKey, true)
-                : new InteractionTargetChangedSignal(string.Empty, string.Empty, false));
+                ? new InteractionTargetChangedSignal(next.NameKey, promptKey, true, next.ContentId)
+                : new InteractionTargetChangedSignal(string.Empty, string.Empty, false, string.Empty));
         }
     }
 }

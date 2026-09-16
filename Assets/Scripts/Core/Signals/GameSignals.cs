@@ -165,11 +165,24 @@ namespace ForgottenIsle.Core.Signals
         /// <param name="promptKey">Localization key of the verb.</param>
         /// <param name="hasTarget">Whether anything is in range.</param>
         public InteractionTargetChangedSignal(string nameKey, string promptKey, bool hasTarget)
+            : this(nameKey, promptKey, hasTarget, string.Empty)
+        {
+        }
+
+        /// <param name="nameKey">Localization key naming the object.</param>
+        /// <param name="promptKey">Localization key of the verb.</param>
+        /// <param name="hasTarget">Whether anything is in range.</param>
+        /// <param name="contentId">The target's content id, so a carried item can be aimed at it.</param>
+        public InteractionTargetChangedSignal(string nameKey, string promptKey, bool hasTarget, string contentId)
         {
             NameKey = nameKey;
             PromptKey = promptKey;
             HasTarget = hasTarget;
+            ContentId = contentId ?? string.Empty;
         }
+
+        /// <summary>The target's content id, or empty. An opaque token to the HUD; the handler reads it.</summary>
+        public readonly string ContentId;
     }
 
     /// <summary>A line of atmospheric text to show the player, from an inspection or a pickup.</summary>

@@ -254,7 +254,7 @@ narration.use.nothing,"That does nothing here."
 ui.hud.inventory,CARRYING
 ui.hud.inventory_empty,Nothing yet.
 ui.hud.inventory_open,Items
-ui.hud.combine_hint,Tap two to put them together.
+ui.hud.combine_hint,"Tap two to put them together. Tap one, then the prompt, to use it on what is in front of you."
 # --- Phase 6: the radio -------------------------------------------------------
 item.multitool,Multitool
 item.field_recorder,Field Recorder

@@ -9,6 +9,15 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the aimed use: a selected item, then the prompt (O-10)
+
+With a chip selected in the tray, tapping the prompt uses that item on the thing in front of the
+player. The prompt reads **USE <item>** from the moment the chip is picked, so what will happen is
+on screen before it does. `InteractionTargetChangedSignal` now carries the target's content id —
+an opaque token to the HUD, read by the handler — and `HudController` turns the pair into a
+`UseItemCommand`. This is how the recorder's cells go into the radio: by the player's choice, never
+by a lookup that fits whatever they happen to carry. The tray's hint says so.
+
 ### Fixed — from a review of the last three commits
 
 - **The "arriving in a zone" autosave could never fire**: `ZoneChangedSignal` is published while

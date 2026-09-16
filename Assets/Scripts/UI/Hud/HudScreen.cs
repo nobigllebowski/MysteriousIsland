@@ -131,6 +131,14 @@ namespace ForgottenIsle.UI.Hud
                 Loc.Get(InventoryEmptyKey),
                 Loc.Get(InventoryHintKey));
             _inventory.Combine += RaiseCombineRequested;
+            _inventory.SelectionChanged += id =>
+            {
+                var handler = ItemSelectionChanged;
+                if (handler != null)
+                {
+                    handler(id);
+                }
+            };
 
             _radio = new RadioPanel(
                 root,
@@ -280,6 +288,18 @@ namespace ForgottenIsle.UI.Hud
                 _narrationTimer?.Pause();
                 _sequenceTimer?.Pause();
             }
+        }
+
+        /// <summary>The tray's selected item id, or null. Read by the controller when the prompt is tapped.</summary>
+        public string SelectedItem => _inventory != null ? _inventory.SelectedItem : null;
+
+        /// <summary>Raised when the tray's selection changes, with the selected id or null.</summary>
+        public event System.Action<string> ItemSelectionChanged;
+
+        /// <summary>Puts the tray's selected chip down.</summary>
+        public void ClearItemSelection()
+        {
+            _inventory?.ClearSelection();
         }
 
         /// <summary>Replaces what the tray shows.</summary>

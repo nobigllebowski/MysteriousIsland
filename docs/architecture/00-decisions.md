@@ -496,8 +496,9 @@ readers.
 - The tuning band's flywheel and ribbon tick on the UI Toolkit scheduler, not the `Ticker`. That
   is cosmetic animation the game never reads and that stops with the panel; the one-`Update()`
   rule is about game logic having one clock, and this is not game logic.
-- The recorder's cells are not offered from the proximity prompt (O-10): a prompt that fits
-  whatever the player happens to carry would make the prologue's one real decision for them.
+- The recorder's cells are not offered from the proximity prompt: a prompt that fits whatever
+  the player happens to carry would make the prologue's one real decision for them. They go in
+  by the aimed use -- a selected chip and a tap on the prompt (O-10, resolved).
 
 ---
 
@@ -539,6 +540,6 @@ rule for free — the record is never lost, because its inputs are in the save.
 | O-9 | **The cinematic menu backdrop is documented but not wired.** `Assets/Scenes/README.md` specifies `MainMenu.unity` as a backdrop scene, and the Mobile UX Plan calls for island coastline, ocean and moving trees behind the menu. Phase 1 loads no such scene — the menu renders on the persistent `UIDocument` over a flat themed ground. Deliberate scope discipline, not an oversight, but the README and the code must not disagree. Wire a menu-scene lifecycle owner in Phase 2, or delete the scene from the README. | Tech Director + Art | Phase 2 |
 | O-7 | **Nation port provenance.** Every ported file carries a header naming its Nation origin. If MobileGame is ever made private or relicensed, that provenance is the record. Same owner, so no licensing issue today. | Tech Director | Ongoing |
 | O-6 | **World clock scale** is stated as two different values across documents. Pick one and assert it in a test. | Lead Gameplay | Phase 1 Task 0 |
-| O-10 | **No "use this item on that" verb.** The proximity prompt auto-fits a carried item to a target, which is right for a spindle and wrong for a choice. The radio's recorder-cells route (the prologue's one real decision) is built and tested in Core and not reachable from the world until the tray can aim an item at the current target. | Lead Gameplay | Before the Phase 6 playtest |
+| O-10 | ~~No "use this item on that" verb.~~ **Resolved:** a selected chip plus a tap on the prompt dispatches `UseItemCommand(item, target)`; the prompt reads USE <item> while a chip is up. The recorder's cells are now the player's choice. | Lead Gameplay | Done |
 | O-11 | ~~No slot-delete path in the UI.~~ **Resolved:** a second tap on NEW GAME within eight seconds overwrites the oldest readable run; corrupt slots are never chosen. A proper slot picker remains a UX-polish item. | Lead UX | Done (two-tap confirm) |
 | O-12 | ~~`RecordedPercent` is never computed.~~ **Resolved:** `Recorded.Percent` over the recordable content ids, kept live by `RecordKeeper`. Weighting for the full document set is a later concern. | Lead Gameplay | Done |

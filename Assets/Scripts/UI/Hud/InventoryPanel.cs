@@ -124,6 +124,12 @@ namespace ForgottenIsle.UI.Hud
             _tray.Add(_hintLabel);
         }
 
+        /// <summary>The selected chip's item id, or null when nothing is selected.</summary>
+        public string SelectedItem => _selectedId;
+
+        /// <summary>Raised when the selection changes, with the new selected id or null.</summary>
+        public event Action<string> SelectionChanged;
+
         /// <summary>
         /// Raised when the player taps two different items in a row.
         /// </summary>
@@ -242,14 +248,32 @@ namespace ForgottenIsle.UI.Hud
             {
                 _chips[i].SetSelected(_chips[i].Id == id);
             }
+
+            RaiseSelectionChanged();
         }
 
-        private void ClearSelection()
+        /// <summary>Puts the selected chip down, if any. Public so a use can clear it.</summary>
+        public void ClearSelection()
         {
+            var had = _selectedId != null;
             _selectedId = null;
             for (var i = 0; i < _chips.Count; i++)
             {
                 _chips[i].SetSelected(false);
+            }
+
+            if (had)
+            {
+                RaiseSelectionChanged();
+            }
+        }
+
+        private void RaiseSelectionChanged()
+        {
+            var handler = SelectionChanged;
+            if (handler != null)
+            {
+                handler(_selectedId);
             }
         }
 

@@ -91,6 +91,9 @@ leaves out (phone mic, hint timers, the Field Slate).
 mechanism and a zone unlock. Solved mechanisms are progression and survive a save. On touch, the
 prompt card is the world verb; there is no raw tap binding.
 
+**Added — the aimed use (O-10).** A selected chip plus a tap on the prompt uses the item on the
+current target; the prompt reads USE <item> while a chip is up. The recorder-cells route is live.
+
 **Added — the Field Slate.** Three tabs derived from the record (ADR-0023); the UNRESOLVED
 count is the quest system and the HUD's Slate tab shows it. Handwriting, sketches and the
 crew-list page are art tasks, not faked.
