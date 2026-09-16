@@ -35,7 +35,11 @@ namespace ForgottenIsle.Tests.EditMode
             _dispatcher = new CommandDispatcher(null);
             _dispatcher.Register<InspectCommand>(new InspectHandler(_states, _progress, signals));
             _dispatcher.Register<CollectCommand>(new CollectHandler(_states, _progress, signals));
+            _dispatcher.Register<RemarkCommand>(new RemarkHandler(_states, signals));
+            _signals = signals;
         }
+
+        private SignalBus _signals;
 
         private void EnterGameplay()
         {
@@ -66,6 +70,42 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(result.Success, Is.False);
             Assert.That(result.Code, Is.EqualTo(ResultCode.NotAllowedInState));
             Assert.That(_progress.HasInspected(ContentIds.MarkerRibStone), Is.False);
+        }
+
+        [Test]
+        public void Remark_InGame_SaysTheLine_AndRecordsNothing()
+        {
+            EnterGameplay();
+            string said = null;
+            using (_signals.Subscribe<NarrationSignal>(s => said = s.LineKey))
+            {
+                var result = _dispatcher.Dispatch(new RemarkCommand(ContentIds.RemarkHullLinePartial));
+
+                Assert.That(result.Success, Is.True, "Remark was refused: " + result.Code);
+            }
+
+            Assert.That(said, Is.EqualTo("narration." + ContentIds.RemarkHullLinePartial));
+            Assert.That(_progress.HasInspected(ContentIds.MarkerHullLine), Is.False,
+                "A hint about the line must never credit the line.");
+            Assert.That(_progress.HasInspected(ContentIds.RemarkHullLinePartial), Is.False);
+        }
+
+        [Test]
+        public void Remark_OutsideGameplay_IsRefused()
+        {
+            var result = _dispatcher.Dispatch(new RemarkCommand(ContentIds.RemarkHullLinePartial));
+
+            Assert.That(result.Code, Is.EqualTo(ResultCode.NotAllowedInState));
+        }
+
+        [Test]
+        public void Remark_WithAMarkerId_IsRefused_SoAHintCannotBeMistakenForARecord()
+        {
+            EnterGameplay();
+
+            var result = _dispatcher.Dispatch(new RemarkCommand(ContentIds.MarkerHullLine));
+
+            Assert.That(result.Code, Is.EqualTo(ResultCode.InvalidArgument));
         }
 
         [Test]

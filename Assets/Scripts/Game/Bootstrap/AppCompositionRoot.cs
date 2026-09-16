@@ -113,6 +113,7 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<CombineItemsCommand>(new CombineItemsHandler(states, inventory, signals));
             dispatcher.Register<UseItemCommand>(new UseItemHandler(states, inventory, interactions, signals));
             dispatcher.Register<HoldItemCommand>(new HoldItemHandler(states, inventory));
+            dispatcher.Register<RemarkCommand>(new RemarkHandler(states, signals));
             dispatcher.Register<OpenRadioCommand>(new OpenRadioHandler(states, radio, signals));
             dispatcher.Register<CloseRadioCommand>(new CloseRadioHandler(radio));
             dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));

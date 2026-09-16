@@ -23,7 +23,10 @@ namespace ForgottenIsle.Core.Progress
         Discovery = 3,
         Mechanism = 4,
         Gate = 5,
-        Radio = 6
+        Radio = 6,
+
+        /// <summary>Something Nadia says in answer to an act. Never recorded, never in the Slate.</summary>
+        Remark = 7
     }
 
     public static class ContentIds
@@ -58,6 +61,8 @@ namespace ForgottenIsle.Core.Progress
                     return ContentKind.Gate;
                 case RadioSet:
                     return ContentKind.Radio;
+                case RemarkHullLinePartial:
+                    return ContentKind.Remark;
                 default:
                     return ContentKind.Unknown;
             }
@@ -111,6 +116,13 @@ namespace ForgottenIsle.Core.Progress
 
         /// <summary>The 1970s marine set on the crate inside the trawler hull.</summary>
         public const string RadioSet = "radio.set";
+
+        // --- Remarks (said, never recorded) ------------------------------------------------
+
+        /// <summary>
+        /// The hull line aligned from the wrong hull: three chalk in, and "try the far end".
+        /// </summary>
+        public const string RemarkHullLinePartial = "remark.hull_line_partial";
 
         // --- Gates (travel points) ----------------------------------------------------------
 

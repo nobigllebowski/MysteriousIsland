@@ -525,6 +525,33 @@ rule for free — the record is never lost, because its inputs are in the save.
 
 ---
 
+## ADR-0024 — A remark is a command that records nothing
+
+**Status.** Accepted. Implemented as `Core.Commands.RemarkCommand`, `Game.Bootstrap.RemarkHandler`,
+`ContentKind.Remark`, and the hint mode of `Game.Interaction.Sightline`.
+
+**Decision.** When the world answers an act with words alone — the partial hull line's "Three of
+them. Try the far end." — the words are a `RemarkCommand`. It validates like an inspection (in
+gameplay, a known remark id) and its only effect is a `NarrationSignal`. It touches no
+progression, is not a save participant because it holds no state, and is refused for any id whose
+`ContentKind` is not `Remark`. Whether a remark repeats is decided by the object that makes it.
+
+**Why.** The alternative was a flag on `InspectCommand` ("inspect but do not record"), which puts
+the one distinction that matters — did the player find the thing, or were they told about it —
+inside a branch the validator cannot see. A separate command keeps "a hint can never credit a
+discovery" as a type-level fact, and keeps the path uniform: every line Nadia says in answer to
+the player still goes UI/world → dispatcher → handler → signal, so it is logged, refused outside
+gameplay, and replayable in a test.
+
+**Consequence.**
+- Hint tiers (design §3.5) can use the same command when they are built; the timer is theirs.
+- Repeat suppression is per object (`Sightline` latches once per zone visit) and per fact (silent
+  once the real line is recorded). A remark that must be said once per run would need state, and
+  that state would need a participant; none does yet.
+- `ContentIds.KindOf` is the whitelist. An id not in it is `Unknown` and the handler refuses it.
+
+---
+
 ---
 
 ## Open items — tracked, not resolved

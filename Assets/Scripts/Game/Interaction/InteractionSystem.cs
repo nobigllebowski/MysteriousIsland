@@ -430,6 +430,11 @@ namespace ForgottenIsle.Game.Interaction
                 return _commands.Dispatch(openRadio);
             }
 
+            if (command is RemarkCommand remark)
+            {
+                return _commands.Dispatch(remark);
+            }
+
             if (_log != null)
             {
                 _log.Warn(LogCode.UnknownCommand, "interaction produced an unroutable command: " + command.GetType().Name);

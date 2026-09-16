@@ -1142,4 +1142,49 @@ namespace ForgottenIsle.Game.Bootstrap
             _inventory.Hold(command.ItemId);
         }
     }
+
+    /// <summary>
+    /// Says a line in answer to an act, and changes nothing.
+    /// </summary>
+    /// <remarks>
+    /// A remark is refused outside gameplay for the same reason an inspection is: Nadia does not
+    /// talk over the pause screen. It touches no progression, so a remark can never credit a
+    /// discovery the player has not made -- which is the whole reason it is a separate command
+    /// from <see cref="InspectCommand"/> rather than a flag on it.
+    /// </remarks>
+    public sealed class RemarkHandler : ICommandHandler<RemarkCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly SignalBus _signals;
+
+        /// <param name="states">Mode machine; a remark is an in-world act only.</param>
+        /// <param name="signals">Bus the line is published on. Null tolerated.</param>
+        public RemarkHandler(GameStateMachine states, SignalBus signals)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _signals = signals;
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in RemarkCommand command)
+        {
+            if (string.IsNullOrEmpty(command.RemarkId) || ContentIds.KindOf(command.RemarkId) != ContentKind.Remark)
+            {
+                return ResultCode.InvalidArgument;
+            }
+
+            return _states.Current == GameStateId.InGame
+                ? ResultCode.Ok
+                : ResultCode.NotAllowedInState;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in RemarkCommand command)
+        {
+            if (_signals != null)
+            {
+                _signals.Publish(new NarrationSignal(InspectHandler.NarrationPrefix + command.RemarkId));
+            }
+        }
+    }
 }

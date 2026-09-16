@@ -117,6 +117,9 @@ namespace ForgottenIsle.Tests.EditMode
             progress.Inspect("something.unlisted");
             Assert.That(Slate.IsRecorded(progress, "something.unlisted"), Is.False);
             Assert.That(ContentIds.KindOf(ContentIds.RadioSet), Is.EqualTo(ContentKind.Radio));
+            Assert.That(ContentIds.KindOf(ContentIds.RemarkHullLinePartial), Is.EqualTo(ContentKind.Remark));
+            Assert.That(System.Array.IndexOf(Recorded.Recordable, ContentIds.RemarkHullLinePartial), Is.EqualTo(-1),
+                "A remark is said, never recorded.");
         }
 
         private static bool HasTitle(SlateContents contents, string key)

@@ -229,4 +229,25 @@ namespace ForgottenIsle.Core.Commands
             ItemId = itemId ?? string.Empty;
         }
     }
+
+    /// <summary>Nadia says something about what the player just did. Records nothing.</summary>
+    /// <remarks>
+    /// The partial hull line is the first: aligned from the wrong hull, three hulls chalk in and
+    /// she says "Try the far end." That is a hint, not a discovery, so it must not credit the
+    /// marker -- but it is still a thing the world says in answer to an act, and it goes through
+    /// the dispatcher like every other answer so it is validated, logged and refused outside
+    /// gameplay. Whether a remark repeats is the remarking object's business; the handler is
+    /// stateless. (ADR-0024)
+    /// </remarks>
+    public readonly struct RemarkCommand : ICommand
+    {
+        /// <summary>A <c>ContentIds</c> remark id. The narration key is "narration." + this.</summary>
+        public readonly string RemarkId;
+
+        /// <param name="remarkId">A <c>ContentIds</c> remark id.</param>
+        public RemarkCommand(string remarkId)
+        {
+            RemarkId = remarkId;
+        }
+    }
 }

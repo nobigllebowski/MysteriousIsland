@@ -9,6 +9,18 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the partial line: "Three of them. Try the far end."
+
+The design's reward for aligning the hulls from the wrong one (§2:40 FAILURE). Stand at the bow
+of the second, third or fourth hull and look the same way: a shorter chalk snaps in through that
+hull and the two beyond it, and Nadia says the line. `Sightline.ConfigureAsHint` reuses the stance
+and look; the words go through a new `RemarkCommand` (ADR-0024), which validates like an
+inspection and records nothing, so the hint can never credit the marker. Said once per zone
+visit and never once SIX HULLS, ONE LINE is in the notebook. `ContentKind.Remark` and
+`ContentIds.RemarkHullLinePartial`; the remark handler refuses any id that is not a remark.
+Tests: three remark cases in `InteractionTests`, the kind pinned in `SlateTests`. 344 written,
+none executed.
+
 ### Fixed — the held item is game state: one rule for every input
 
 A review of the last three commits found the aimed use lived in the HUD: the tray remembered

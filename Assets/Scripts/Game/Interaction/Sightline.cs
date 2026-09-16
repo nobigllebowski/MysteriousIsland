@@ -19,6 +19,13 @@ namespace ForgottenIsle.Game.Interaction
     /// line is a <see cref="LineRenderer"/> child named "Chalk", toggled here; the record is
     /// progression, made through the same inspect command a standing stone uses.
     /// </para>
+    /// <para>
+    /// A sightline can instead be a <b>hint</b> (<see cref="ConfigureAsHint"/>): aligned from the
+    /// wrong hull, a shorter chalk snaps in through three hulls and Nadia says "try the far end".
+    /// The chalk behaves exactly as the real one does, because the reward for the attempt is
+    /// seeing the idea work; the words go through <see cref="RemarkCommand"/> so nothing is
+    /// credited, once per zone visit, and never once the full line has been recorded.
+    /// </para>
     /// </remarks>
     public sealed class Sightline : Interactable
     {
@@ -31,6 +38,9 @@ namespace ForgottenIsle.Game.Interaction
         private LineRenderer _chalk;
         private bool _aligned;
         private bool _refused;
+        private bool _hint;
+        private string _fullLineId;
+        private bool _remarked;
 
         /// <summary>Configures the sightline. Called by zone building; there is no Inspector pass.</summary>
         /// <param name="contentId">A <c>ContentIds</c> marker id.</param>
@@ -55,8 +65,30 @@ namespace ForgottenIsle.Game.Interaction
             }
         }
 
+        /// <summary>
+        /// Configures the sightline as a hint for another: the same stance and look, but the
+        /// answer is a remark, not a record.
+        /// </summary>
+        /// <param name="remarkId">A <c>ContentIds</c> remark id; the line said when it aligns.</param>
+        /// <param name="nameKey">Localization key naming it.</param>
+        /// <param name="fullLineId">The marker this hints at. Once recorded, the hint is silent.</param>
+        /// <param name="standAt">Where the player must stand.</param>
+        /// <param name="axis">Direction along the partial line, from the standing point.</param>
+        /// <param name="standRadius">How far from the standing point still counts.</param>
+        /// <param name="toleranceDegrees">Half-angle within which the chalk snaps in.</param>
+        public void ConfigureAsHint(
+            string remarkId, string nameKey, string fullLineId, Vector3 standAt, Vector3 axis, float standRadius, float toleranceDegrees)
+        {
+            Configure(remarkId, nameKey, standAt, axis, standRadius, toleranceDegrees);
+            _hint = true;
+            _fullLineId = fullLineId;
+        }
+
         /// <inheritdoc />
         public override string ContentId => _contentId ?? string.Empty;
+
+        /// <summary>True when this sightline hints at another rather than recording itself.</summary>
+        public bool IsHint => _hint;
 
         /// <inheritdoc />
         public override string NameKey => _nameKey ?? string.Empty;
@@ -80,7 +112,7 @@ namespace ForgottenIsle.Game.Interaction
         /// <inheritdoc />
         public override ICommand BuildCommand(IInteractionServices services)
         {
-            return new InspectCommand(ContentId);
+            return _hint ? (ICommand)new RemarkCommand(ContentId) : new InspectCommand(ContentId);
         }
 
         /// <inheritdoc />
@@ -105,12 +137,35 @@ namespace ForgottenIsle.Game.Interaction
                 }
             }
 
-            if (!aligned || _refused || (services != null && services.HasInspected(ContentId)))
+            if (!aligned || _refused)
+            {
+                return null;
+            }
+
+            if (_hint)
+            {
+                // Said once per zone visit, and not at all once the real line is in the notebook:
+                // "try the far end" to someone who has been there is nagging.
+                if (_remarked || (services != null && services.HasInspected(_fullLineId)))
+                {
+                    return null;
+                }
+
+                return new RemarkCommand(ContentId);
+            }
+
+            if (services != null && services.HasInspected(ContentId))
             {
                 return null;
             }
 
             return new InspectCommand(ContentId);
+        }
+
+        /// <inheritdoc />
+        public override void OnInteracted(IInteractionServices services)
+        {
+            _remarked = true;
         }
 
         /// <inheritdoc />

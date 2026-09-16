@@ -636,10 +636,13 @@ namespace ForgottenIsle.Game.World
             var glass = CreatePropMaterial(new Color(0.58f, 0.58f, 0.52f), "WreckFibreglass");
 
             var random = new System.Random(recipe.Seed + 613);
+            var centres = new Vector3[Count];
+            var lengths = new float[Count];
             for (var i = 0; i < Count; i++)
             {
                 var centre = start + axis * (Spacing * i);
                 centre.y = Mathf.Max(Height(centre.x, centre.z, recipe), ZoneMeshes.SeaLevel + 0.2f);
+                centres[i] = centre;
 
                 var hull = new GameObject("Hull " + (i + 1)).transform;
                 hull.SetParent(group, false);
@@ -661,6 +664,7 @@ namespace ForgottenIsle.Game.World
                 }
 
                 hull.rotation = Quaternion.Euler(0f, yaw, heel);
+                lengths[i] = length;
 
                 var material = i % 3 == 0 ? rust : i % 3 == 1 ? timber : glass;
 
@@ -683,23 +687,8 @@ namespace ForgottenIsle.Game.World
 
             // The chalk line: a thought, drawn as a thin white stroke through all six, hovering at
             // eye height so it reads against the hulls rather than the sand.
-            var chalk = new GameObject("Chalk");
-            chalk.transform.SetParent(sightline.transform, false);
-            var line = chalk.AddComponent<LineRenderer>();
-            line.useWorldSpace = true;
-            line.positionCount = 2;
-            var from = start - axis * 2f;
-            var to = start + axis * (Spacing * (Count - 1) + 6f);
-            from.y = standAt.y + 1.5f;
-            to.y = from.y;
-            line.SetPosition(0, from);
-            line.SetPosition(1, to);
-            line.startWidth = 0.035f;
-            line.endWidth = 0.035f;
-            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            line.receiveShadows = false;
-            line.sharedMaterial = CreateMaterial(new Color(0.96f, 0.96f, 0.92f), "Chalk");
-            line.enabled = false;
+            var chalkMaterial = CreateMaterial(new Color(0.96f, 0.96f, 0.92f), "Chalk");
+            AddChalk(sightline.transform, start - axis * 2f, start + axis * (Spacing * (Count - 1) + 6f), standAt.y + 1.5f, chalkMaterial);
 
             var observer = sightline.AddComponent<Sightline>();
             observer.Configure(
@@ -714,6 +703,58 @@ namespace ForgottenIsle.Game.World
             {
                 interactions.Register(observer);
             }
+
+            // THE WRONG HULLS. Stand at the bow of the second, third or fourth and look the same
+            // way: a chalk snaps in through that hull and the two beyond it -- three, not six --
+            // and Nadia says so. The design's reward for the attempt (§2:40 FAILURE). The last two
+            // hulls have too little beyond them to make a line of three, and the near hull is the
+            // right one. Stand radii do not overlap: the stances are 13.5 m apart and 4.5 m wide.
+            for (var i = 1; i + 2 < Count; i++)
+            {
+                var wrongStand = centres[i] - axis * (lengths[i] * 0.5f + 3f);
+                wrongStand.y = Height(wrongStand.x, wrongStand.z, recipe);
+
+                var partial = new GameObject("Sightline " + ContentIds.RemarkHullLinePartial + " " + (i + 1));
+                partial.transform.SetParent(group, false);
+                partial.transform.position = wrongStand;
+
+                AddChalk(partial.transform, centres[i] - axis * 2f, centres[i + 2] + axis * 2f, wrongStand.y + 1.5f, chalkMaterial);
+
+                var hint = partial.AddComponent<Sightline>();
+                hint.ConfigureAsHint(
+                    ContentIds.RemarkHullLinePartial,
+                    "interactable.hull_line_partial",
+                    ContentIds.MarkerHullLine,
+                    wrongStand,
+                    axis,
+                    standRadius: 4.5f,
+                    toleranceDegrees: 4f);
+
+                if (interactions != null)
+                {
+                    interactions.Register(hint);
+                }
+            }
+        }
+
+        /// <summary>A chalk stroke between two points at one height, disabled until a sightline enables it.</summary>
+        private static void AddChalk(Transform parent, Vector3 from, Vector3 to, float y, Material material)
+        {
+            var chalk = new GameObject("Chalk");
+            chalk.transform.SetParent(parent, false);
+            var line = chalk.AddComponent<LineRenderer>();
+            line.useWorldSpace = true;
+            line.positionCount = 2;
+            from.y = y;
+            to.y = y;
+            line.SetPosition(0, from);
+            line.SetPosition(1, to);
+            line.startWidth = 0.035f;
+            line.endWidth = 0.035f;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.sharedMaterial = material;
+            line.enabled = false;
         }
 
         // --- The trawler hull ------------------------------------------------------------------
