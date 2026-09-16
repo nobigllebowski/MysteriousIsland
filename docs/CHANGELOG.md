@@ -9,6 +9,21 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the audio core, synthesised until it is authored (ADR-0027)
+
+The game has never made a sound: the director was wired and every clip lookup returned null.
+It is built on hearing, so every cue now has an arithmetic stand-in built at attach time
+(`Core.Audio.Synth`, engine-free and deterministic; `AudioClip.Create` + `SetData`, ⚠ VERIFY).
+Nothing is written to disk and nothing pretends to be a recording; a clip in `Resources/Audio`
+under the same name wins with no code change. The surf under the Ribcage and the water under
+Fernmaw; the eleven-minute pressure cycle at −38 dBFS from the first frame, its envelope driven
+from the tick; the radio's hiss and carrier following `RadioMix` on every needle move (grass is
+hiss, the smudge a warble, a detune the carrier pitched off, a lock the hiss ducked and the
+carrier clean — the same `Strength` the ribbon draws, so seen and heard cannot disagree); the
+phenolic click at power-up and the mic; the fire's crackle while it burns, sparks on every
+strike, the wind's slap on a blow-out; and the knock and the ring, keyed off what she says about
+the rock. The beds pause with the game and resume where they were. `AudioTests` (8 cases).
+
 ### Changed — documentation reconciled (Phase 1 Task 0, run late)
 
 Conflicts 1–5 are closed in the documents themselves: `production/02` carries the shipped

@@ -20,10 +20,10 @@ was planned. When it disagrees with a design document, this file and the shipped
 
 | | Files | Lines | State |
 |---|---:|---:|---|
-| `ForgottenIsle.Core` (engine-free) | 52 | 7,108 | Written, never compiled |
+| `ForgottenIsle.Core` (engine-free) | 54 | 7,494 | Written, never compiled |
 | `ForgottenIsle.Game` | 48 | 16,705 | Written, never compiled |
 | `ForgottenIsle.UI` (UI Toolkit) | 23 | 6,636 | Written, never compiled |
-| Tests (377 EditMode cases, 30 PlayMode) | 24 | 8,395 | Written, **never executed** |
+| Tests (385 EditMode cases, 30 PlayMode) | 25 | 8,547 | Written, **never executed** |
 | `ForgottenIsle.Editor` | 2 | 443 | Written, never compiled |
 | Documentation | 20 | — | 9 predate the ADRs, unreconciled |
 
@@ -55,7 +55,7 @@ the third save participant); derived objectives; a proximity interaction system 
 interactable kinds (marker, discovery, gate); two runtime-built zones (`ZoneBuilder` +
 `ZoneMeshes`); a `CharacterController`-driven player with gravity and ground following; touch
 controls (floating joystick + look pad); a HUD with objective, prompt and narration; an
-`AudioDirector` that is wired and silent because no clips exist; F5–F7 dev shortcuts. The
+`AudioDirector` that synthesises every cue until clips are authored (ADR-0027); F5–F7 dev shortcuts. The
 playable chain is: read the Standing Stone → take the Brass Tag → Fernmaw unlocks → cross the
 Gully Mouth → read the Cut Channel Wall → take the Waterlogged Reel → return. Travel to a locked
 zone is refused at the command layer.
@@ -121,7 +121,8 @@ Slate entries only; SOMEONE appears from any sign of a hand. The mic cord is the
 **Still not implemented.** Survival meters, camp and fuel burn-down (Phase 5, blocked on
 CONFLICT-6), the recorder drying (it ships dry), the strike swipe (the chert is a use), weather,
 radio hint tier 2 and the fire's tier 2s (staging), an inspect view, a proper slot picker (a
-two-tap overwrite stands in), and any audio content.
+two-tap overwrite stands in), and authored audio (every cue is an arithmetic stand-in; the
+voice is text).
 
 ## 2. Verification status — read this before trusting anything
 
@@ -136,7 +137,7 @@ two-tap overwrite stands in), and any audio content.
 | **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
 | **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
 | **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
-| **Tests** | **UNCONFIRMED — 407 tests written (377 EditMode + 30 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
+| **Tests** | **UNCONFIRMED — 415 tests written (385 EditMode + 30 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
 | **Third editor open (graphics pass)** | **2026-09-15** — the project compiled and ran; the five shaders compiled (a procedural sky was on screen). The game view showed only sky: the island had been built 440–730 m under the sea by a `Mathf.SmoothStep` misuse in the new coastline. Root-caused by reading, fixed, **re-run pending.** |
 | **Shaders** | Compiled once (2026-09-15, sky visible on screen). Subsequent edits **not recompiled.** The five files under `Assets/Resources/Shaders` have not been through Unity's shader compiler, and neither CI gate can look at them — both read C#. A shader that fails to compile renders magenta, so this is visible immediately in the editor and invisible until then. |
 

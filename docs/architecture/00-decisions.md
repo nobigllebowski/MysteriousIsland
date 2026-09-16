@@ -624,6 +624,37 @@ number nobody had asked for yet. When CONFLICT-6 is settled, fuel life is one fi
 
 ---
 
+## ADR-0027 — Audio is synthesised at runtime until it is authored
+
+**Status.** Accepted. Implemented as `Core.Audio.Synth`, `Core.Audio.RadioMix`, and the rewritten
+`Game.Audio.AudioDirector`.
+
+**Decision.** Every cue the game plays has an arithmetic stand-in computed at attach time from
+seeded generators (noise, a one-pole low-pass, sines, damped strikes, a crackle) and loaded into
+an `AudioClip` in memory. No audio file is written, committed or fabricated. An authored clip in
+`Resources/Audio` under the cue's name replaces the stand-in with no code change. The voice on
+5.240 is never synthesised or faked: the carrier is a tone, and the transmission is text.
+
+**Why.** The director had been honestly silent for two phases, which kept "the audio works" from
+looking true — but the game is built on hearing: the tolerance ladder is described in sound, the
+spark problem's clue is a knock against a ring, the pressure cycle is under everything from the
+first frame. A runtime that cannot make those distinctions cannot be played for what it is. The
+generators are engine-free and deterministic, so they are pinned by tests rather than by ear,
+and none of them is a binary asset.
+
+**Consequence.**
+- The radio's mix and the spectrogram share `RadioTuner.Strength`; seen and heard cannot disagree.
+- Every constant in `Synth` and `RadioMix` is a starting point: there is no ear in this
+  environment, and the first listen will move them.
+- The pressure cycle is a two-second sub-bass loop with an eleven-minute envelope driven from
+  the tick; the hook's rise to −14 dBFS at 29:32 is not built.
+- Knock and ring are keyed off the narration keys for the rock: narration is the event stream
+  for those acts. Everything else has its own signal.
+- ⚠ VERIFY in the editor: `AudioClip.Create` / `SetData`, and that the beds pause and resume
+  where they were across the pause screen.
+
+---
+
 ---
 
 ## Open items — tracked, not resolved

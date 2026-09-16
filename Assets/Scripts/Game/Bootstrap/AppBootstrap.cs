@@ -174,9 +174,9 @@ namespace ForgottenIsle.Game.Bootstrap
             RaiseBooted();
 
             // Audio lives on the persistent host so an ambient bed survives a zone change instead
-            // of being cut and restarted by the load. Silent until clips exist; see AudioDirector.
+            // of being cut and restarted by the load. Synthesised until clips exist (ADR-0027).
             _audio = new AudioDirector(Context.Log);
-            _audio.Attach(gameObject, Context.Signals);
+            _audio.Attach(gameObject, Context.Signals, Context.Radio, Context.Fire);
 
             // Before the first state transition, so the very first menu frame is drawn onto a
             // cleared buffer rather than onto whatever the editor left in it.

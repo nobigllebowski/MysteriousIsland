@@ -118,6 +118,12 @@ write); lay wet wood by it and wait ninety seconds for dry wood to return to the
 laid kit alone for six minutes and she should pick up the chert herself. Use the multitool on
 the rope where it lies: it must say "that does nothing here" and the rope must stay.
 
+Then listen: surf under the Ribcage from the first frame; a click when the set powers up; hiss
+when the dial opens, a warble around 5.232, the carrier pitched up around 5.238, ducked hiss and a
+clean tone on 5.240; a low knock on basalt and a bright ring on chert; crackle while the fire
+burns. The beds must pause with the game and resume where they were. Every constant is a first
+guess made without an ear (ADR-0027).
+
 The things most likely to be wrong, in order: a shader that does not compile (magenta); a UI
 Toolkit API used with the wrong signature in `RadioPanel` or `SlateScreen`; a pointer-capture
 edge in the dial strip; `Mesh.bounds` not being the culling volume for the sea. Everything else

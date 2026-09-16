@@ -55,6 +55,7 @@ Full text and rationale in [`architecture/00-decisions.md`](architecture/00-deci
 | 0024 | A remark is a command that records nothing: hints answer an act through the dispatcher, never through progression | **Implemented** (partial hull line) |
 | 0025 | Hint timers count play seconds, forget everything on entering the world, and are not a save participant — the one deliberate exception to ADR-0011 | **Implemented** (hull line 6:00; radio tiers 1, 3 and 4) |
 | 0026 | The dry-fire problem ships as a Phase 6 environmental puzzle in play seconds; fuel burn-down stays with the camp system and CONFLICT-6 | **Implemented** (wrack, rocks, three sites, hints) |
+| 0027 | Audio is synthesised at runtime until it is authored; an authored clip under the same name wins; the voice is never faked | **Implemented** (surf, pressure cycle, hiss and carrier, fire, knock and ring, clicks) |
 
 **Why 0014 reversed:** the uGUI choice assumed a greenfield start. It was not one — the team's
 NATION: WORLD ORDER project already contained a working, code-built UI Toolkit mobile framework at
