@@ -1,6 +1,6 @@
 # ROADMAP
 
-**Position: Phases 2 and 3 implemented; the project has compiled and run once. Phase 4's combination step landed with Phase 3 (crafting is excluded by the game's identity). Phase 5 is blocked on CONFLICT-6. The Phase 6 radio slice is in (set, dial, spectrogram, Slate, sightline, hint ladders), unrun. Next: run it in the editor; then the remaining prologue beats.**
+**Position: Phases 2 and 3 implemented; the project has compiled and run once. Phase 4's combination step landed with Phase 3 (crafting is excluded by the game's identity). Phase 5 is blocked on CONFLICT-6. The Phase 6 slice is in — the radio and its puzzle, the Slate, the sightline, the hint ladders, the dry-fire problem, a synthesised audio core — unrun. Next: run it in the editor. What Phase 6 still lacks is authored audio and the inspect view; Phase 5 waits on the owner's clock decision.**
 
 Full per-phase detail — deliverables, exit criteria, playable state, dependencies —
 in [`production/02-mvp-scope-and-roadmap.md`](production/02-mvp-scope-and-roadmap.md) Part 2.

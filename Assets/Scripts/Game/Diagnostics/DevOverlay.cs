@@ -235,6 +235,15 @@ namespace ForgottenIsle.Game.Diagnostics
                     .Append(string.IsNullOrEmpty(objective) ? "-" : objective)
                     .AppendLine();
 
+            // The puzzles' state in one line: the set, the fire, and how many hint rungs have
+            // been said. A "why did she say that" bug starts here.
+            _builder.Append("radio ")
+                    .Append(_context.Radio.IsWorking ? (_context.Radio.TransmissionReceived ? "heard" : "working") : "dead")
+                    .Append("  ·  fire ")
+                    .Append(_context.Fire.IsLit ? "lit" : (_context.Fire.Sparked ? "sparked" : "cold"))
+                    .Append("  ·  hints ").Append(_context.Hints != null ? _context.Hints.Said : 0)
+                    .AppendLine();
+
             _builder.Append(_context.Clock.ToDisplayString())
                     .Append("  ·  ticks ").Append(_ticker != null ? _ticker.TickCount : 0L)
                     .Append("  ·  slot ").Append(session.BoundSlot)

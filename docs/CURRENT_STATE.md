@@ -1,10 +1,11 @@
 # CURRENT STATE
 
 **Updated:** 2026-09-16 · **Branch:** `claude/keen-darwin-frw656`
-**Phases 2 and 3 implemented; a graphics pass; the Phase 6 radio slice.** The project compiled and
-ran once; the graphics pass then sank the island (fixed, not re-run). Everything after that — the
-radio, the Slate, the sightline, the hint ladders — was traced by reading, not run. Phase 5 is
-blocked on CONFLICT-6.
+**Phases 2 and 3 implemented; a graphics pass; the Phase 6 slice: the radio, the Slate, the
+sightline, the hint ladders, the dry-fire problem, the audio core.** The project compiled and ran
+once; the graphics pass then sank the island (fixed, not re-run). Everything after that was traced
+by reading, not run: 422 tests written, none executed. Phase 5 (survival, camp, fuel) is blocked
+on CONFLICT-6.
 Accounts: [`PHASE_2_REPORT.md`](PHASE_2_REPORT.md) · [`PHASE_3_REPORT.md`](PHASE_3_REPORT.md)
 (the latter is the invisible-world fix, not the items phase — the name predates the phase).
 
@@ -113,6 +114,12 @@ stopped by the voice, forgotten on entering the world (ADR-0025). Radio tier 2 i
 fire sites; sparks, tinder, shelter, five honest failures; wet wood dries by the fire; FIRE in the
 notebook; the fire's hint ladders and blow-out counts. `FireService` is the sixth save participant
 (ADR-0026). Pickups no longer grow back once taken.
+
+**Added — the audio core.** Every cue synthesised at attach time until authored (ADR-0027): surf,
+the pressure cycle, the radio's hiss and carrier on the tolerance ladder, the fire, knock and ring.
+
+**Changed — the objective line follows the puzzles.** `ObjectiveFacts` from the radio and the fire
+beside progression; `ObjectiveKeeper` restates them on their signals.
 
 **Added — the beachcomber's Ribcage.** Seven optional inspectables (boot print, ringed cormorant,
 tide marks, oxy slag, broom arc, canvas square, and the cut vine at the gully mouth — the hook),

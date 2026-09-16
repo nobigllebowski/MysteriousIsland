@@ -15,19 +15,21 @@ a Bronze Age machine built to keep the ocean quiet — and the woman who has bee
 for thirty-one years. **The mystery is a maintenance problem.** No combat, no creatures, no
 weapons; the signature tool is a microphone.
 
-**Phases 1, 1.5, 2 and 3 are implemented.** The project spine exists — five assemblies — Phase 2
-added a playable vertical slice (two zones, a walking player, interaction, progression,
-objectives, a HUD, save), Phase 3 added items, combination, the inventory tray and the first
-maintenance puzzle, and a graphics pass added sky, sea, shore and five shaders. **The project has
-compiled and run once**; every change since is unverified, because the environment it was written
-in has no Unity and no .NET SDK. See `CURRENT_STATE.md` §2.
+**Phases 1, 1.5, 2, 3 and most of 6 are implemented.** The project spine exists — five
+assemblies — Phase 2 added a playable vertical slice (two zones, a walking player, interaction,
+progression, objectives, a HUD, save), Phase 3 added items, combination, the inventory tray and
+the first maintenance puzzle, a graphics pass added sky, sea, shore and five shaders, and the
+Phase 6 slice added the radio and its puzzle, the Field Slate, the hull-line sightline, the hint
+ladders, the dry-fire problem and a synthesised audio core. **The project has compiled and run
+once**; every change since is unverified, because the environment it was written in has no Unity
+and no .NET SDK. See `CURRENT_STATE.md` §2.
 
 ## 2. Read in this order
 
 | Order | File | Why |
 |---|---|---|
 | 1 | `../CLAUDE.md` | Invariants you must not break, and the source-of-truth ordering |
-| 2 | **`CURRENT_STATE.md`** | What is actually true now. **Includes six live CONFLICTS.** |
+| 2 | **`CURRENT_STATE.md`** | What is actually true now. **Includes the two live CONFLICTS** (the clock, the pipeline). |
 | 3 | `DECISIONS.md` | Every locked decision and where it came from |
 | 4 | `ROADMAP.md` | Where we are and what is next |
 | 5 | `ARCHITECTURE.md` | How the code is shaped and why |
