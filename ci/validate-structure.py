@@ -1305,6 +1305,123 @@ def check_localization_mirror(report, root, authoring_keys):
 
 
 # ---------------------------------------------------------------------------
+# Check N -- a member called through a field of a project type must exist
+# ---------------------------------------------------------------------------
+
+MEMBER_FIELD_RE = re.compile(
+    r"^[ \t]*(?:private|protected|internal|public)\s+(?:readonly\s+)?(?:static\s+)?"
+    r"(?P<type>[A-Z]\w*)\s+(?P<field>_\w+)\s*(?:=|;)", re.M)
+MEMBER_USE_RE = re.compile(r"(?<![\w.])(?P<field>_\w+)\??\.(?P<member>\w+)")
+# Every access level, on purpose: a nested type reaches its owner's private members, and the
+# check would otherwise flag `_owner._state` inside SessionService. The cost is that a private
+# member called from OUTSIDE its type passes here; that is a rarer mistake than a deleted one.
+# The optional `<...>` after the name is what makes a generic method (`Publish<TSignal>(`) count.
+MEMBER_DECL_RE = re.compile(
+    r"^[ \t]+(?:(?:public|internal|protected|private)\s+)+(?:static\s+|readonly\s+|virtual\s+|override\s+|abstract\s+|sealed\s+|new\s+|const\s+|event\s+)*"
+    r"[\w<>\[\],.\s?]+?\s+(?P<name>\w+)\s*(?:<[^>]*>\s*)?(?:\(|\{|=>|;|=)", re.M)
+INTERFACE_DECL_RE = re.compile(
+    r"^[ \t]+(?:event\s+)?[\w<>\[\],.\s?]+?\s+(?P<name>\w+)\s*(?:<[^>]*>\s*)?(?:\(|\{|;)", re.M)
+
+
+def _type_body(code, decl_offset):
+    """The text between the braces of the type declared at decl_offset, or ''."""
+    open_at = code.find("{", decl_offset)
+    if open_at < 0:
+        return ""
+    depth = 0
+    for index in range(open_at, len(code)):
+        ch = code[index]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return code[open_at + 1:index]
+    return ""
+
+
+def check_called_members_exist(report, files):
+    """A member reached through a field whose type is a project class must be declared (CS1061).
+
+    WHY THIS EXISTS: a rewrite of HudScreen's narration sequence sliced the SetInventory method
+    out of the file while HudController kept calling it. Every check here passed -- the brace
+    balance held, every type resolved, every using was real -- and the UI assembly could not
+    compile. No check asked the one question the compiler asks first: does the thing being called
+    exist? This one does, for the case the project can answer: a field typed as a class declared
+    in this repository, whose whole inheritance chain is also declared here.
+
+    Anything else is skipped rather than guessed. A field typed as a MonoBehaviour subclass has
+    members this validator cannot see (transform, gameObject), and a generic or interface-typed
+    field may resolve through more than one path. Skipping keeps this from crying wolf; the
+    HudScreen case is fully inside what it checks.
+    """
+    # Members per declared type, merged across partials, plus each type's base names.
+    members = {}
+    bases = {}
+    kinds = {}
+    for rel_path, scan, _namespaces, declarations in files:
+        for decl in declarations:
+            if decl.kind not in ("class", "struct", "interface"):
+                continue
+            body = _type_body(scan.code, decl.offset)
+            names = members.setdefault(decl.name, set())
+            pattern = INTERFACE_DECL_RE if decl.kind == "interface" else MEMBER_DECL_RE
+            for match in pattern.finditer(body):
+                names.add(match.group("name"))
+            kinds[decl.name] = decl.kind
+            bases.setdefault(decl.name, []).extend(
+                base.split("<")[0].split(".")[-1].strip() for base in decl.base_list)
+
+    def all_members(type_name, seen):
+        """Members of a type and its whole chain, or None when any link is not a project type."""
+        if type_name in seen:
+            return set()
+        seen.add(type_name)
+        if type_name not in members:
+            return None
+        result = set(members[type_name])
+        for base in bases.get(type_name, []):
+            if base not in members:
+                return None
+            inherited = all_members(base, seen)
+            if inherited is None:
+                return None
+            result |= inherited
+        return result
+
+    resolved = {}
+    for type_name in members:
+        if kinds.get(type_name) != "class":
+            continue
+        chain = all_members(type_name, set())
+        if chain:
+            resolved[type_name] = chain
+
+    for rel_path, scan, _namespaces, _declarations in files:
+        field_types = {}
+        for match in MEMBER_FIELD_RE.finditer(scan.code):
+            type_name = match.group("type")
+            if type_name in resolved:
+                field_types[match.group("field")] = type_name
+
+        if not field_types:
+            continue
+
+        for match in MEMBER_USE_RE.finditer(scan.code):
+            field = match.group("field")
+            if field not in field_types:
+                continue
+            member = match.group("member")
+            type_name = field_types[field]
+            if member in resolved[type_name]:
+                continue
+            report.error(
+                "MEMBER", rel_path, scan.line_of(match.start("member")),
+                "'%s.%s' is not declared on %s or any of its bases; the field is typed %s "
+                "(this is CS1061 in Unity)" % (field, member, type_name, type_name))
+
+
+# ---------------------------------------------------------------------------
 # Check G -- duplicate public types
 # ---------------------------------------------------------------------------
 
@@ -1769,6 +1886,9 @@ def main(argv=None):
     report.checks_run += 1
 
     check_shadowed_locals(report, files)
+    report.checks_run += 1
+
+    check_called_members_exist(report, files)
 
     # --- Output ------------------------------------------------------------
     report.emit()
@@ -1788,7 +1908,7 @@ def main(argv=None):
     print("                                 contract drift, lockeys, duplicate types,")
     print("                                 missing usings, member/type collisions,")
     print("                                 deprecated Unity APIs, accidental nesting,")
-    print("                                 phantom usings, shadowed locals)")
+    print("                                 phantom usings, shadowed locals, called members)")
     print("  errors .................... %d" % len(report.errors))
     print("  warnings .................. %d%s" % (len(report.warnings), " (hidden by --quiet)" if args.quiet and report.warnings else ""))
     print("")

@@ -60,6 +60,7 @@ namespace ForgottenIsle.UI.Controllers
             _screen.RadioTuneRequested += OnRadioTuneRequested;
             _screen.RadioMicSqueezed += OnRadioMicSqueezed;
             _screen.RadioCloseRequested += OnRadioCloseRequested;
+            _screen.InteractRequested += OnInteractRequested;
 
             if (signals == null)
             {
@@ -107,6 +108,18 @@ namespace ForgottenIsle.UI.Controllers
             ApplyInventory(items);
         }
 
+        /// <summary>
+        /// Raised when the prompt card is tapped. The installer, which owns the input router,
+        /// forwards it; a controller does not hold input.
+        /// </summary>
+        public event Action InteractRequested;
+
+        /// <summary>Takes any narration off the HUD. Called when a run ends, not when it pauses.</summary>
+        public void ClearNarration()
+        {
+            _screen.ClearNarration();
+        }
+
         /// <summary>Shows or hides the touch controls and prompt.</summary>
         /// <param name="active">False while paused, loading, or in a menu.</param>
         public void SetGameplayActive(bool active)
@@ -141,6 +154,7 @@ namespace ForgottenIsle.UI.Controllers
             _screen.RadioTuneRequested -= OnRadioTuneRequested;
             _screen.RadioMicSqueezed -= OnRadioMicSqueezed;
             _screen.RadioCloseRequested -= OnRadioCloseRequested;
+            _screen.InteractRequested -= OnInteractRequested;
 
             for (var i = 0; i < _subscriptions.Count; i++)
             {
@@ -240,6 +254,15 @@ namespace ForgottenIsle.UI.Controllers
             }
 
             _screen.ShowNarrationSequence(_sequence);
+        }
+
+        private void OnInteractRequested()
+        {
+            var handler = InteractRequested;
+            if (handler != null)
+            {
+                handler();
+            }
         }
 
         private void OnRadioTuneRequested(float mhz)

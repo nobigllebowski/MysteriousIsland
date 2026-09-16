@@ -87,14 +87,19 @@ band with inertia, fine knob and spectrogram ribbon, three stations and the tran
 `RadioService` is the fifth save participant. See the changelog for what the slice deliberately
 leaves out (phone mic, hint timers, the Field Slate).
 
+**Autosave now exists.** `AutosaveDirector` writes the ring on zone entry, the voice, a solved
+mechanism and a zone unlock. Solved mechanisms are progression and survive a save. On touch, the
+prompt card is the world verb; there is no raw tap binding.
+
 **Still not implemented.** The Field Slate, survival meters, camp (Phase 5, blocked on
-CONFLICT-6), weather, hint escalation, and any audio content.
+CONFLICT-6), weather, hint escalation, a slot-delete path in the menu (O-11), a recorded-percent
+figure (O-12), and any audio content.
 
 ## 2. Verification status — read this before trusting anything
 
 | Check | Result |
 |---|---|
-| `ci/validate-structure.py` | **exit 0** — 116 files, 155 public types, 13 checks, 0 errors, 52 warnings |
+| `ci/validate-structure.py` | **exit 0** — 14 checks (the fourteenth, `MEMBER`, catches a called member that no longer exists) |
 | `ci/check-layering.sh` | **exit 0** — all 5 invariants hold |
 | Core references `UnityEngine` | **0 occurrences** outside comments |
 | `Update()` methods | **exactly 1** (`Ticker.cs`) |
@@ -103,14 +108,15 @@ CONFLICT-6), weather, hint escalation, and any audio content.
 | **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
 | **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
 | **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
-| **Tests** | **UNCONFIRMED — 293 tests written (279 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
+| **Tests** | **UNCONFIRMED — 299 tests written (285 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
 | **Third editor open (graphics pass)** | **2026-09-15** — the project compiled and ran; the five shaders compiled (a procedural sky was on screen). The game view showed only sky: the island had been built 440–730 m under the sea by a `Mathf.SmoothStep` misuse in the new coastline. Root-caused by reading, fixed, **re-run pending.** |
 | **Shaders** | Compiled once (2026-09-15, sky visible on screen). Subsequent edits **not recompiled.** The five files under `Assets/Resources/Shaders` have not been through Unity's shader compiler, and neither CI gate can look at them — both read C#. A shader that fails to compile renders magenta, so this is visible immediately in the editor and invisible until then. |
 
 `ci/validate-structure.py` is a deliberate compiler substitute: brace balance, namespace
 conformance, engine-free Core, asmdef validity, cross-file undeclared-type detection, LocKey
-coverage, duplicate types, accidental nesting, phantom usings and shadowed locals. It is not a
-compiler, it does not read shaders, and it cannot prove the project builds.
+coverage, duplicate types, accidental nesting, phantom usings, shadowed locals and called members
+on project types. It is not a compiler, it does not read shaders, and it cannot prove the project
+builds.
 
 ## 3. CONFLICTS — unresolved contradictions in the documentation
 

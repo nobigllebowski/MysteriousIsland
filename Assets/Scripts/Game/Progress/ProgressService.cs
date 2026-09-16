@@ -25,12 +25,36 @@ namespace ForgottenIsle.Game.Progress
     /// </remarks>
     public sealed class ProgressService : ISaveParticipant
     {
+        /// <summary>True once the mechanism has been made to work.</summary>
+        public bool HasSolved(string mechanismId)
+        {
+            return _progress.HasSolved(mechanismId);
+        }
+
+        /// <summary>
+        /// Records a mechanism as working. A machine that was fixed stays fixed across a save,
+        /// because the whole premise is that somebody maintaining things is what keeps them going.
+        /// </summary>
+        /// <returns>False when it already was.</returns>
+        public bool Solve(string mechanismId)
+        {
+            if (!_progress.Solve(mechanismId))
+            {
+                return false;
+            }
+
+            Publish(new ProgressChangedSignal(mechanismId, ProgressChangeKind.Solved));
+            PublishObjectiveIfChanged();
+            return true;
+        }
+
         /// <summary>On-disk section id, owned by <see cref="SaveSections"/> like every other one.</summary>
         public const string SectionId = SaveSections.Progress;
 
         private const string KeyInspected = "inspected";
         private const string KeyCollected = "collected";
         private const string KeyUnlocked = "unlocked";
+        private const string KeySolved = "solved";
         private const char Separator = '\u001F';  // ASCII unit separator: never valid inside an id
 
         private readonly WorldProgress _progress = new WorldProgress();
@@ -173,7 +197,8 @@ namespace ForgottenIsle.Game.Progress
             var payload = string.Concat(
                 KeyInspected, "=", Join(_progress.Inspected), "\n",
                 KeyCollected, "=", Join(_progress.Collected), "\n",
-                KeyUnlocked, "=", Join(_progress.UnlockedZones));
+                KeyUnlocked, "=", Join(_progress.UnlockedZones), "\n",
+                KeySolved, "=", Join(_progress.Solved));
 
             doc.PutSection(SectionId, payload);
         }
@@ -194,6 +219,7 @@ namespace ForgottenIsle.Game.Progress
             List<string> inspected = null;
             List<string> collected = null;
             List<string> unlocked = null;
+            List<string> solved = null;
 
             var lines = payload.Split('\n');
             for (var i = 0; i < lines.Length; i++)
@@ -220,13 +246,19 @@ namespace ForgottenIsle.Game.Progress
                 {
                     unlocked = values;
                 }
+                else if (key == KeySolved)
+                {
+                    solved = values;
+                }
                 else if (_log != null)
                 {
                     _log.Warn(LogCode.SaveCorrupt, "progress: unknown key '" + key + "'");
                 }
             }
 
-            _progress.RestoreFrom(inspected, collected, unlocked);
+            // A save from before mechanisms were recorded has no solved list: an older run with
+            // nothing fixed yet, not corruption.
+            _progress.RestoreFrom(inspected, collected, unlocked, solved);
             PublishReplaced();
         }
 

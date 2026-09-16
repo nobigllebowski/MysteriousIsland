@@ -4,6 +4,7 @@ using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.Primitives;
 using ForgottenIsle.Core.Signals;
+using ForgottenIsle.Core.State;
 using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Progress;
 using UnityEngine;
@@ -39,6 +40,15 @@ namespace ForgottenIsle.Game.Interaction
         /// </remarks>
         /// <param name="itemId">An <c>ItemIds</c> id.</param>
         bool HasItem(string itemId);
+
+        /// <summary>True once the mechanism has been made to work, in this run or a saved one.</summary>
+        bool HasSolved(string mechanismId);
+
+        /// <summary>
+        /// Records a mechanism as working. Called by the mechanism from inside a use, which is
+        /// inside a command, so it is still a handler-driven change.
+        /// </summary>
+        void MarkSolved(string mechanismId);
     }
 
     /// <summary>
@@ -96,6 +106,15 @@ namespace ForgottenIsle.Game.Interaction
             _commands = commands;
             _signals = signals;
             _log = log;
+
+            // Offers follow the mode. Paused, the prompt goes down and Activate is refused; back
+            // in the world, the next scan re-offers whatever is in range and republishes it. Without
+            // this the HUD hid the prompt on pause and nothing ever put it back while the target
+            // was unchanged -- and a press still fired it, with no prompt on screen.
+            if (_signals != null)
+            {
+                _signals.Subscribe<GameStateChangedSignal>(changed => SetSuppressed(changed.To != GameStateId.InGame));
+            }
         }
 
         /// <inheritdoc />
@@ -147,6 +166,19 @@ namespace ForgottenIsle.Game.Interaction
         public bool HasCollected(string discoveryId)
         {
             return _progress != null && _progress.HasCollected(discoveryId);
+        }
+
+        public bool HasSolved(string mechanismId)
+        {
+            return _progress != null && _progress.HasSolved(mechanismId);
+        }
+
+        public void MarkSolved(string mechanismId)
+        {
+            if (_progress != null)
+            {
+                _progress.Solve(mechanismId);
+            }
         }
 
         /// <inheritdoc />

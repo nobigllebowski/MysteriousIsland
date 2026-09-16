@@ -129,6 +129,11 @@ namespace ForgottenIsle.Game.Interaction
             _solved = true;
             OnSolved();
 
+            if (services != null)
+            {
+                services.MarkSolved(ContentId);
+            }
+
             return _consumesItem
                 ? UseOutcome.Spent(_solvedLineKey)
                 : UseOutcome.Worked(_solvedLineKey);
@@ -144,10 +149,15 @@ namespace ForgottenIsle.Game.Interaction
         /// <inheritdoc />
         public override void ApplyRestoredState(IInteractionServices services)
         {
-            // A solved mechanism is not restored here, and that is deliberate rather than an
-            // oversight: what it unlocks is recorded in progression, and progression is what
-            // survives a save. The machine itself going back to its broken pose on re-entry is
-            // correct -- the door it opened stays open.
+            // A machine that was fixed stays fixed. The first version left this empty on the
+            // theory that only what a mechanism unlocks needs to survive; in practice the sluice
+            // re-seized on every zone entry and could be opened again with the same key, which is
+            // the opposite of the island's premise. Progression records the solve; this reads it.
+            if (services != null && services.HasSolved(ContentId))
+            {
+                _solved = true;
+                OnSolved();
+            }
         }
 
         private void OnSolved()

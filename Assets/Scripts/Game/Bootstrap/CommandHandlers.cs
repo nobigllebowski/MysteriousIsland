@@ -686,8 +686,12 @@ namespace ForgottenIsle.Game.Bootstrap
         /// <param name="states">Mode machine; collecting is an in-world act only.</param>
         /// <param name="progress">Progression that records the pickup and its unlock.</param>
         /// <param name="signals">Bus the narration line is published on. Null tolerated.</param>
-        public CollectHandler(GameStateMachine states, ProgressService progress, SignalBus signals)
+        private readonly InventoryService _inventory;
+
+        /// <param name="inventory">Receives the item a discovery also is. Null grants nothing.</param>
+        public CollectHandler(GameStateMachine states, ProgressService progress, SignalBus signals, InventoryService inventory = null)
         {
+            _inventory = inventory;
             _states = states ?? throw new ArgumentNullException(nameof(states));
             _progress = progress ?? throw new ArgumentNullException(nameof(progress));
             _signals = signals;
@@ -717,6 +721,14 @@ namespace ForgottenIsle.Game.Bootstrap
         public void Execute(in CollectCommand command)
         {
             _progress.Collect(command.DiscoveryId);
+
+            // Some discoveries are also objects. The reel is recorded AND carried; without this
+            // the combination chain that starts with it could never start.
+            string itemId;
+            if (_inventory != null && DiscoveryItems.TryItemFor(command.DiscoveryId, out itemId))
+            {
+                _inventory.Take(itemId);
+            }
 
             if (_signals != null)
             {

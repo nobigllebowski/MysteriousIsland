@@ -118,7 +118,12 @@ namespace ForgottenIsle.Game.Input
             Interact = _gameplay.AddAction("Interact", InputActionType.Button);
             Interact.AddBinding("<Keyboard>/e");
             Interact.AddBinding("<Gamepad>/buttonSouth");
-            Interact.AddBinding("<Touchscreen>/primaryTouch/tap");
+
+            // NOT <Touchscreen>/primaryTouch/tap. The Input System reads that control from the
+            // device with no idea what UI element was under the finger, so on a phone every tap on
+            // the pause button, an inventory chip or the radio's dial was ALSO the world verb: with
+            // the brass tag in range, tapping "Put down" could take the tag. On touch the verb is
+            // the prompt card itself, which the HUD raises through InputRouter.RequestInteract.
 
             _system = new InputActionMap(SystemMapName);
 

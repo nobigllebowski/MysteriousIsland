@@ -200,6 +200,10 @@ namespace ForgottenIsle.UI.Bootstrap
                 context.Commands);
             _loadFailedScreen = new LoadFailedScreen(_ui.Context, OnReturnToMenu);
 
+            // The prompt card's tap is the touch world verb. It goes through the router's gate
+            // exactly as a key press does, so a tap while paused or suppressed is dropped there.
+            _hud.InteractRequested += () => context.Input.RequestInteract();
+
             _menu = new MainMenuController(_ui, context.Commands, _slots, context.Log, Application.version);
 
             // The pause menu is given a snapshot factory, never the run itself: PauseSnapshot is a value,
@@ -415,6 +419,7 @@ namespace ForgottenIsle.UI.Bootstrap
             {
                 case GameStateId.MainMenu:
                     _hud.SetGameplayActive(false);
+                    _hud.ClearNarration();
                     _pause.Hide();
                     _ui.Curtain.Hide();
                     _menu.Show();

@@ -328,6 +328,19 @@ namespace ForgottenIsle.Game.Input
         /// </remarks>
         private void OnInteractPerformed(InputAction.CallbackContext context)
         {
+            RequestInteract();
+        }
+
+        /// <summary>
+        /// The world verb, requested by the HUD.
+        /// </summary>
+        /// <remarks>
+        /// On touch there is no Interact binding at all: a raw screen tap cannot tell a chip from
+        /// a prompt, so the prompt card itself is the control, and it arrives here through the
+        /// same gate a key press does. Blocked means blocked whichever way the request came in.
+        /// </remarks>
+        public void RequestInteract()
+        {
             if (IsBlocked)
             {
                 return;

@@ -125,7 +125,10 @@ namespace ForgottenIsle.Core.Signals
         ZoneUnlocked = 2,
 
         /// <summary>Progress was wiped or replaced wholesale (new game, or a save was loaded).</summary>
-        Replaced = 3
+        Replaced = 3,
+
+        /// <summary>A mechanism was made to work.</summary>
+        Solved = 4
     }
 
     /// <summary>The objective line changed.</summary>

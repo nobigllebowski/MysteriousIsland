@@ -64,6 +64,10 @@ namespace ForgottenIsle.Game.Bootstrap
             var progress = new ProgressService(signals, log);
             var inventory = new InventoryService(signals, log);
             var radio = new RadioService(signals, inventory, log);
+
+            // The autosave ring's only writer. Held by the context so it lives as long as the run
+            // does; it subscribes in its constructor and is inert without a bus.
+            var autosave = new AutosaveDirector(slots, session, states, signals, log);
             var interactions = new InteractionSystem(progress, inventory, dispatcher, signals, log);
 
             // ADR-0011: every phase adds its participant in the same pull
@@ -91,7 +95,7 @@ namespace ForgottenIsle.Game.Bootstrap
             // resume into an empty world and report success.
             dispatcher.Register<StartNewGameCommand>(new StartNewGameHandler(states, session, zones, progress, log, null, inventory, radio));
             dispatcher.Register<InspectCommand>(new InspectHandler(states, progress, signals));
-            dispatcher.Register<CollectCommand>(new CollectHandler(states, progress, signals));
+            dispatcher.Register<CollectCommand>(new CollectHandler(states, progress, signals, inventory));
             dispatcher.Register<ResumeSavedRunCommand>(new ResumeSavedRunHandler(states, slots, session, zones, log));
             dispatcher.Register<SaveGameCommand>(new SaveGameHandler(slots, session, states, signals, log));
             dispatcher.Register<QuitToMenuCommand>(new QuitToMenuHandler(states, zones, session, log));
@@ -104,7 +108,7 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));
             dispatcher.Register<SqueezeMicCommand>(new SqueezeMicHandler(states, radio, signals));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, participants);
         }
 
         /// <summary>

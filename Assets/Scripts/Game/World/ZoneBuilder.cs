@@ -933,10 +933,13 @@ namespace ForgottenIsle.Game.World
             Dress(moving.GetComponent<MeshRenderer>(), CreateMaterial(tint, "MechanismPart"));
 
             var mechanism = housing.AddComponent<Mechanism>();
+            // The idle line's key is the one InspectHandler composes from the content id, because
+            // examining a mechanism empty-handed IS an InspectCommand: the handler narrates
+            // NarrationPrefix + id, and a ".idle" suffix here was a row nobody ever read.
             mechanism.Configure(
                 contentId,
                 nameKey,
-                "narration." + contentId + ".idle",
+                "narration." + contentId,
                 "narration." + contentId + ".solved",
                 requiredItemId,
                 consumesItem: false);

@@ -67,6 +67,7 @@ namespace ForgottenIsle.Game.Bootstrap
             InteractionSystem interactions,
             InventoryService inventory,
             RadioService radio,
+            AutosaveDirector autosave,
             IReadOnlyList<ISaveParticipant> saveParticipants)
         {
             if (log == null)
@@ -138,6 +139,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Interactions = interactions ?? throw new ArgumentNullException(nameof(interactions));
             Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
             Radio = radio ?? throw new ArgumentNullException(nameof(radio));
+            Autosave = autosave;
             Input = input;
 
             // Copied defensively. The participant list is what a save iterates; handing out the
@@ -198,6 +200,9 @@ namespace ForgottenIsle.Game.Bootstrap
 
         /// <summary>The radio: faults, needle, and what has been heard. Fifth save participant.</summary>
         public RadioService Radio { get; }
+
+        /// <summary>The autosave ring's writer. Null tolerated by everything that reads it.</summary>
+        public AutosaveDirector Autosave { get; }
 
         /// <summary>
         /// Player input, already gated on the state machine so it reads as centred outside

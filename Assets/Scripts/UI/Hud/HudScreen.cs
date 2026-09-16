@@ -91,6 +91,17 @@ namespace ForgottenIsle.UI.Hud
         /// <summary>Raised when the player puts the radio down.</summary>
         public event System.Action RadioCloseRequested;
 
+        /// <summary>
+        /// Raised when the prompt card is tapped. On touch this IS the world verb.
+        /// </summary>
+        /// <remarks>
+        /// There is no touchscreen binding for Interact, on purpose: the Input System reads a tap
+        /// from the device with no idea what was under the finger, and every tap on the pause
+        /// button or a chip was also the world verb. The card is a real control now, 48 dp tall,
+        /// and what it does is decided by the router's gate, not here.
+        /// </remarks>
+        public event System.Action InteractRequested;
+
         /// <inheritdoc />
         protected override void Build(VisualElement root)
         {
@@ -263,6 +274,23 @@ namespace ForgottenIsle.UI.Hud
             }
         }
 
+        /// <summary>Replaces what the tray shows.</summary>
+        /// <remarks>
+        /// Restored after a rewrite of the narration sequence sliced it out of the file while the
+        /// controller kept calling it -- a compile error neither CI gate could see, because
+        /// neither checks that a called member exists. The validator now does.
+        /// </remarks>
+        /// <param name="items">Item ids paired with already-localized names.</param>
+        public void SetInventory(System.Collections.Generic.IReadOnlyList<InventoryItemView> items)
+        {
+            if (!IsBuilt)
+            {
+                return;
+            }
+
+            _inventory.SetItems(items);
+        }
+
         /// <summary>Shows or hides the tuning band, and moves the cards above it while it is up.</summary>
         /// <remarks>
         /// The band is the last child of the HUD root and covers the bottom third, and UI Toolkit
@@ -352,6 +380,30 @@ namespace ForgottenIsle.UI.Hud
             _sequenceTimer = _narrationCard.schedule.Execute(step).StartingIn(VisibleMsFor(copy[0]));
         }
 
+        private void RaiseInteractRequested()
+        {
+            var handler = InteractRequested;
+            if (handler != null)
+            {
+                handler();
+            }
+        }
+
+        /// <summary>Takes any narration off the card and stops its timers. A run ended.</summary>
+        public void ClearNarration()
+        {
+            if (!IsBuilt)
+            {
+                return;
+            }
+
+            _narrationTimer?.Pause();
+            _narrationTimer = null;
+            _sequenceTimer?.Pause();
+            _sequenceTimer = null;
+            _narrationCard.style.display = DisplayStyle.None;
+        }
+
         private void RaiseCombineRequested(string first, string second)
         {
             var handler = CombineRequested;
@@ -414,7 +466,11 @@ namespace ForgottenIsle.UI.Hud
             _promptCard.pickingMode = PickingMode.Ignore;
             root.Add(_promptCard);
 
-            var card = new VisualElement();
+            // The card is a button. Tapping the prompt is how a thumb interacts; the strip around
+            // it stays unpickable so the look pad underneath still gets the rest of the screen.
+            var card = new Button(RaiseInteractRequested);
+            card.name = "prompt-card";
+            card.style.minHeight = 48f;
             card.style.backgroundColor = Theme.Surface;
             card.style.paddingLeft = Theme.Space16;
             card.style.paddingRight = Theme.Space16;
@@ -425,7 +481,7 @@ namespace ForgottenIsle.UI.Hud
             card.style.borderBottomLeftRadius = Theme.RadiusSm;
             card.style.borderBottomRightRadius = Theme.RadiusSm;
             card.style.alignItems = Align.Center;
-            card.pickingMode = PickingMode.Ignore;
+            card.text = string.Empty;
             _promptCard.Add(card);
 
             _promptName = Typography.Body(string.Empty);

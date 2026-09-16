@@ -9,6 +9,41 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — an end-to-end read of every player chain, and what it found
+
+Six chains traced hop by hop — boot → menu → new game; the Ribcage progression; the item chain;
+the radio; save → pause → quit; every composed localization key. Findings, all applied:
+
+- **`HudScreen.SetInventory` had been deleted** by a rewrite of the narration sequence while the
+  controller kept calling it: a compile error in the UI assembly that neither gate could see.
+  Restored, and the validator gained a fourteenth check, **`MEMBER`**: a member reached through a
+  field typed as a project class must be declared on that class or its bases (CS1061). Proven
+  against the bug: with the method deleted it reports it; restored, it is silent.
+- **The waterlogged reel was a discovery and never an item**, so the combination it starts, the
+  rebound reel and the tape deck were unreachable. `DiscoveryItems` names the discoveries that are
+  also objects; `CollectHandler` records the beat and puts the reel in hand.
+- **A solved mechanism re-seized on every zone entry** and could be solved again with the same key.
+  `WorldProgress` records solved mechanisms; the save carries them; `Mechanism` restores its pose.
+- **A mechanism examined empty-handed showed `#narration.mechanism.…#`**: the idle rows were keyed
+  `.idle` and the inspect handler composes the plain key. Rows renamed.
+- **The prompt vanished on pause and never came back** while the target was unchanged — and a
+  press still fired it. `InteractionSystem` now follows the mode: suppressed outside `InGame`,
+  re-offering on return.
+- **Every screen tap was also the world verb** on a phone: the Input System read
+  `<Touchscreen>/primaryTouch/tap` from the device with no idea what was under the finger, so a
+  tap on Pause or a chip could take the brass tag. The binding is gone; the prompt card is a real
+  48 dp button that reaches the router through the same gate a key press does.
+- **The autosave ring had no writer** since Phase 1: CONTINUE read a slot nothing filled.
+  `AutosaveDirector` writes it on the unlosable beats — entering a zone, hearing the voice, making
+  a machine work, unlocking a zone — and only while a run is in the world.
+- Narration is cleared when a run ends rather than paused and resumed on the next one; the
+  dead torch has its line; a discovery that is not an object grants nothing.
+
+Left open and recorded (`DECISIONS.md` §Open items): after three saved runs NEW GAME is refused
+and there is no delete path in the UI (O-11); `RecordedPercent` is never computed (O-12).
+
+**IMPLEMENTED BUT NOT RUNTIME VERIFIED.** Both gates pass; six new EditMode cases. Nothing compiled.
+
 ### Fixed — pickups, mechanisms and the radio were unreachable from the world
 
 `InteractionSystem.Dispatch` routed exactly three command kinds — inspect, collect, travel — and

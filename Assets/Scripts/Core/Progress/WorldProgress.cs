@@ -22,6 +22,7 @@ namespace ForgottenIsle.Core.Progress
         private readonly HashSet<string> _inspected;
         private readonly HashSet<string> _collected;
         private readonly HashSet<string> _unlockedZones;
+        private readonly HashSet<string> _solved;
 
         /// <summary>A fresh run: nothing found, and only the opening zone reachable.</summary>
         public WorldProgress()
@@ -31,6 +32,7 @@ namespace ForgottenIsle.Core.Progress
             _inspected = new HashSet<string>(StringComparer.Ordinal);
             _collected = new HashSet<string>(StringComparer.Ordinal);
             _unlockedZones = new HashSet<string>(StringComparer.Ordinal) { ContentIds.ZoneRibcage };
+            _solved = new HashSet<string>(StringComparer.Ordinal);
         }
 
         /// <summary>Markers the player has read.</summary>
@@ -44,6 +46,22 @@ namespace ForgottenIsle.Core.Progress
 
         /// <summary>How many discoveries have been taken. Shown on the dev overlay.</summary>
         public int CollectedCount => _collected.Count;
+
+        /// <summary>Mechanisms made to work, by content id. A machine that was fixed stays fixed.</summary>
+        public IReadOnlyCollection<string> Solved => _solved;
+
+        /// <summary>True once the mechanism has been made to work.</summary>
+        public bool HasSolved(string mechanismId)
+        {
+            return !string.IsNullOrEmpty(mechanismId) && _solved.Contains(mechanismId);
+        }
+
+        /// <summary>Records a mechanism as working.</summary>
+        /// <returns>False when it already was.</returns>
+        public bool Solve(string mechanismId)
+        {
+            return !string.IsNullOrEmpty(mechanismId) && _solved.Add(mechanismId);
+        }
 
         /// <summary>True when <paramref name="markerId"/> has been read.</summary>
         /// <param name="markerId">A <see cref="ContentIds"/> marker id.</param>
@@ -97,6 +115,7 @@ namespace ForgottenIsle.Core.Progress
             _collected.Clear();
             _unlockedZones.Clear();
             _unlockedZones.Add(ContentIds.ZoneRibcage);
+            _solved.Clear();
         }
 
         /// <summary>Replaces the contents from a loaded save.</summary>
@@ -113,18 +132,29 @@ namespace ForgottenIsle.Core.Progress
             IEnumerable<string> collected,
             IEnumerable<string> unlockedZones)
         {
+            RestoreFrom(inspected, collected, unlockedZones, null);
+        }
+
+        /// <summary>Replaces everything, including the solved set. Null lists are read as empty.</summary>
+        public void RestoreFrom(
+            IEnumerable<string> inspected,
+            IEnumerable<string> collected,
+            IEnumerable<string> unlockedZones,
+            IEnumerable<string> solved)
+        {
             Reset();
             AddAll(_inspected, inspected);
             AddAll(_collected, collected);
             AddAll(_unlockedZones, unlockedZones);
             _unlockedZones.Add(ContentIds.ZoneRibcage);
+            AddAll(_solved, solved);
         }
 
         /// <summary>An independent copy, so a caller can hold a stable view across a mutation.</summary>
         public WorldProgress Clone()
         {
             var copy = new WorldProgress();
-            copy.RestoreFrom(_inspected, _collected, _unlockedZones);
+            copy.RestoreFrom(_inspected, _collected, _unlockedZones, _solved);
             return copy;
         }
 
