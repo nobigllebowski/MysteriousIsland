@@ -1,6 +1,6 @@
 # ROADMAP
 
-**Position: Phases 2 and 3 implemented; the project has compiled and run once. Phase 4's combination step landed with Phase 3 (crafting is excluded by the game's identity). Phase 5 is blocked on CONFLICT-6. Next: the Phase 6 radio slice.**
+**Position: Phases 2 and 3 implemented; the project has compiled and run once. Phase 4's combination step landed with Phase 3 (crafting is excluded by the game's identity). Phase 5 is blocked on CONFLICT-6. The Phase 6 radio slice is in (set, dial, spectrogram, Slate, sightline, hint ladders), unrun. Next: run it in the editor; then the remaining prologue beats.**
 
 Full per-phase detail — deliverables, exit criteria, playable state, dependencies —
 in [`production/02-mvp-scope-and-roadmap.md`](production/02-mvp-scope-and-roadmap.md) Part 2.

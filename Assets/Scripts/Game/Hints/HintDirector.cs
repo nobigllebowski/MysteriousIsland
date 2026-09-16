@@ -154,9 +154,11 @@ namespace ForgottenIsle.Game.Hints
 
             HintTier due;
 
-            // The hull line is on the Ribcage shore. Time spent in another zone is not time spent
-            // not noticing it.
+            // The hull line is on the Ribcage shore. Time spent in another zone, or with the dial
+            // up and the player's attention on the set, is not time spent not noticing it -- and
+            // a line about hulls landing in the middle of the transmission would tread on it.
             if (_hullLine.IsRunning
+                && !_radio.IsOpen
                 && string.Equals(_session.ZoneId, ContentIds.ZoneRibcage, StringComparison.Ordinal)
                 && _hullLine.TryAdvance(delta, out due))
             {

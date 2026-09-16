@@ -1,9 +1,10 @@
 # CURRENT STATE
 
-**Updated:** 2026-09-15 · **Branch:** `claude/keen-darwin-frw656`
-**Phases 2 and 3 implemented; a graphics pass on top.** The project compiled and ran once; the
-graphics pass then sank the island (fixed, not re-run). Phase 5 blocked on CONFLICT-6; the Phase 6
-radio slice is next.
+**Updated:** 2026-09-16 · **Branch:** `claude/keen-darwin-frw656`
+**Phases 2 and 3 implemented; a graphics pass; the Phase 6 radio slice.** The project compiled and
+ran once; the graphics pass then sank the island (fixed, not re-run). Everything after that — the
+radio, the Slate, the sightline, the hint ladders — was traced by reading, not run. Phase 5 is
+blocked on CONFLICT-6.
 Accounts: [`PHASE_2_REPORT.md`](PHASE_2_REPORT.md) · [`PHASE_3_REPORT.md`](PHASE_3_REPORT.md)
 (the latter is the invisible-world fix, not the items phase — the name predates the phase).
 

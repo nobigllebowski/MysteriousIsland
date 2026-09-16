@@ -104,6 +104,12 @@ torch off the nail, use it, the multitool and the spring on the set, TUNE, drag 
 transmission, open the Slate from its HUD tab and check UNRESOLVED reads 3. Pause with the dial
 open and resume; save and continue; tap NEW GAME twice with every slot full.
 
+Then the observation and hint slice: stand past the near hull's bow and look down the beach (the
+chalk should snap in at ±4° and SIX HULLS, ONE LINE appear in the Slate); stand at the third
+hull instead (three chalk in; "Try the far end"); leave the set powered up and untouched for
+sixteen minutes (tier 1 at 3:00, tier 3 at 10:00, then the dial opens and sweeps itself, locking
+the hull on the way and her at about ninety seconds; a tap on the strip must stop it).
+
 The things most likely to be wrong, in order: a shader that does not compile (magenta); a UI
 Toolkit API used with the wrong signature in `RadioPanel` or `SlateScreen`; a pointer-capture
 edge in the dial strip; `Mesh.bounds` not being the culling volume for the sea. Everything else
