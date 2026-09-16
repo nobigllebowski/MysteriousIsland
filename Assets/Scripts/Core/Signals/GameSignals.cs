@@ -183,6 +183,23 @@ namespace ForgottenIsle.Core.Signals
 
         /// <summary>The target's content id, or empty. An opaque token to the HUD; the handler reads it.</summary>
         public readonly string ContentId;
+
+        /// <summary>The item the player is holding up, or empty. The prompt reads USE <item> while it is set.</summary>
+        public readonly string HeldItemId;
+
+        /// <param name="nameKey">Localization key naming the object.</param>
+        /// <param name="promptKey">Localization key of the verb.</param>
+        /// <param name="hasTarget">Whether anything is in range.</param>
+        /// <param name="contentId">The target's content id.</param>
+        /// <param name="heldItemId">The item held up for use, or empty.</param>
+        public InteractionTargetChangedSignal(string nameKey, string promptKey, bool hasTarget, string contentId, string heldItemId)
+        {
+            NameKey = nameKey;
+            PromptKey = promptKey;
+            HasTarget = hasTarget;
+            ContentId = contentId ?? string.Empty;
+            HeldItemId = heldItemId ?? string.Empty;
+        }
     }
 
     /// <summary>A line of atmospheric text to show the player, from an inspection or a pickup.</summary>
@@ -208,7 +225,10 @@ namespace ForgottenIsle.Core.Signals
         Removed = 1,
 
         /// <summary>The whole inventory was replaced — a load, or a new run.</summary>
-        Replaced = 2
+        Replaced = 2,
+
+        /// <summary>The item held up for use changed. <c>ItemId</c> is the held item, or empty.</summary>
+        Held = 3
     }
 
     /// <summary>Raised whenever the inventory changes.</summary>

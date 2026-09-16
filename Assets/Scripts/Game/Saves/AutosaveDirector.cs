@@ -81,7 +81,14 @@ namespace ForgottenIsle.Game.Saves
 
         private void OnStateChanged(GameStateChangedSignal signal)
         {
-            if (signal.To == GameStateId.InGame && signal.From == GameStateId.Loading)
+            if (signal.To != GameStateId.InGame)
+            {
+                // A beat raised in the frame the world was left is not written for the next run.
+                _pending = null;
+                return;
+            }
+
+            if (signal.From == GameStateId.Loading)
             {
                 Request("arrived");
             }

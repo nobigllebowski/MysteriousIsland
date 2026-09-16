@@ -9,6 +9,39 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the held item is game state: one rule for every input
+
+A review of the last three commits found the aimed use lived in the HUD: the tray remembered
+which chip was selected, and `HudController` built the `UseItemCommand` itself and dispatched it
+straight past the input router's gate. A keyboard press, the prompt button and a touch tap
+therefore meant three different things. Now the selection is a command (`HoldItemCommand`,
+`InventoryService.Held`); `InteractionSystem.Activate` applies it for every input path — held
+item present → use it on the target, otherwise the target's own verb — and releases the hold
+after the attempt. The HUD only reports taps; `HudController.Decide` turns a tap into hold,
+release or combine and dispatches that. `InteractionTargetChangedSignal` carries the held id so
+the prompt can read **USE <item>** without a second source of truth.
+
+- **Tray taps are commands.** `InventoryPanel` no longer decides what a tap means; it raises
+  `ItemTapped` and is told what is held via `SetHeldItem`. The combine decision moved out of the
+  UI assembly, per ADR-0002.
+- **A pending autosave no longer crosses a run boundary.** `AutosaveDirector` clears its pending
+  request whenever the state leaves `InGame`, so a beat requested in the last tick of one run
+  cannot be flushed into the next.
+- **Passive refusals are latched.** A sightline whose observation the dispatcher refuses no
+  longer re-dispatches every tick and floods the log; `Interactable.OnObservationRefused` lets it
+  latch until the player is unaligned again.
+- **`ContentKind` replaces string sniffing in the Slate.** `ContentIds.KindOf` is one table for
+  what an id is (discovery, marker, mechanism, radio); `Slate.IsRecorded` reads it instead of
+  prefix checks. A mechanism is recorded only when solved.
+- **The near hull is nearest the spawn, bow toward the stand point.** `BuildHullLine` placed the
+  first hull with its stern to the player; the yaw and the stand point are now derived from the
+  same axis.
+- Comments corrected where they described the pre-review behaviour.
+
+Tests: three holding cases in `InventoryTests`, one `ContentKind` case in `SlateTests`;
+`InventoryPanelTests` rewritten around `HudController.Decide` and the reporter panel.
+Repository total is now 340 written (310 EditMode, 30 PlayMode), none executed.
+
 ### Added — six hulls, one line: the sightline
 
 The design's first discovery (§2:40), and the game's foundational observation verb. Six wrecked

@@ -87,6 +87,11 @@ namespace ForgottenIsle.Game.Interaction
             return null;
         }
 
+        /// <summary>For a passive interactable: the command it observed was refused. Stop asking.</summary>
+        public virtual void OnObservationRefused(ForgottenIsle.Core.Primitives.ResultCode code)
+        {
+        }
+
         /// <summary>
         /// Called after the command succeeded, for purely visual consequences.
         /// </summary>

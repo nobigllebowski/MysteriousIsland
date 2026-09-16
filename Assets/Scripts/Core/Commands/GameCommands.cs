@@ -211,4 +211,22 @@ namespace ForgottenIsle.Core.Commands
     public readonly struct SqueezeMicCommand : ICommand
     {
     }
+
+    /// <summary>Hold an item up for use on whatever comes next, or put it down.</summary>
+    /// <remarks>
+    /// The aimed use is game state, not a HUD selection: once an item is held, the prompt reads
+    /// USE <item> and a press -- key, button or the prompt card -- uses it on the target. Held
+    /// state is transient: it is not saved and a new run or a load puts everything down.
+    /// </remarks>
+    public readonly struct HoldItemCommand : ICommand
+    {
+        /// <summary>The item to hold, or empty to put down whatever is held.</summary>
+        public readonly string ItemId;
+
+        /// <param name="itemId">The item to hold, or empty to release.</param>
+        public HoldItemCommand(string itemId)
+        {
+            ItemId = itemId ?? string.Empty;
+        }
+    }
 }

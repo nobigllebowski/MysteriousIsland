@@ -41,6 +41,9 @@ namespace ForgottenIsle.Game.Interaction
         /// <param name="itemId">An <c>ItemIds</c> id.</param>
         bool HasItem(string itemId);
 
+        /// <summary>The item the player is holding up for use, or null.</summary>
+        string HeldItem { get; }
+
         /// <summary>True once the mechanism has been made to work, in this run or a saved one.</summary>
         bool HasSolved(string mechanismId);
 
@@ -167,6 +170,8 @@ namespace ForgottenIsle.Game.Interaction
         {
             return _progress != null && _progress.HasCollected(discoveryId);
         }
+
+        public string HeldItem => _inventory != null ? _inventory.Held : null;
 
         public bool HasSolved(string mechanismId)
         {
@@ -297,6 +302,17 @@ namespace ForgottenIsle.Game.Interaction
                         {
                             candidate.OnInteracted(this);
                         }
+                        else
+                        {
+                            // Said once, not every frame: the sightline would otherwise ask again
+                            // on every tick it stays aligned, and a refused command is worth one
+                            // line, not sixty a second.
+                            candidate.OnObservationRefused(result.Code);
+                            if (_log != null)
+                            {
+                                _log.Warn(LogCode.UnknownCommand, "observation refused: " + result.Code);
+                            }
+                        }
                     }
 
                     continue;
@@ -334,10 +350,24 @@ namespace ForgottenIsle.Game.Interaction
             }
 
             var target = _current;
-            var command = target.BuildCommand(this);
+
+            // THE AIMED USE. An item held up is used on whatever the press lands on, before the
+            // target is asked what it would otherwise do. One rule for every input: the key, the
+            // button and the prompt card all arrive here, so the prompt that read USE <item> is
+            // true whichever of them the player pressed. The item is put down afterwards whether
+            // the target took it or not; a refusal is answered by the handler.
+            var held = HeldItem;
+            var command = !string.IsNullOrEmpty(held)
+                ? new UseItemCommand(held, target.ContentId)
+                : target.BuildCommand(this);
             if (command == null)
             {
                 return false;
+            }
+
+            if (!string.IsNullOrEmpty(held) && _inventory != null)
+            {
+                _inventory.Release();
             }
 
             // Dispatch is typed on the concrete command, so the interactable's ICommand has to be
@@ -409,6 +439,7 @@ namespace ForgottenIsle.Game.Interaction
         }
 
         private string _lastPromptKey;
+        private string _lastHeld = string.Empty;
 
         private void SetCurrent(Interactable next)
         {
@@ -417,14 +448,16 @@ namespace ForgottenIsle.Game.Interaction
             // EXAMINE, then USE the moment the torch is in hand, then TUNE once it works -- and
             // a player standing at the set while that changes would otherwise keep reading the
             // old word until they stepped away and back.
-            var promptKey = next != null ? next.PromptKey : string.Empty;
-            if (ReferenceEquals(_current, next) && promptKey == _lastPromptKey)
+            var held = HeldItem ?? string.Empty;
+            var promptKey = next != null ? (held.Length > 0 ? "interact.use" : next.PromptKey) : string.Empty;
+            if (ReferenceEquals(_current, next) && promptKey == _lastPromptKey && held == _lastHeld)
             {
                 return;
             }
 
             _current = next;
             _lastPromptKey = promptKey;
+            _lastHeld = held;
 
             if (_signals == null)
             {
@@ -432,8 +465,8 @@ namespace ForgottenIsle.Game.Interaction
             }
 
             _signals.Publish(next != null
-                ? new InteractionTargetChangedSignal(next.NameKey, promptKey, true, next.ContentId)
-                : new InteractionTargetChangedSignal(string.Empty, string.Empty, false, string.Empty));
+                ? new InteractionTargetChangedSignal(next.NameKey, promptKey, true, next.ContentId, held)
+                : new InteractionTargetChangedSignal(string.Empty, string.Empty, false, string.Empty, held));
         }
     }
 }

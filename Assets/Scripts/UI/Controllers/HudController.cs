@@ -39,6 +39,8 @@ namespace ForgottenIsle.UI.Controllers
         private string _targetNameKey = string.Empty;
         private string _targetPromptKey = string.Empty;
         private bool _hasTarget;
+        private string _heldItem = string.Empty;
+        private string _targetHeld = string.Empty;
 
         /// <param name="screen">The HUD view this drives.</param>
         /// <param name="signals">Bus carrying the gameplay signals. Null leaves the HUD static.</param>
@@ -60,12 +62,11 @@ namespace ForgottenIsle.UI.Controllers
 
             // Subscribed before the screen has been built. The event lives on the screen rather
             // than on the tray for exactly this reason -- the tray does not exist yet.
-            _screen.CombineRequested += OnCombineRequested;
+            _screen.ItemTapped += OnItemTapped;
             _screen.RadioTuneRequested += OnRadioTuneRequested;
             _screen.RadioMicSqueezed += OnRadioMicSqueezed;
             _screen.RadioCloseRequested += OnRadioCloseRequested;
             _screen.InteractRequested += OnInteractRequested;
-            _screen.ItemSelectionChanged += OnItemSelectionChanged;
 
             if (signals == null)
             {
@@ -155,12 +156,11 @@ namespace ForgottenIsle.UI.Controllers
             }
 
             _disposed = true;
-            _screen.CombineRequested -= OnCombineRequested;
+            _screen.ItemTapped -= OnItemTapped;
             _screen.RadioTuneRequested -= OnRadioTuneRequested;
             _screen.RadioMicSqueezed -= OnRadioMicSqueezed;
             _screen.RadioCloseRequested -= OnRadioCloseRequested;
             _screen.InteractRequested -= OnInteractRequested;
-            _screen.ItemSelectionChanged -= OnItemSelectionChanged;
 
             for (var i = 0; i < _subscriptions.Count; i++)
             {
@@ -172,7 +172,65 @@ namespace ForgottenIsle.UI.Controllers
 
         private void OnInventoryChanged(InventoryChangedSignal signal)
         {
+            if (signal.Kind == InventoryChangeKind.Held)
+            {
+                // The game's idea of what is held comes back down to the tray. The prompt's verb
+                // follows through the interaction system, which republishes on a held change.
+                _heldItem = signal.ItemId ?? string.Empty;
+                _screen.SetHeldItem(_heldItem);
+                return;
+            }
+
             ApplyInventory(signal.Items);
+        }
+
+        /// <summary>What a tap on a chip means, given what is held. Pure, so it is pinned by a test.</summary>
+        public enum TapMeaning
+        {
+            /// <summary>Nothing was held: hold this.</summary>
+            Hold,
+
+            /// <summary>This was held: put it down.</summary>
+            Release,
+
+            /// <summary>Something else was held: put the two together.</summary>
+            Combine
+        }
+
+        /// <summary>The tray's one rule: hold, put down, or combine.</summary>
+        public static TapMeaning Decide(string held, string tapped)
+        {
+            if (string.IsNullOrEmpty(held))
+            {
+                return TapMeaning.Hold;
+            }
+
+            return held == tapped ? TapMeaning.Release : TapMeaning.Combine;
+        }
+
+        private void OnItemTapped(string tapped)
+        {
+            if (_commands == null || string.IsNullOrEmpty(tapped))
+            {
+                return;
+            }
+
+            switch (Decide(_heldItem, tapped))
+            {
+                case TapMeaning.Hold:
+                    _commands.Dispatch(new HoldItemCommand(tapped));
+                    break;
+                case TapMeaning.Release:
+                    _commands.Dispatch(new HoldItemCommand(string.Empty));
+                    break;
+                default:
+                    // Put down first, then combine: whether the pair goes together is the handler's
+                    // question, and either way the player is not left holding half of it.
+                    var first = _heldItem;
+                    _commands.Dispatch(new HoldItemCommand(string.Empty));
+                    _commands.Dispatch(new CombineItemsCommand(first, tapped));
+                    break;
+            }
         }
 
         private void ApplyInventory(IReadOnlyList<string> items)
@@ -189,21 +247,6 @@ namespace ForgottenIsle.UI.Controllers
             }
 
             _screen.SetInventory(_itemViews);
-        }
-
-        private void OnCombineRequested(string first, string second)
-        {
-            if (_commands == null)
-            {
-                // A HUD built without a dispatcher is a HUD in a test. The tray still renders; it
-                // simply cannot change anything, which is the correct behaviour for a view.
-                return;
-            }
-
-            // Whether these two go together is not this class's question, and deliberately so. The
-            // handler decides, refuses through a result code, and answers the player with a line of
-            // narration either way -- including when the answer is that nothing happened.
-            _commands.Dispatch(new CombineItemsCommand(first, second));
         }
 
         private void OnRadioChanged(RadioChangedSignal signal)
@@ -264,31 +307,16 @@ namespace ForgottenIsle.UI.Controllers
 
         private void OnInteractRequested()
         {
-            // THE AIMED USE (O-10). With a chip selected in the tray, tapping the prompt uses that
-            // item on the thing in front of the player -- and the prompt has been reading USE
-            // <item> since the chip was picked, so what will happen is on screen before it does.
-            // This is how the recorder's cells go into the radio: by the player's choice, never by
-            // a lookup that fits whatever they happen to carry.
-            var selected = _screen.SelectedItem;
-            if (!string.IsNullOrEmpty(selected) && _hasTarget && !string.IsNullOrEmpty(_targetId) && _commands != null)
-            {
-                _screen.ClearItemSelection();
-                _commands.Dispatch(new UseItemCommand(selected, _targetId));
-                return;
-            }
-
+            // The prompt card is one more way to press Interact. Everything that follows -- the
+            // held item being used on the target, or the target's own verb -- is decided in the
+            // interaction system, behind the router's gate, the same as a key press. The HUD
+            // dispatches nothing here on purpose: a use that skipped the gate would run through a
+            // suppressed sequence.
             var handler = InteractRequested;
             if (handler != null)
             {
                 handler();
             }
-        }
-
-        private void OnItemSelectionChanged(string selectedId)
-        {
-            // The prompt's verb follows the selection: USE <item> while a chip is up, the
-            // target's own verb otherwise.
-            RefreshPrompt();
         }
 
         private void RefreshPrompt()
@@ -299,10 +327,13 @@ namespace ForgottenIsle.UI.Controllers
                 return;
             }
 
-            var selected = _screen.SelectedItem;
-            var verb = string.IsNullOrEmpty(selected)
-                ? _loc.Get(new LocKey(_targetPromptKey))
-                : _loc.Get(new LocKey("interact.use")) + " " + _loc.Get(new LocKey(selected));
+            // The verb is the game's: "interact.use" arrives when an item is held, and the held
+            // item's name is appended so the prompt says what will be used on what.
+            var verb = _loc.Get(new LocKey(_targetPromptKey));
+            if (!string.IsNullOrEmpty(_targetHeld))
+            {
+                verb = verb + " " + _loc.Get(new LocKey(_targetHeld));
+            }
 
             _screen.SetPrompt(_loc.Get(new LocKey(_targetNameKey)), verb, true);
         }
@@ -353,6 +384,7 @@ namespace ForgottenIsle.UI.Controllers
             _targetId = signal.ContentId ?? string.Empty;
             _targetNameKey = signal.NameKey ?? string.Empty;
             _targetPromptKey = signal.PromptKey ?? string.Empty;
+            _targetHeld = signal.HeldItemId ?? string.Empty;
             RefreshPrompt();
         }
 

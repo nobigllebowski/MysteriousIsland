@@ -183,6 +183,60 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(service.Inventory.Count, Is.Zero);
         }
 
+        // --- holding ------------------------------------------------------------------------------
+
+        [Test]
+        public void Holding_RequiresCarrying_AndConsumingPutsItDown()
+        {
+            var service = NewService();
+            Assert.That(service.Hold(ItemIds.DrySpindle), Is.False, "Not carried.");
+
+            service.Take(ItemIds.DrySpindle);
+            Assert.That(service.Hold(ItemIds.DrySpindle), Is.True);
+            Assert.That(service.Held, Is.EqualTo(ItemIds.DrySpindle));
+
+            service.Consume(ItemIds.DrySpindle);
+            Assert.That(service.Held, Is.Null, "A spent item cannot stay held.");
+        }
+
+        [Test]
+        public void Held_IsTransient_ANewRunOrALoadPutsItDown()
+        {
+            var service = NewService();
+            service.Take(ItemIds.SluiceKey);
+            service.Hold(ItemIds.SluiceKey);
+
+            var doc = new SaveDocument();
+            service.Capture(doc);
+            service.Restore(doc);
+            Assert.That(service.Held, Is.Null);
+            Assert.That(service.Has(ItemIds.SluiceKey), Is.True, "The item is saved; the holding is not.");
+
+            service.Hold(ItemIds.SluiceKey);
+            service.ResetForNewRun();
+            Assert.That(service.Held, Is.Null);
+        }
+
+        [Test]
+        public void HoldItem_IsACommand_AndAnEmptyIdPutsDown()
+        {
+            var signals = new SignalBus();
+            var states = new GameStateMachine(null, signals);
+            var inventory = new InventoryService(signals, null);
+            inventory.Take(ItemIds.SluiceKey);
+            var dispatcher = new CommandDispatcher(null);
+            dispatcher.Register<HoldItemCommand>(new HoldItemHandler(states, inventory));
+            states.TryTransition(GameStateId.MainMenu);
+            states.TryTransition(GameStateId.Loading);
+            states.TryTransition(GameStateId.InGame);
+
+            Assert.That(dispatcher.Dispatch(new HoldItemCommand(ItemIds.DrySpindle)).Code, Is.EqualTo(ResultCode.InvalidArgument), "Not carried.");
+            Assert.That(dispatcher.Dispatch(new HoldItemCommand(ItemIds.SluiceKey)).Success, Is.True);
+            Assert.That(inventory.Held, Is.EqualTo(ItemIds.SluiceKey));
+            Assert.That(dispatcher.Dispatch(new HoldItemCommand(string.Empty)).Success, Is.True);
+            Assert.That(inventory.Held, Is.Null);
+        }
+
         // --- the command layer ------------------------------------------------------------------
 
         [Test]

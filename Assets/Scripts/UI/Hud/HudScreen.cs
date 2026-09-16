@@ -72,15 +72,6 @@ namespace ForgottenIsle.UI.Hud
         /// <summary>The carried-items tray. Null until the screen has been built.</summary>
         public InventoryPanel Inventory => _inventory;
 
-        /// <summary>
-        /// Raised when the player taps two different carried items in a row.
-        /// </summary>
-        /// <remarks>
-        /// Forwarded from the tray rather than exposed through it, because the tray does not exist
-        /// until the screen is first shown and a controller has to be able to subscribe before
-        /// that. Subscribing to a panel that is still null is the whole class of bug this avoids.
-        /// </remarks>
-        public event System.Action<string, string> CombineRequested;
 
         /// <summary>The tuning band. Null until the screen has been built.</summary>
         public RadioPanel Radio => _radio;
@@ -99,10 +90,10 @@ namespace ForgottenIsle.UI.Hud
         /// </summary>
         /// <remarks>
         /// There is no touchscreen binding for Interact, on purpose: an action bound to the raw
-        /// tap fires whatever UI element was under the finger (VERIFY on device; see the note in
-        /// VardholmControls), and every tap on the pause button or a chip was also the world verb.
-        /// The card is a real control now, 48 dp tall, and what it does is decided by the router's
-        /// gate, not here.
+        /// tap fires REGARDLESS of what UI element was under the finger (VERIFY on device; see the
+        /// note in VardholmControls), so every tap on the pause button or a chip was also the world
+        /// verb. The card is a real control now, 48 dp tall, and what it does is decided by the
+        /// router's gate, not here.
         /// </remarks>
         public event System.Action InteractRequested;
 
@@ -130,10 +121,9 @@ namespace ForgottenIsle.UI.Hud
                 Loc.Get(InventoryHeadingKey),
                 Loc.Get(InventoryEmptyKey),
                 Loc.Get(InventoryHintKey));
-            _inventory.Combine += RaiseCombineRequested;
-            _inventory.SelectionChanged += id =>
+            _inventory.ItemTapped += id =>
             {
-                var handler = ItemSelectionChanged;
+                var handler = ItemTapped;
                 if (handler != null)
                 {
                     handler(id);
@@ -290,16 +280,13 @@ namespace ForgottenIsle.UI.Hud
             }
         }
 
-        /// <summary>The tray's selected item id, or null. Read by the controller when the prompt is tapped.</summary>
-        public string SelectedItem => _inventory != null ? _inventory.SelectedItem : null;
+        /// <summary>Raised when a tray chip is tapped, with its item id.</summary>
+        public event System.Action<string> ItemTapped;
 
-        /// <summary>Raised when the tray's selection changes, with the selected id or null.</summary>
-        public event System.Action<string> ItemSelectionChanged;
-
-        /// <summary>Puts the tray's selected chip down.</summary>
-        public void ClearItemSelection()
+        /// <summary>Draws one chip as held, or none.</summary>
+        public void SetHeldItem(string id)
         {
-            _inventory?.ClearSelection();
+            _inventory?.SetHeld(id);
         }
 
         /// <summary>Replaces what the tray shows.</summary>
@@ -471,15 +458,6 @@ namespace ForgottenIsle.UI.Hud
             _sequenceTimer?.Pause();
             _sequenceTimer = null;
             _narrationCard.style.display = DisplayStyle.None;
-        }
-
-        private void RaiseCombineRequested(string first, string second)
-        {
-            var handler = CombineRequested;
-            if (handler != null)
-            {
-                handler(first, second);
-            }
         }
 
         private void BuildObjective(VisualElement root)

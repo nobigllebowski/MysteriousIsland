@@ -43,6 +43,42 @@ namespace ForgottenIsle.Game.Items
         /// <summary>The carried items.</summary>
         public Inventory Inventory => _inventory;
 
+        /// <summary>The item held up for use, or null. Transient: never saved.</summary>
+        public string Held => _held;
+
+        private string _held;
+
+        /// <summary>Holds an item up for use on the next target. Must be carried.</summary>
+        /// <returns>False when it is not carried.</returns>
+        public bool Hold(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId) || !_inventory.Has(itemId))
+            {
+                return false;
+            }
+
+            if (_held == itemId)
+            {
+                return true;
+            }
+
+            _held = itemId;
+            Publish(InventoryChangeKind.Held, itemId);
+            return true;
+        }
+
+        /// <summary>Puts down whatever is held. Safe when nothing is.</summary>
+        public void Release()
+        {
+            if (_held == null)
+            {
+                return;
+            }
+
+            _held = null;
+            Publish(InventoryChangeKind.Held, string.Empty);
+        }
+
         /// <summary>True when the player is carrying <paramref name="itemId"/>.</summary>
         public bool Has(string itemId)
         {
@@ -69,6 +105,11 @@ namespace ForgottenIsle.Game.Items
             if (!_inventory.Remove(itemId))
             {
                 return false;
+            }
+
+            if (_held == itemId)
+            {
+                _held = null;
             }
 
             Publish(InventoryChangeKind.Removed, itemId);
@@ -110,6 +151,7 @@ namespace ForgottenIsle.Game.Items
         /// <summary>Empties the inventory for a new run.</summary>
         public void ResetForNewRun()
         {
+            _held = null;
             _inventory.Clear();
             Publish(InventoryChangeKind.Replaced, string.Empty);
         }
@@ -137,6 +179,7 @@ namespace ForgottenIsle.Game.Items
                 return;
             }
 
+            _held = null;
             _inventory.RestoreFrom(payload.Split(Separator));
             Publish(InventoryChangeKind.Replaced, string.Empty);
         }

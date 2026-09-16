@@ -14,8 +14,55 @@ namespace ForgottenIsle.Core.Progress
     /// id reads as "never collected", so the player silently loses progress.
     /// </para>
     /// </remarks>
+    /// <summary>What kind of thing a content id names. Decides how it is recorded.</summary>
+    public enum ContentKind : byte
+    {
+        Unknown = 0,
+        Zone = 1,
+        Marker = 2,
+        Discovery = 3,
+        Mechanism = 4,
+        Gate = 5,
+        Radio = 6
+    }
+
     public static class ContentIds
     {
+        /// <summary>
+        /// The kind of a content id, by table rather than by prefix.
+        /// </summary>
+        /// <remarks>
+        /// A prefix test would credit a mechanism written without its prefix as a marker -- the
+        /// bug this replaces, in a different coat. Every id this project records is listed here,
+        /// and an id that is not is Unknown, which records as nothing.
+        /// </remarks>
+        public static ContentKind KindOf(string id)
+        {
+            switch (id)
+            {
+                case ZoneRibcage:
+                case ZoneFernmaw:
+                    return ContentKind.Zone;
+                case MarkerRibStone:
+                case MarkerHullLine:
+                case MarkerAqueductCut:
+                    return ContentKind.Marker;
+                case DiscoveryBrassTag:
+                case DiscoveryWaterloggedReel:
+                    return ContentKind.Discovery;
+                case MechanismSluice:
+                case MechanismTapeDeck:
+                    return ContentKind.Mechanism;
+                case GateRibcageToFernmaw:
+                case GateFernmawToRibcage:
+                    return ContentKind.Gate;
+                case RadioSet:
+                    return ContentKind.Radio;
+                default:
+                    return ContentKind.Unknown;
+            }
+        }
+
         // --- Zones -------------------------------------------------------------------------
         // These match SceneKeys values exactly; a test asserts it, because a drift here would let
         // the player "unlock" a zone that cannot be loaded.

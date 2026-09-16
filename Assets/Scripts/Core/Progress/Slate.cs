@@ -129,17 +129,17 @@ namespace ForgottenIsle.Core.Progress
                 return false;
             }
 
-            if (id.StartsWith("mechanism.", System.StringComparison.Ordinal))
+            switch (ContentIds.KindOf(id))
             {
-                return progress.HasSolved(id);
+                case ContentKind.Mechanism:
+                    return progress.HasSolved(id);
+                case ContentKind.Discovery:
+                    return progress.HasCollected(id);
+                case ContentKind.Marker:
+                    return progress.HasInspected(id);
+                default:
+                    return false;
             }
-
-            if (id.StartsWith("discovery.", System.StringComparison.Ordinal))
-            {
-                return progress.HasCollected(id);
-            }
-
-            return progress.HasInspected(id);
         }
 
         public static SlateContents Build(WorldProgress progress, SlateFacts facts)

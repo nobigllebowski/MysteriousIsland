@@ -66,9 +66,9 @@ namespace ForgottenIsle.Game.Bootstrap
             var radio = new RadioService(signals, inventory, log);
 
             // The recorded-percent figure the pause summary and the save header show. Computed by
-            // nothing for two phases; every header said 0%. Built BEFORE the autosave director:
-            // the bus dispatches in subscription order, and a header stamped before the keeper has
-            // refreshed the figure is one step stale in exactly the saves that carry the change.
+            // nothing for two phases; every header said 0%. (Built before the autosave director,
+            // though the order is now cosmetic: autosaves write on the next tick, after every
+            // subscriber to the change has run.)
             var recordKeeper = new RecordKeeper(progress, session, signals);
 
             // The autosave ring's only writer. Held by the context so it lives as long as the run
@@ -112,6 +112,7 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<TakeItemCommand>(new TakeItemHandler(states, inventory, signals));
             dispatcher.Register<CombineItemsCommand>(new CombineItemsHandler(states, inventory, signals));
             dispatcher.Register<UseItemCommand>(new UseItemHandler(states, inventory, interactions, signals));
+            dispatcher.Register<HoldItemCommand>(new HoldItemHandler(states, inventory));
             dispatcher.Register<OpenRadioCommand>(new OpenRadioHandler(states, radio, signals));
             dispatcher.Register<CloseRadioCommand>(new CloseRadioHandler(radio));
             dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));

@@ -1102,4 +1102,44 @@ namespace ForgottenIsle.Game.Bootstrap
             }
         }
     }
+
+    /// <summary>Holds an item up for use, or puts it down.</summary>
+    public sealed class HoldItemHandler : ICommandHandler<HoldItemCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly InventoryService _inventory;
+
+        /// <param name="states">Mode machine.</param>
+        /// <param name="inventory">What is carried.</param>
+        public HoldItemHandler(GameStateMachine states, InventoryService inventory)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in HoldItemCommand command)
+        {
+            if (_states.Current != GameStateId.InGame)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            return string.IsNullOrEmpty(command.ItemId) || _inventory.Has(command.ItemId)
+                ? ResultCode.Ok
+                : ResultCode.InvalidArgument;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in HoldItemCommand command)
+        {
+            if (string.IsNullOrEmpty(command.ItemId))
+            {
+                _inventory.Release();
+                return;
+            }
+
+            _inventory.Hold(command.ItemId);
+        }
+    }
 }

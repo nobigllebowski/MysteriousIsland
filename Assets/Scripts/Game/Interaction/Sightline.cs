@@ -30,6 +30,7 @@ namespace ForgottenIsle.Game.Interaction
         private float _toleranceDegrees;
         private LineRenderer _chalk;
         private bool _aligned;
+        private bool _refused;
 
         /// <summary>Configures the sightline. Called by zone building; there is no Inspector pass.</summary>
         /// <param name="contentId">A <c>ContentIds</c> marker id.</param>
@@ -93,18 +94,31 @@ namespace ForgottenIsle.Game.Interaction
             if (aligned != _aligned)
             {
                 _aligned = aligned;
+                if (!aligned)
+                {
+                    _refused = false;
+                }
+
                 if (_chalk != null)
                 {
                     _chalk.enabled = aligned;
                 }
             }
 
-            if (!aligned || (services != null && services.HasInspected(ContentId)))
+            if (!aligned || _refused || (services != null && services.HasInspected(ContentId)))
             {
                 return null;
             }
 
             return new InspectCommand(ContentId);
+        }
+
+        /// <inheritdoc />
+        public override void OnObservationRefused(Core.Primitives.ResultCode code)
+        {
+            // Latched until the player looks away and back: a refusal is a state the game is in,
+            // not a thing to retry sixty times a second.
+            _refused = true;
         }
     }
 }

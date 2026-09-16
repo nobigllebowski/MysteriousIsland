@@ -623,10 +623,11 @@ namespace ForgottenIsle.Game.World
             var group = new GameObject("The Six Hulls").transform;
             group.SetParent(root, false);
 
-            // Seaward of the spawn, along the shore, so the line runs across the player's view when
-            // they turn to the water. Direction chosen so the far end vanishes into the fog.
-            var start = new Vector3(-36f, 0f, -17f);
-            var axis = new Vector3(1f, 0f, 0.14f).normalized;
+            // The near hull is the NEAREST hull to the spawn -- the design says "the bow of the
+            // nearest hull", and a player who follows that has to arrive at the stand point. The
+            // line runs away from the spawn along the shore, so the far end vanishes into the fog.
+            var start = new Vector3(-9f, 0f, -14f);
+            var axis = new Vector3(-1f, 0f, -0.14f).normalized;
             const float Spacing = 13.5f;
             const int Count = 6;
 
@@ -644,14 +645,24 @@ namespace ForgottenIsle.Game.World
                 hull.SetParent(group, false);
                 hull.position = centre;
 
-                // Each hull leans its own way: heel, yaw off the line, and a different build.
+                // Each hull leans its own way: heel, yaw off the line, and a different build. The
+                // near hull is the exception: its bow points back along the line toward the stand
+                // point, so "stand at the bow and look down the beach" is literally what happens.
                 var yaw = (float)(random.NextDouble() - 0.5) * 70f;
                 var heel = (float)(random.NextDouble() - 0.5) * 40f;
+                var length = 7f + (float)random.NextDouble() * 5f;
+                var beam = 2.2f + (float)random.NextDouble() * 1.2f;
+                if (i == 0)
+                {
+                    // Local +X (the stem) along -axis: the yaw that turns (1,0,0) onto -axis.
+                    yaw = SightlineMath.YawOf(-axis.x, -axis.z) - 90f;
+                    heel = 8f;
+                    length = 9f;
+                }
+
                 hull.rotation = Quaternion.Euler(0f, yaw, heel);
 
                 var material = i % 3 == 0 ? rust : i % 3 == 1 ? timber : glass;
-                var length = 7f + (float)random.NextDouble() * 5f;
-                var beam = 2.2f + (float)random.NextDouble() * 1.2f;
 
                 // A keel slab, two flank slabs leaning in, and a stem: enough to read as a boat
                 // on its side from twenty metres, which is the distance this is seen from.
@@ -661,8 +672,9 @@ namespace ForgottenIsle.Game.World
                 Slab(hull, material, "Stem", new Vector3(length * 0.5f, 1.3f, 0f), new Vector3(0.3f, 2.6f, beam * 0.5f), new Vector3(0f, 0f, -12f));
             }
 
-            // THE SIGHTLINE. Stand a little past the first hull's bow, look along the axis.
-            var standAt = start - axis * 5f;
+            // THE SIGHTLINE. Stand past the near hull's bow -- half its length plus a stride
+            // beyond its centre, clear of the solid keel -- and look along the axis.
+            var standAt = start - axis * (9f * 0.5f + 3f);
             standAt.y = Height(standAt.x, standAt.z, recipe);
 
             var sightline = new GameObject("Sightline " + ContentIds.MarkerHullLine);

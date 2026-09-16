@@ -14,10 +14,11 @@ namespace ForgottenIsle.UI.Hud
     /// economy, and a screen-filling grid of slots would be a promise of a game about collecting
     /// that Vardholm has no intention of keeping.
     /// <para>
-    /// COMBINING IS TAP, THEN TAP. The first tap selects; the second either raises
-    /// <see cref="Combine"/> for that pair or deselects if it is the same chip again. No drag, no
-    /// long press, no separate "combine" mode — one thumb, no gesture to learn, and nothing that a
-    /// player can start and be unable to cancel. The second tap on the same chip is the cancel.
+    /// COMBINING IS TAP, THEN TAP. The first tap holds the item up (game state: the prompt reads
+    /// USE <item> and a press uses it on the target); the second tap on a different chip combines
+    /// the pair; a second tap on the same chip puts it down. No drag, no long press, no separate
+    /// "combine" mode — one thumb, no gesture to learn, and nothing that a player can start and be
+    /// unable to cancel. The panel only reports taps; the controller turns them into commands.
     /// </para>
     /// <para>
     /// It renders strings it was given and reports taps by id. It holds no service, looks nothing
@@ -124,26 +125,17 @@ namespace ForgottenIsle.UI.Hud
             _tray.Add(_hintLabel);
         }
 
-        /// <summary>The selected chip's item id, or null when nothing is selected.</summary>
-        public string SelectedItem => _selectedId;
+        /// <summary>Raised when a chip is tapped, with its item id. What that means is the controller's.</summary>
+        public event Action<string> ItemTapped;
 
-        /// <summary>Raised when the selection changes, with the new selected id or null.</summary>
-        public event Action<string> SelectionChanged;
-
-        /// <summary>
-        /// Raised when the player taps two different items in a row.
-        /// </summary>
-        /// <remarks>
-        /// The panel does not know or care whether the pair goes together. It reports the intent;
-        /// validating it is the handler's job, and refusing it is the handler's answer.
-        /// </remarks>
-        public event Action<string, string> Combine;
+        /// <summary>The chip drawn as held, or null.</summary>
+        public string HeldItem => _selectedId;
 
         /// <summary>Replaces the tray's contents.</summary>
         /// <param name="items">Item ids paired with their already-localized names.</param>
         public void SetItems(IReadOnlyList<InventoryItemView> items)
         {
-            ClearSelection();
+            var wasHeld = _selectedId;
 
             for (var i = 0; i < _chips.Count; i++)
             {
@@ -162,6 +154,10 @@ namespace ForgottenIsle.UI.Hud
                 _chips.Add(chip);
                 _chipRow.Add(chip.Root);
             }
+
+            // The held chip survives a rebuild if it is still carried; the game's own held state
+            // is what decides, and it is told separately, but a flicker between the two is avoided.
+            SetHeld(wasHeld);
 
             // Opening on its own the first time something is picked up: the tray is the only place
             // the player ever sees what they are holding, and a tab that has to be discovered is a
@@ -201,13 +197,12 @@ namespace ForgottenIsle.UI.Hud
         }
 
         /// <summary>
-        /// Registers a tap on a carried item: selects it, deselects it, or completes a pair.
+        /// Registers a tap on a chip. The tray reports it; the controller decides what it means.
         /// </summary>
         /// <remarks>
-        /// Public because it is the panel's input entry point, not because a test needed a door.
-        /// A chip's button routes straight here and does nothing else, which puts the selection
-        /// rule — the part with the cancel in it, and the part that can get a player stuck — in one
-        /// method that can be exercised without a panel, an event system or a frame.
+        /// Public because it is the panel's input entry point: a chip's button routes straight
+        /// here and does nothing else, so the reporting can be exercised without a panel, an
+        /// event system or a frame.
         /// </remarks>
         /// <param name="id">The tapped item's id. Empty is ignored.</param>
         public void TapItem(string id)
@@ -217,64 +212,26 @@ namespace ForgottenIsle.UI.Hud
                 return;
             }
 
-            if (_selectedId == null)
-            {
-                Select(id);
-                return;
-            }
-
-            if (_selectedId == id)
-            {
-                // The cancel. Tapping the selected chip again puts it back down, which is the one
-                // interaction a player reaches for first and the one most inventories do not have.
-                ClearSelection();
-                return;
-            }
-
-            var first = _selectedId;
-            ClearSelection();
-
-            var handler = Combine;
+            var handler = ItemTapped;
             if (handler != null)
             {
-                handler(first, id);
+                handler(id);
             }
         }
 
-        private void Select(string id)
+        /// <summary>Draws one chip as held, or none. Called from the game's own idea of what is held.</summary>
+        public void SetHeld(string id)
         {
-            _selectedId = id;
+            _selectedId = string.IsNullOrEmpty(id) ? null : id;
             for (var i = 0; i < _chips.Count; i++)
             {
-                _chips[i].SetSelected(_chips[i].Id == id);
-            }
-
-            RaiseSelectionChanged();
-        }
-
-        /// <summary>Puts the selected chip down, if any. Public so a use can clear it.</summary>
-        public void ClearSelection()
-        {
-            var had = _selectedId != null;
-            _selectedId = null;
-            for (var i = 0; i < _chips.Count; i++)
-            {
-                _chips[i].SetSelected(false);
-            }
-
-            if (had)
-            {
-                RaiseSelectionChanged();
+                _chips[i].SetSelected(_chips[i].Id == _selectedId);
             }
         }
 
-        private void RaiseSelectionChanged()
+        private void ClearSelection()
         {
-            var handler = SelectionChanged;
-            if (handler != null)
-            {
-                handler(_selectedId);
-            }
+            SetHeld(null);
         }
 
         /// <summary>One carried item, as the tray draws it.</summary>

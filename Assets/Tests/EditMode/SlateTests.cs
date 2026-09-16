@@ -105,6 +105,20 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(Slate.Build(progress, NoRadio).Observed.Count, Is.EqualTo(1));
         }
 
+        [Test]
+        public void EveryRecordableId_HasAKind_AndAnUnknownIdRecordsAsNothing()
+        {
+            for (var i = 0; i < Recorded.Recordable.Length; i++)
+            {
+                Assert.That(ContentIds.KindOf(Recorded.Recordable[i]), Is.Not.EqualTo(ContentKind.Unknown), Recorded.Recordable[i]);
+            }
+
+            var progress = new WorldProgress();
+            progress.Inspect("something.unlisted");
+            Assert.That(Slate.IsRecorded(progress, "something.unlisted"), Is.False);
+            Assert.That(ContentIds.KindOf(ContentIds.RadioSet), Is.EqualTo(ContentKind.Radio));
+        }
+
         private static bool HasTitle(SlateContents contents, string key)
         {
             for (var i = 0; i < contents.Observed.Count; i++)
