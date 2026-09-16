@@ -1790,6 +1790,70 @@ def check_deprecated_unity_apis(report, files):
 # Driver
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Content consistency: an id declared in ContentIds must be recorded, ordered,
+# and worded. The count test in RecordedTests went stale once because nothing
+# asked this question mechanically.
+# ---------------------------------------------------------------------------
+
+CONTENT_CONST_RE = re.compile(
+    r"public\s+const\s+string\s+(?P<name>(Marker|Discovery|Mechanism|Remark)[A-Za-z0-9_]*)\s*=\s*\"(?P<id>[a-z0-9_.]+)\"")
+REMARK_LINES_RE = re.compile(r"case\s+(?P<name>Remark[A-Za-z0-9_]+)\s*:\s*return\s+(?P<count>\d+)\s*;")
+
+
+def check_content_ids(report, root, files, csv_keys):
+    """Every recordable id is in Recorded.Recordable and Slate.ObservedOrder and has its Slate
+    rows; every remark id has its narration row (or numbered rows when it is said in several)."""
+    content_rel = "Assets/Scripts/Core/Progress/ContentIds.cs"
+    recorded_rel = "Assets/Scripts/Core/Progress/Recorded.cs"
+    slate_rel = "Assets/Scripts/Core/Progress/Slate.cs"
+    sources = {rel: scan for rel, scan, _ns, _decls in files}
+    if content_rel not in sources or recorded_rel not in sources or slate_rel not in sources:
+        return
+
+    content_code = sources[content_rel].code_with_strings
+    recorded_code = sources[recorded_rel].code
+    slate_code = sources[slate_rel].code
+    kind_of = content_code
+
+    remark_lines = {}
+    for match in REMARK_LINES_RE.finditer(content_code):
+        remark_lines[match.group("name")] = int(match.group("count"))
+
+    for match in CONTENT_CONST_RE.finditer(content_code):
+        name = match.group("name")
+        content_id = match.group("id")
+        line = content_code.count("\n", 0, match.start()) + 1
+
+        if ("case %s:" % name) not in kind_of:
+            report.error("CONTENT", content_rel, line,
+                         "'%s' is declared but has no case in ContentIds.KindOf; it records as Unknown" % name)
+
+        if name.startswith("Remark"):
+            count = remark_lines.get(name, 1)
+            wanted = ["narration." + content_id] if count == 1 else [
+                "narration.%s.%d" % (content_id, index + 1) for index in range(count)]
+            for key in wanted:
+                if key not in csv_keys:
+                    report.error("CONTENT", content_rel, line,
+                                 "remark '%s' has no row '%s' in the string table; it would render as #%s#" % (name, key, key))
+            continue
+
+        if ("ContentIds.%s" % name) not in recorded_code:
+            report.error("CONTENT", content_rel, line,
+                         "'%s' is not in Recorded.Recordable; the record's percentage would never count it" % name)
+        if ("ContentIds.%s" % name) not in slate_code:
+            report.error("CONTENT", content_rel, line,
+                         "'%s' is not in Slate.ObservedOrder; the notebook would never show it" % name)
+        for key in ("slate.observed." + content_id, "slate.observed." + content_id + ".body"):
+            if key not in csv_keys:
+                report.error("CONTENT", content_rel, line,
+                             "'%s' has no row '%s'; the notebook entry would render as #%s#" % (name, key, key))
+        if name.startswith("Marker") and ("narration." + content_id) not in csv_keys:
+            report.warn("CONTENT", content_rel, line,
+                        "marker '%s' has no 'narration.%s' row; fine only if it is never inspected by prompt" % (name, content_id))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Structural validator for the Vardholm C# sources. Substitutes for a compiler.")
@@ -1889,6 +1953,9 @@ def main(argv=None):
     report.checks_run += 1
 
     check_called_members_exist(report, files)
+    report.checks_run += 1
+
+    check_content_ids(report, root, files, csv_keys)
 
     # --- Output ------------------------------------------------------------
     report.emit()
@@ -1908,7 +1975,8 @@ def main(argv=None):
     print("                                 contract drift, lockeys, duplicate types,")
     print("                                 missing usings, member/type collisions,")
     print("                                 deprecated Unity APIs, accidental nesting,")
-    print("                                 phantom usings, shadowed locals, called members)")
+    print("                                 phantom usings, shadowed locals, called members,")
+    print("                                 content ids)")
     print("  errors .................... %d" % len(report.errors))
     print("  warnings .................. %d%s" % (len(report.warnings), " (hidden by --quiet)" if args.quiet and report.warnings else ""))
     print("")

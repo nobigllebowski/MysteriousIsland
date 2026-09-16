@@ -9,6 +9,14 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Changed — the validator asks whether content is wired
+
+A fifteenth check, `CONTENT`: every `Marker*`, `Discovery*` and `Mechanism*` id in `ContentIds`
+must have a `KindOf` case, be in `Recorded.Recordable` and `Slate.ObservedOrder`, and have its
+two Slate rows; every `Remark*` must have its narration row (or its numbered rows). The record's
+count test went stale once because nothing asked this mechanically. Proven by deleting an entry
+and a row and watching it fire.
+
 ### Added — the bag (§2:00)
 
 A run now holds nothing: the orange dry bag lies ten metres up the beach, ahead and a little
