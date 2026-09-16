@@ -9,6 +9,15 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the prologue walked end to end, as a test
+
+`PrologueWalkthroughTests`: the stone, the line, the wrack, the fire the wrong way and then
+behind the panel, the warm zone, the tag, the set found and fixed with the cord, the hull, the
+voice and the decision, the mic — every step a command legal after the last, with the objective,
+the Slate, the hints and the autosave beats asserted along the way; then CONTINUE from the
+autosave taken after the fire, resuming as itself. And the set left alone for sixteen minutes
+finding her by itself. Two cases, the longest in the suite. 417 written, none executed.
+
 ### Added — the audio core, synthesised until it is authored (ADR-0027)
 
 The game has never made a sound: the director was wired and every clip lookup returned null.
