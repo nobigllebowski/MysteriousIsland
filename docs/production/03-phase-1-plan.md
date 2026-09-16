@@ -291,7 +291,12 @@ adopting a container later changes *this file* and nothing else.
 
 # 4. UI TECHNOLOGY DECISION
 
-> **uGUI + TextMeshPro for Phase 1. Not UI Toolkit.**
+> **SUPERSEDED by ADR-0014.** The UI layer is **UI Toolkit**, built in code, ported from the
+> NATION: WORLD ORDER project's framework; that is what ships (`ForgottenIsle.UI`). The choice
+> below assumed a greenfield start, and it was not one. The table is kept as the record of the
+> argument, not as the decision.
+
+> ~~**uGUI + TextMeshPro for Phase 1. Not UI Toolkit.**~~
 
 | | uGUI | UI Toolkit |
 |---|---|---|
@@ -513,7 +518,7 @@ Read at phase kickoff and again at phase review. **Each line below appearing in 
 
 **No DI container.** Hand-wired, per ADR-0012.
 
-**No UI Toolkit at runtime**, per ADR-0002.
+~~**No UI Toolkit at runtime**, per ADR-0002.~~ **Superseded by ADR-0014:** UI Toolkit is the runtime UI. ADR-0002 (Core never references the engine) is untouched by that.
 
 **No iOS CI.** Nightly only, on a self-hosted runner, from Phase 2.
 

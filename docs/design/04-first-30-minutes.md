@@ -70,15 +70,21 @@ Light: **flat, high, sunless.** The cloud lid is directly overhead and it never 
 
 Audio: surf at a low, wide 60–90 Hz rumble; wind; and under it, barely, a sound the player will not consciously register — **a slow eleven-minute pressure cycle**, mixed at –38 dBFS as a sub-bass breathing. It is in the mix from this second onward. Nobody mentions it for two hours of play.
 
-**DOES.** Drag anywhere to look. The camera responds before Nadia's body does — she's still on the ground. Player naturally looks around, finds the orange bag. **Tap the bag.** Nadia stands (one long, ugly, real animation — she is 41 and she has been beaten by a reef) and walks to it. Movement is **tap-to-move**, not a virtual stick: tap a point, she goes. Hold-drag = look. This is the entire locomotion scheme and it is taught by there being exactly one thing worth walking to.
+**DOES.** *(Re-authored for ADR-0008: a floating joystick is the primary locomotion; tap-to-move is an accessibility assist. The original beat taught movement by "there being exactly one thing worth walking to", which only works for tap-to-move.)*
 
-**UI SHOWN.** None. Zero HUD. The only affordance is that the bag is the only colour on the screen.
+Drag anywhere on the upper half to look. The camera responds before Nadia's body does — she's still on the ground. The player looks around and finds the orange bag, ten metres up the beach, and the frame is composed so that when they find it the bag sits dead ahead. **Nothing happens until the thumb lands.** The first touch on the lower half of the screen makes Nadia stand — one long, ugly, real animation; she is 41 and she has been beaten by a reef — and a stick blooms under the thumb where it landed. No stick is drawn before the thumb arrives, so there is nothing on screen to learn; the stick is *where your thumb already is*, and the first push any player makes is forward, because forward is the bag. She walks. The stick fades the moment the thumb lifts. Arriving at the bag, the prompt card appears for the first time — the game's one verb, TAKE — and tapping it is the interact lesson.
 
-**TAUGHT.** Look (drag), move (tap ground), interact (tap object). All three in one gesture chain, with no text.
+If the thumb never lands: after 40 s Nadia says *"Bag first. Everything I own is in that bag."* and the look drag alone does not move her. If it still never lands, at 90 s the accessibility assist offers itself once, as a single small line at the bottom of the frame: *tap where you want to go* — and tapping the bag then walks her to it. That path exists for the player who cannot hold a stick, and it is never shown to the player who can.
+
+**UI SHOWN.** None until the thumb lands; then the stick, only under the thumb, only while it is down. The only affordance before that is that the bag is the only colour on the screen.
+
+**TAUGHT.** Look (drag, upper half), move (thumb down, push, lower half), interact (the prompt card). Three gestures in one chain, with no text, and the stick is never a thing the player has to find.
 
 **REVEALED.** She survived. She is alone on the sand. She has her bag.
 
-**FAILURE.** If the player walks *away* from the bag, they can. The beach is open. After 40 s of not approaching it, Nadia says, without irritation: *"Bag first. Everything I own is in that bag."* After 90 s, the surf pushes the bag two metres closer and a wave slaps it — a movement cue in peripheral vision. There is no third nag. The player cannot leave the Ribcage without the bag because the *gully* (the exit) requires the multitool, so the world holds the line, not the UI.
+**FAILURE.** If the player walks *away* from the bag, they can. The beach is open. After 40 s of not approaching it, Nadia says, without irritation: *"Bag first. Everything I own is in that bag."* (the same line serves the thumb that never landed, above). After 90 s, the surf pushes the bag two metres closer and a wave slaps it — a movement cue in peripheral vision. There is no third nag. The player cannot leave the Ribcage without the bag because the *gully* (the exit) requires the multitool, so the world holds the line, not the UI.
+
+*(Shipped state: the run starts with the multitool and the recorder already in the tray and no bag on the sand; the joystick and look pad are in, the stand animation and the 40 s / 90 s cues are not. See `CURRENT_STATE.md`.)*
 
 ---
 

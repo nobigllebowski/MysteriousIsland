@@ -3,6 +3,8 @@
 
 **Status:** Planning document. Every duration, headcount and budget figure in here is a stated assumption, not a commitment. Nothing in this document has been validated against a running build, because there isn't one.
 
+**Reconciled (Phase 1 Task 0, run late):** assembly names follow ADR-0001 and the shipped code (`ForgottenIsle.Core` / `.Game` / `.UI` / `ForgottenIsle.Tests.*`, formerly `Isle.Domain` / `Isle.Presentation` / `Isle.Tests`); locomotion follows ADR-0008 (a floating joystick; tap-to-move is an accessibility assist). Where this document still says URP, see CONFLICT-7 in `CURRENT_STATE.md`: the project runs on the Built-in pipeline, unresolved.
+
 ---
 
 # PART 1 — MVP SCOPE
@@ -12,7 +14,7 @@
 A single-zone, ~35-minute, fully shippable slice of *Vardholm*: cold launch → The Ribcage → survive (water, warmth) → discover (the hull line, the paired boots, the brass tag) → solve (the venturi Catchment) → receive (the 5240 kHz transmission) → unlock (the cut vine at the gully) → end card. It is the free prologue from the Prologue Script, built for real, with the eight domain systems it actually needs and none of the ones it doesn't. It is not a demo scene, not a greybox, and not a tech test. **If we shipped it alone on a store it would be a coherent, finishable, refundable product.** That is the bar.
 
 **The MVP's real job is not content. It is to answer four questions before we spend art money:**
-1. Does tap-to-move + drag-to-look + drag-to-combine actually feel good in portrait with one thumb?
+1. Does the floating joystick + drag-to-look + tap-then-tap combine actually feel good in portrait with one thumb? (ADR-0008, ADR-0020.)
 2. Can we hit the "premium, cinematic, grounded" art bar on an iPhone 12 at 60fps, with the team we have?
 3. Does the deterministic-analytic audio model (Core Systems §16.3) produce a frequency-matching puzzle that works on Android's audio stack?
 4. Does a player who has never heard of this game care about a brass tag with a date on it?
@@ -266,7 +268,7 @@ A checklist an outsider — a publisher's producer, a QA lead on their first day
 
 **C. It cannot be broken**
 13. `Architecture_NoAssemblyReferencesUpward` and the Roslyn layer analyzer pass in CI.
-14. `Isle.Domain.Tests` — the MVP subset of the Core Systems §20 matrix, minimum **68 tests** — passes in under 20 s, headless, no Play Mode.
+14. `ForgottenIsle.Tests.EditMode` — the MVP subset of the Core Systems §20 matrix, minimum **68 tests** — passes in under 20 s, headless, no Play Mode.
 15. `Save_RoundTrip_AllParticipants_ProducesIdenticalState` passes over 200 generated states.
 16. Content validators pass and fail the build when violated: no critical-path recipe draws on a `finite: true` node (R1); every puzzle object declares `reversible` or `respawns` (R4); zero `PlayerDeath` transitions exist (R5); every `criticalPath: true` item is `destructible: false, droppable: false` (R6); `activeObjectives.count > 0` at every reachable world-state (R7); every critical-path solve declares two `hintSources` with distinct `medium` (R10).
 17. A scripted bot performs 500 random `TryAdd`/`TryRemove`/`TryCombine`/`TryCraft` operations with a full pack; zero item duplications, zero item losses, zero exceptions.
@@ -281,7 +283,7 @@ A checklist an outsider — a publisher's producer, a QA lead on their first day
 24. No touch target smaller than 44 pt after arbitration assist.
 
 **E. It is honest**
-25. No literal display string exists in the `Isle.Domain` assembly (CI-enforced).
+25. No literal display string exists in the `ForgottenIsle.Core` assembly (CI-enforced).
 26. Every `LocKey` referenced in code or data exists in the EN table (CI-enforced).
 27. Scratch VO is audibly and visibly marked as scratch in the build, and the build is never shown externally without that marking stated.
 28. The trademark/title clearance pass on all proper nouns is **complete or explicitly logged as outstanding**, with the outstanding list attached to the build notes. (Per the bible's §9 flag: none of these names have been cleared. This is a gate on external showing, not on internal builds.)
@@ -376,13 +378,13 @@ Every phase ends in a playable build. "Playable" means installable on a device a
 
 **DELIVERABLES**
 - Unity 6 LTS / URP project, portrait-locked, New Input System, IL2CPP, both platform build targets green.
-- Assembly definitions: `Isle.Domain` (no `UnityEngine` beyond math types and `ScriptableObject`), `Isle.Presentation`, `Isle.Tests`.
+- Assembly definitions: `ForgottenIsle.Core` (no `UnityEngine` at all — ADR-0002 is stricter than the original "beyond math types"), `ForgottenIsle.Game`, `ForgottenIsle.UI`, `ForgottenIsle.Tests.EditMode` / `.PlayMode`.
 - `IEventBus` with the deferred queue; `Pcg32`; all ID structs; `IItemCatalog`, `IRecipeCatalog`, `IZoneDataCatalog` interfaces.
 - `TimeSystem` complete (L0). `LocalizationSystem` with the EN table (L0).
 - **`SaveSystem` complete (L0)** — header, component table, LZ4, CRC32, `.tmp`/`.sav`/`.bak` rotation, `ISaveParticipant` registration, the Phase-12 tick slot. It saves exactly two components today (Time, Settings) and grows one component per system thereafter, at a cost of about a day each.
 - `GameLoop` MonoBehaviour with the 13-phase tick order and the dev-build write-guard.
 - Main menu: NEW GAME / CONTINUE / SETTINGS (volume, language, quality tier). The Slate Open cold-open recap scaffold.
-- CI: builds both platforms, runs `Isle.Domain.Tests`, runs `Architecture_NoAssemblyReferencesUpward`, runs the Roslyn layer analyzer, runs the no-literal-strings check.
+- CI: builds both platforms, runs `ForgottenIsle.Tests.EditMode`, runs `Architecture_NoAssemblyReferencesUpward`, runs the layering gate (`ci/check-layering.sh`; the Roslyn analyzer is Phase 2), runs the no-literal-strings check.
 
 **NEW SYSTEMS TOUCHED.** TimeSystem, SaveSystem, LocalizationSystem, IEventBus, GameLoop.
 
@@ -398,7 +400,7 @@ Every phase ends in a playable build. "Playable" means installable on a device a
 **GOAL.** Make the Ribcage a place a person can stand in, walk around, and touch, at final intended fidelity in one 30 m stretch.
 
 **DELIVERABLES**
-- Tap-to-move locomotion with real animated transitions (the 41-year-old-beaten-by-a-reef stand, the four-second sit). Drag-to-look. No virtual stick.
+- Floating-joystick locomotion (ADR-0008) with real animated transitions (the 41-year-old-beaten-by-a-reef stand, the four-second sit). Drag-to-look on the other thumb. Tap-to-move only as the accessibility assist.
 - `InteractionSystem`: candidate arbitration with the 0.05 hysteresis term, all six verbs, the inspect view with free rotation and back-face detail discovery.
 - `WorldSystem` (L1): one zone, object persistent state, world flags, the gully chokepoint.
 - `WeatherSystem` **stub** implementing the full interface with constants.

@@ -34,15 +34,15 @@ Full text and rationale in [`architecture/00-decisions.md`](architecture/00-deci
 | 0003 | C# 9 + `IsExternalInit` polyfill; `required` and `ImmutableArray<T>` banned | **Implemented** |
 | 0004 | Zone streaming uses the curtain model; max 2 resident zones | **Implemented** |
 | 0005 | ScriptableObject authoring baked to immutable records; catalog ships as an Addressable | Not yet built (Phase 3+) |
-| 0006 | `SurvivalStat` = `{Health, Energy, Hydration, Satiation, CoreTemp}` | Decided — **CONFLICT-2**, data doc still stale |
-| 0007 | One inventory model: items, not resources. `ResourceDefinition` deleted | **Implemented** (Phase 3) — **CONFLICT-3**, data doc still stale |
-| 0008 | Locomotion is a floating joystick; tap-to-move is accessibility-only | **Implemented** — **CONFLICT-4**, prologue/roadmap still stale |
+| 0006 | `SurvivalStat` = `{Health, Energy, Hydration, Satiation, CoreTemp}` | Decided — data doc reconciled (CONFLICT-2 closed) |
+| 0007 | One inventory model: items, not resources. `ResourceDefinition` deleted | **Implemented** (Phase 3) — data doc reconciled (CONFLICT-3 closed) |
+| 0008 | Locomotion is a floating joystick; tap-to-move is accessibility-only | **Implemented** — beat 2:00 re-authored, roadmap reconciled (CONFLICT-4 closed) |
 | 0009 | 14 save participants at completion; `GameState` must cover all owned state | Partial — 5 registered (session, player, progress, inventory, radio), by design |
 | 0010 | Two anti-softlock holes closed: diesel renewable; Ash Throat valve order gets an Act-3-reachable second hint | Design-level, not yet built |
 | 0011 | Save spine in Phase 1 (= D-2) | **Implemented** |
 | 0012 | Hand-wired composition; no service locator. VContainer is a Phase 2 go/no-go | **Implemented** — go/no-go still not taken |
 | 0013 | Save codec: Newtonsoft if `Core` can reference it, else hand-rolled | **Implemented** (hand-rolled `JsonWriter`/`JsonParser`) |
-| 0014 | **UI Toolkit, not uGUI** — reverses Phase 1 Plan §4 | **Implemented** — **CONFLICT-5**, plan §4 still stale |
+| 0014 | **UI Toolkit, not uGUI** — reverses Phase 1 Plan §4 | **Implemented** — plan §4 marked superseded (CONFLICT-5 closed) |
 | 0015 | Objectives are derived from progression, never stored | **Implemented** (Phase 2) |
 | 0016 | Zones are furnished at runtime from a recipe; scene assets stay empty | **Implemented** (Phase 2) — the look is unverified |
 | 0017 | Interaction is a registry proximity scan, not physics triggers | **Implemented** (Phase 2) |

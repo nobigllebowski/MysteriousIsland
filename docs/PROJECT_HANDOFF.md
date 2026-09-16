@@ -125,22 +125,14 @@ in the last twelve commits was traced by reading, not run. Phase 5 stays blocked
 
 Still outstanding behind that, unchanged by Phase 2:
 
-**Reconcile the documentation (Phase 1 Task 0).**
+**Reconcile the documentation (Phase 1 Task 0) — done except the owner's call.**
 
-Task 0 was specified in the Phase 1 plan and never executed, which is why six conflicts are live.
-It is a documentation-only change with no code risk:
+Items 1–4 (assembly names, the survival stat set and the deleted resource model, the joystick-first
+re-authoring of beat 2:00, the superseded uGUI decision) are in the documents. What remains:
 
-1. `production/02-mvp-scope-and-roadmap.md` — `Isle.Domain`/`Isle.Presentation`/`Isle.Tests` →
-   `ForgottenIsle.Core`/`.Game`/`.UI` (CONFLICT-1).
-2. `architecture/03-data-and-save-architecture.md` — `SurvivalStat` → the ADR-0006 set; delete
-   `ResourceDefinition` and the vessel model per ADR-0007 (CONFLICT-2, CONFLICT-3).
-3. `design/04-first-30-minutes.md` beat 2:00 and `production/02-mvp-scope-and-roadmap.md` —
-   tap-to-move → floating joystick. **This is a re-authoring, not a find-and-replace:** the beat
-   teaches movement "by there being exactly one thing worth walking to", which only works for
-   tap-to-move (CONFLICT-4).
-4. `production/03-phase-1-plan.md` §4 — mark the uGUI decision superseded by ADR-0014
-   (CONFLICT-5).
 5. **Ask the owner to settle the world clock: 30× or 60×** (CONFLICT-6). Then make code and docs
-   agree and pin it with a test.
+   agree and pin it with a test. And the render pipeline (CONFLICT-7): the code runs Built-in,
+   every document says URP; the graphics pass was written for Built-in, so the cheap answer is to
+   make the documents say so.
 
 See `ROADMAP.md` for what comes after.

@@ -9,6 +9,16 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Changed — documentation reconciled (Phase 1 Task 0, run late)
+
+Conflicts 1–5 are closed in the documents themselves: `production/02` carries the shipped
+assembly names and the joystick; `architecture/03` carries the ADR-0006 stat set and drops the
+resource-and-vessel model per ADR-0007 (its tick formulas are marked superseded and untuned);
+`design/04` beat 2:00 is re-authored joystick-first per ADR-0008 (the stick blooms under the first
+thumb that lands, with the bag dead ahead; tap-to-move offers itself once as the assist);
+`production/03` §4 is marked superseded by ADR-0014. CONFLICT-6 (the clock) and CONFLICT-7 (the
+pipeline) remain, and are the owner's.
+
 ### Fixed — from a review of the fire slice
 
 - **Grass never replaces laid fibre.** Laying grass on a site where the one rope's fibre was

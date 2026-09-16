@@ -21,8 +21,9 @@ See `docs/CURRENT_STATE.md`.
 3. **`docs/architecture/00-decisions.md`** — the ADRs in full.
 4. Everything else in `docs/`.
 
-Nine design/architecture documents predate the ADRs and **were never reconciled with them**
-(Phase 1 Task 0 was specified and never run). Six live conflicts are catalogued in
+Nine design/architecture documents predate the ADRs. Phase 1 Task 0 (reconciling them) was run
+late: conflicts 1–5 are closed in the documents themselves. **Two live conflicts remain** — the
+world clock (CONFLICT-6) and the render pipeline (CONFLICT-7) — catalogued in
 `docs/CURRENT_STATE.md` §Conflicts. **Check that list before trusting any older document.**
 
 ---

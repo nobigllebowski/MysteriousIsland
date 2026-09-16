@@ -5,6 +5,8 @@
 **Target:** Unity 6 LTS · C# · URP · New Input System · portrait mobile (iOS + Android)
 **Companion canon:** `Story Bible v1.0` — all IDs, names and worked examples below are drawn from it and from nowhere else.
 
+**Reconciled (Phase 1 Task 0, run late):** `SurvivalStat` is the Core Systems set per ADR-0006; the resource-and-vessel inventory (`ResourceDefinition`, `InventoryState.Resources`, `Vessels`, `VesselContents`) is deleted per ADR-0007 — water is a charged vessel item. The shipped inventory (`ForgottenIsle.Core.Items.Inventory`) is a set of item ids, unstacked, and ADR-0007's charge count is not yet built. "URP" in the target line is CONFLICT-7 (Built-in ships).
+
 ---
 
 ## 0. The Structural Premise
@@ -249,7 +251,7 @@ Lowercase, `snake_case` within a segment, ASCII only, `[a-z0-9_.]{3,64}`, regex-
 | Prefix | Type | Canon examples |
 |---|---|---|
 | `item.` | ItemDefinition | `item.hydrophone_directional`, `item.field_recorder`, `item.dry_bag`, `item.multitool`, `item.field_slate`, `item.catchment_rig`, `item.brass_tag_dated`, `item.reel_sabo_log_14` |
-| `res.` | ResourceDefinition | `res.fresh_water`, `res.recorder_battery`, `res.hemp_fibre`, `res.basalt_shard` |
+| ~~`res.`~~ | ~~ResourceDefinition~~ | **Deleted per ADR-0007.** Water is `item.pouch_water` with `Charges: 0..4`; a battery is the item that holds it; fibre and shards are items. |
 | `recipe.` | RecipeDefinition | `recipe.cordage_plaited`, `recipe.catchment_rig`, `recipe.dry_box`, `recipe.fire_bundle` |
 | `disc.` | DiscoveryDefinition | `disc.gully_cut_stone`, `disc.machete_cuts_fresh`, `disc.reel_sabo_gates`, `disc.grave_maintained` |
 | `int.` | InteractionDefinition | `int.ribcage_hull3_locker`, `int.combs_ladder_bolt`, `int.oleander_gate_b_valve` |
@@ -330,7 +332,11 @@ public enum ItemCategory
 }
 
 public readonly record struct SurvivalEffect(SurvivalStat Stat, float Delta, float OverSeconds);
-public enum SurvivalStat { Hydration, Warmth, Fatigue, Morale, RecorderCharge }
+
+// ADR-0006: the Core Systems set. Values 0..100; CoreTemp in °C, 30.0–40.0.
+// (Superseded here: { Hydration, Warmth, Fatigue, Morale, RecorderCharge }. Recorder charge is
+// an item property — see ADR-0007 — not a stat of the body.)
+public enum SurvivalStat : byte { Health, Energy, Hydration, Satiation, CoreTemp }
 ```
 
 **Worked example — the hydrophone, Nadia's signature tool:**
@@ -409,56 +415,16 @@ new ItemDefinition {
 
 ---
 
-## 2.3 `ResourceDefinition`
+## 2.3 ~~`ResourceDefinition`~~ — deleted (ADR-0007)
 
-Distinct from `ItemDefinition` because resources are **measured quantities**, not countable objects. Water is litres, not "3 waters". Keeping them separate stops fractional-stack hacks in the inventory.
-
-```csharp
-public sealed record ResourceDefinition : IDefinition
-{
-    public string Id                  { get; init; } = "";
-    public int    ContentRevision     { get; init; }
-
-    public string NameLocKey          { get; init; } = "";
-    public string UnitLocKey          { get; init; } = "";   // "L", "g", "cell-hours"
-    public string IconAddress         { get; init; } = "";
-
-    public ResourceKind Kind          { get; init; }
-    public float  MinValue            { get; init; }
-    public float  MaxCarry            { get; init; }         // hard carry cap without a vessel
-    public float  DecayPerHour        { get; init; }         // spoilage/evaporation
-    public string DecaysIntoId        { get; init; } = "";   // "" = vanishes
-    public string RequiredVesselTag   { get; init; } = "";   // must hold a vessel with this tag
-    public bool   IsPotable           { get; init; }
-    public int    DisplayPrecision    { get; init; } = 1;    // decimal places in HUD
-    public string HudColorToken       { get; init; } = "";   // palette token, not a hex literal
-}
-
-public enum ResourceKind { Liquid, Solid, Charge, Fuel }
-```
-
-**Worked example — fresh water, the whole of Act 1:**
-
-```csharp
-new ResourceDefinition {
-    Id                = "res.fresh_water",
-    ContentRevision   = 4,
-    NameLocKey        = "ui.res.fresh_water.name",
-    UnitLocKey        = "ui.unit.litre_short",
-    IconAddress       = "ui/icons/res_fresh_water",
-    Kind              = ResourceKind.Liquid,
-    MinValue          = 0f,
-    MaxCarry          = 4.5f,
-    DecayPerHour      = 0.004f,        // evaporation from an imperfect seal
-    DecaysIntoId      = "",
-    RequiredVesselTag = "vessel_watertight",
-    IsPotable         = true,
-    DisplayPrecision  = 2,
-    HudColorToken     = "hud.resource.water",
-}
-```
-
----
+The original spec kept resources (measured quantities: litres of water, cell-hours of charge)
+apart from items (countable objects) and carried them in vessels with a float payload. ADR-0007
+rejected the dual model: **one inventory model, items, not resources.** Water is a stacking
+consumable item held in a vessel item with a charge count (`item.pouch_water`, `Charges: 0..4`);
+charge is a property of the item that holds it. There is no `ResourceDefinition`, no
+`ResourceKind`, no `InventoryState.Resources`, no `Vessels` and no `VesselContents`, and no
+`res.*` id prefix. The shipped `Inventory` (`ForgottenIsle.Core.Items`) is a set of item ids;
+charges are not yet built and arrive with the water in Phase 5.
 
 ## 2.4 `RecipeDefinition`
 
@@ -1322,18 +1288,15 @@ public sealed class InventoryState
 {
     public List<ItemStack> Stacks    { get; init; } = new();
     public List<ItemState> Instances { get; init; } = new();
-    public Dictionary<string, float> Resources { get; init; } = new();  // res.* → amount
+    // Resources: deleted per ADR-0007. Quantities are item charges.
 
     public string EquippedToolInstanceId { get; set; } = "";
     public float  CarriedVolumeLitres    { get; set; }   // cached, recomputed on mutation
     public float  CarriedMassKg          { get; set; }
 
-    // Vessels are instances with a resource payload; tracked separately so a half-full
-    // canteen survives being put down in the Sweatways and picked up in Act 4.
-    public Dictionary<string, VesselContents> Vessels { get; init; } = new(); // instanceId → contents
+    // Vessels and VesselContents: deleted per ADR-0007. A half-full canteen is an instance whose
+    // Charges is 2, and it survives being put down in the Sweatways as any instance does.
 }
-
-public readonly record struct VesselContents(string ResourceId, float Amount, float SpoilageProgress);
 ```
 
 ## 3.3 `SurvivalState`
@@ -1341,6 +1304,9 @@ public readonly record struct VesselContents(string ResourceId, float Amount, fl
 ```csharp
 public sealed class SurvivalState
 {
+    // ADR-0006 fields, 0..100 (CoreTemp in °C). The 0..1 { Hydration, Warmth, Fatigue, Morale,
+    // RecorderCharge } set below is superseded and kept only so the tick formulas that follow
+    // can be read; CONFLICT-6 (the clock's scale) has to be settled before any of them is tuned.
     public float Hydration     { get; set; }   // 0..1
     public float Warmth        { get; set; }   // 0..1
     public float Fatigue       { get; set; }   // 0..1, 1 = exhausted

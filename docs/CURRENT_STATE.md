@@ -153,11 +153,11 @@ builds.
 
 | # | Conflict | Authority | Stale source |
 |---|---|---|---|
-| **CONFLICT-1** | Assembly names: `Isle.Domain` / `Isle.Presentation` / `Isle.Tests` | **ADR-0001 + shipped code: `ForgottenIsle.Core/.Game/.UI`** | `production/02-mvp-scope-and-roadmap.md:269,284,379` |
-| **CONFLICT-2** | `SurvivalStat` = `{Hydration, Warmth, Fatigue, Morale, RecorderCharge}` | **ADR-0006: `{Health, Energy, Hydration, Satiation, CoreTemp}`** | `architecture/03-data-and-save-architecture.md:333` and its `WarmthDrainPerHour` fields |
-| **CONFLICT-3** | `ResourceDefinition` / resource-and-vessel inventory still specified | **ADR-0007 deletes it; water is a charged vessel item** | `architecture/03-data-and-save-architecture.md:252,412+` |
-| **CONFLICT-4** | Locomotion is **tap-to-move**, "no virtual stick" | **ADR-0008 + shipped code: floating joystick** (`VardholmControls.Move` is a Vector2 stick) | `design/04-first-30-minutes.md:73`; `production/02-mvp-scope-and-roadmap.md:15,401` |
-| **CONFLICT-5** | UI technology is **uGUI + TextMeshPro, "Not UI Toolkit"** | **ADR-0014 + shipped code: UI Toolkit** | `production/03-phase-1-plan.md:294` |
+| ~~CONFLICT-1~~ | ~~Assembly names `Isle.*`~~ | **Resolved:** `production/02` reconciled to ADR-0001 and the shipped names | — |
+| ~~CONFLICT-2~~ | ~~`SurvivalStat` set~~ | **Resolved:** `architecture/03` carries the ADR-0006 set; the old tick formulas are marked superseded and untuned (CONFLICT-6) | — |
+| ~~CONFLICT-3~~ | ~~`ResourceDefinition` / vessels~~ | **Resolved:** `architecture/03` §2.3 and `InventoryState` reconciled to ADR-0007 | — |
+| ~~CONFLICT-4~~ | ~~Tap-to-move~~ | **Resolved:** beat 2:00 re-authored joystick-first (ADR-0008); `production/02` reconciled | — |
+| ~~CONFLICT-5~~ | ~~uGUI~~ | **Resolved:** `production/03` §4 marked superseded by ADR-0014 | — |
 | **CONFLICT-7** | **Code contradicts every document.** All of `docs/` says the renderer is **URP** | **UNRESOLVED — needs a decision.** `Packages/manifest.json` has no `com.unity.render-pipelines.universal` and `GraphicsSettings.m_CustomRenderPipeline` is `{fileID: 0}`: the project runs on **Built-in** | `CLAUDE.md:5`, `PROJECT_HANDOFF.md`, `ARCHITECTURE.md`, ADR-0014 discussion |
 | **CONFLICT-6** | **Code contradicts spec.** World clock: docs say `1 real second = 30 world seconds` (48-min day); `Ticker.DefaultWorldSecondsPerRealSecond = 60.0` (24-min day) | **UNRESOLVED — needs a human decision** | `architecture/02-core-systems.md:523,872` vs `Assets/Scripts/Game/Bootstrap/Ticker.cs:51` |
 
@@ -165,9 +165,9 @@ builds.
 At 60× every drain rate is effectively doubled in real time, so the 36-hour water deadline that
 Act 1 is built around arrives in half the intended wall-clock. Decide before any survival work.
 
-**CONFLICT-4 has content cost.** The prologue's minute-2:00 beat teaches movement "by there being
-exactly one thing worth walking to", which only works for tap-to-move. Adopting the joystick means
-re-authoring that beat, not a find-and-replace.
+**CONFLICT-4's content cost is paid.** Beat 2:00 now teaches the joystick by the stick blooming
+under the first thumb that lands, with the bag dead ahead; tap-to-move is the accessibility
+assist that offers itself once at 90 s. The stand animation and the cues are not built.
 
 ## 4. UNCONFIRMED — believed but not verified
 
