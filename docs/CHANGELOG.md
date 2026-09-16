@@ -9,6 +9,21 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — NEW GAME after three runs, and a recorded figure that was always 0%
+
+**O-11.** With every manual slot full the menu refused NEW GAME forever; there was no delete path.
+Now the first tap names what will happen and arms it, and a second tap within eight seconds
+overwrites the oldest readable run. A corrupt slot is never chosen: it may be the one save a
+player could still recover. No modal widget exists in this UI yet; a two-tap confirm with a plain
+sentence is a smaller thing to get right.
+
+**O-12.** `RecordedPercent` was rendered on the pause summary and in every save header and
+computed by nothing. `Recorded.Percent` is a fraction of the recordable content ids (markers,
+discoveries, mechanisms — six in this slice), rounded; `RecordKeeper` writes it into the session
+whenever progress changes.
+
+Both gates pass; four new EditMode cases. Not compiled.
+
 ### Fixed — an end-to-end read of every player chain, and what it found
 
 Six chains traced hop by hop — boot → menu → new game; the Ribcage progression; the item chain;

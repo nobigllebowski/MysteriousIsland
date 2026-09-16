@@ -146,6 +146,7 @@ ui.toast.game_saved,Game saved
 ui.toast.zone_entered,Entered {0}
 ui.toast.save_failed,Could not save
 ui.toast.slots_full,Every save slot is full.
+ui.menu.overwrite_armed,"Every save slot is full. Tap NEW GAME again to overwrite the oldest run."
 
 # -----------------------------------------------------------------------------
 # Failure messages, one per ResultCode the player can actually provoke.

@@ -68,6 +68,10 @@ namespace ForgottenIsle.Game.Bootstrap
             // The autosave ring's only writer. Held by the context so it lives as long as the run
             // does; it subscribes in its constructor and is inert without a bus.
             var autosave = new AutosaveDirector(slots, session, states, signals, log);
+
+            // The recorded-percent figure the pause summary and the save header show. Computed by
+            // nothing for two phases; every header said 0%.
+            var recordKeeper = new RecordKeeper(progress, session, signals);
             var interactions = new InteractionSystem(progress, inventory, dispatcher, signals, log);
 
             // ADR-0011: every phase adds its participant in the same pull
@@ -108,7 +112,7 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));
             dispatcher.Register<SqueezeMicCommand>(new SqueezeMicHandler(states, radio, signals));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, participants);
         }
 
         /// <summary>

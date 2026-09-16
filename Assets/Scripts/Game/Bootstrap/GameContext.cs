@@ -68,6 +68,7 @@ namespace ForgottenIsle.Game.Bootstrap
             InventoryService inventory,
             RadioService radio,
             AutosaveDirector autosave,
+            RecordKeeper recordKeeper,
             IReadOnlyList<ISaveParticipant> saveParticipants)
         {
             if (log == null)
@@ -140,6 +141,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
             Radio = radio ?? throw new ArgumentNullException(nameof(radio));
             Autosave = autosave;
+            RecordKeeper = recordKeeper;
             Input = input;
 
             // Copied defensively. The participant list is what a save iterates; handing out the
@@ -203,6 +205,9 @@ namespace ForgottenIsle.Game.Bootstrap
 
         /// <summary>The autosave ring's writer. Null tolerated by everything that reads it.</summary>
         public AutosaveDirector Autosave { get; }
+
+        /// <summary>Keeps the session's recorded-percent figure in step with progression. Null tolerated.</summary>
+        public RecordKeeper RecordKeeper { get; }
 
         /// <summary>
         /// Player input, already gated on the state machine so it reads as centred outside

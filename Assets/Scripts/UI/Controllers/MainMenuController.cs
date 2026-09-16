@@ -40,6 +40,10 @@ namespace ForgottenIsle.UI.Controllers
         // rather than a second toast-only phrasing of the same sentence.
         private static readonly LocKey SlotsFullKey = new LocKey("ui.toast.slots_full");
         private static readonly LocKey NoSaveKey = new LocKey("ui.menu.no_save");
+        private static readonly LocKey OverwriteArmedKey = new LocKey("ui.menu.overwrite_armed");
+
+        /// <summary>Seconds a second tap on NEW GAME counts as confirming the overwrite.</summary>
+        private const double OverwriteWindowSeconds = 8.0;
 
         private readonly UIService _ui;
         private readonly CommandDispatcher _commands;
@@ -48,6 +52,8 @@ namespace ForgottenIsle.UI.Controllers
         private readonly string _buildVersion;
 
         private SettingsScreen _settings;
+        private int _armedOverwriteSlot = -1;
+        private double _armedAt;
         private int _continueSlot = -1;
 
         /// <summary>
@@ -161,11 +167,32 @@ namespace ForgottenIsle.UI.Controllers
             var slot = FirstFreeSlot();
             if (slot < 0)
             {
-                // Deliberately refuses rather than overwriting the oldest save. Phase 1 has no confirmation
-                // dialog, and silently destroying a run because every slot was full is the single worst
-                // thing this menu could do.
-                _ui.Toast(SlotsFullKey, ToastKind.Warning);
-                return;
+                // Every slot holds a run. Silently destroying one is the worst thing this menu could
+                // do, and refusing forever (which is what it did) was the second worst: after three
+                // runs there was no way to start a fourth. So: the first tap names what will happen
+                // and arms it; a second tap within the window is the confirmation. There is no
+                // dialog widget in this UI yet, and a two-tap confirm with a plain sentence is a
+                // smaller thing to get right than a modal.
+                var oldest = OldestSlot();
+                if (oldest < 0)
+                {
+                    // Full, and nothing readable to overwrite: every slot is corrupt. Refuse, so the
+                    // one save a player might yet recover is not the one that gets destroyed.
+                    _ui.Toast(SlotsFullKey, ToastKind.Warning);
+                    return;
+                }
+
+                var now = UnityEngine.Time.realtimeSinceStartupAsDouble;
+                if (_armedOverwriteSlot != oldest || now - _armedAt > OverwriteWindowSeconds)
+                {
+                    _armedOverwriteSlot = oldest;
+                    _armedAt = now;
+                    _ui.Toast(OverwriteArmedKey, ToastKind.Warning);
+                    return;
+                }
+
+                _armedOverwriteSlot = -1;
+                slot = oldest;
             }
 
             // The whole point of this class, in one line: a tap becomes a value, and the dispatcher decides
@@ -195,6 +222,37 @@ namespace ForgottenIsle.UI.Controllers
         /// A corrupt slot counts as occupied. It still holds a file, and treating it as free would have a
         /// new run quietly overwrite the one save a player might otherwise have recovered.
         /// </remarks>
+        /// <summary>
+        /// The readable manual slot saved longest ago, or -1 when none is readable.
+        /// </summary>
+        /// <remarks>
+        /// Ordinal comparison of the ISO stamp, which the slot service documents as correct for
+        /// its own format. A corrupt slot is never the answer: it may be the one save the player
+        /// could still recover, and an overwrite is the one thing that makes that impossible.
+        /// </remarks>
+        private int OldestSlot()
+        {
+            var oldest = -1;
+            string oldestStamp = null;
+            for (var slot = 0; slot < SaveSlotService.SlotCount; slot++)
+            {
+                SaveMetadata metadata;
+                if (_slots.ReadMetadata(slot, out metadata) != ResultCode.Ok || metadata == null)
+                {
+                    continue;
+                }
+
+                var stamp = metadata.SavedAtIso ?? string.Empty;
+                if (oldest < 0 || string.CompareOrdinal(stamp, oldestStamp) < 0)
+                {
+                    oldest = slot;
+                    oldestStamp = stamp;
+                }
+            }
+
+            return oldest;
+        }
+
         private int FirstFreeSlot()
         {
             for (var slot = 0; slot < SaveSlotService.SlotCount; slot++)
