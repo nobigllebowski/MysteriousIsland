@@ -1864,6 +1864,52 @@ def check_content_ids(report, root, files, csv_keys):
                         "marker '%s' has no 'narration.%s' row; fine only if it is never inspected by prompt" % (name, content_id))
 
 
+# ---------------------------------------------------------------------------
+# Command routing: every command has a handler registered at composition, and
+# every command an interactable builds is routed by the interaction system.
+# Three commands were once built by the world and silently refused because
+# the typed dispatch list did not know them; this asks the question every run.
+# ---------------------------------------------------------------------------
+
+COMMAND_DECL_RE = re.compile(r"public\s+readonly\s+struct\s+(?P<name>[A-Za-z0-9_]+Command)\s*:\s*ICommand")
+COMMAND_NEW_RE = re.compile(r"new\s+(?P<name>[A-Za-z0-9_]+Command)\s*\(")
+
+
+def check_command_routing(report, files):
+    commands_rel = "Assets/Scripts/Core/Commands/GameCommands.cs"
+    root_rel = "Assets/Scripts/Game/Bootstrap/AppCompositionRoot.cs"
+    system_rel = "Assets/Scripts/Game/Interaction/InteractionSystem.cs"
+    sources = {rel: scan for rel, scan, _ns, _decls in files}
+    if commands_rel not in sources or root_rel not in sources or system_rel not in sources:
+        return
+
+    commands_code = sources[commands_rel].code
+    root_code = sources[root_rel].code
+    system_code = sources[system_rel].code
+
+    declared = {}
+    for match in COMMAND_DECL_RE.finditer(commands_code):
+        declared[match.group("name")] = commands_code.count("\n", 0, match.start()) + 1
+
+    for name, line in declared.items():
+        if ("Register<%s>" % name) not in root_code:
+            report.error("ROUTE", commands_rel, line,
+                         "'%s' has no dispatcher.Register<%s> in AppCompositionRoot; dispatching it returns NoHandler" % (name, name))
+
+    # What the world builds must be routable: InteractionSystem.Dispatch is a typed list.
+    for rel, scan in sources.items():
+        if not rel.startswith("Assets/Scripts/Game/Interaction/") or rel == system_rel:
+            continue
+        for match in COMMAND_NEW_RE.finditer(scan.code):
+            name = match.group("name")
+            if name not in declared:
+                continue
+            if ("command is %s " % name) not in system_code:
+                line = scan.code.count("\n", 0, match.start()) + 1
+                report.error("ROUTE", rel, line,
+                             "'%s' is built by an interactable but InteractionSystem.Dispatch does not route it; the prompt's button would do nothing" % name)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Structural validator for the Vardholm C# sources. Substitutes for a compiler.")
@@ -1966,6 +2012,9 @@ def main(argv=None):
     report.checks_run += 1
 
     check_content_ids(report, root, files, csv_keys)
+    report.checks_run += 1
+
+    check_command_routing(report, files)
 
     # --- Output ------------------------------------------------------------
     report.emit()
@@ -1986,7 +2035,7 @@ def main(argv=None):
     print("                                 missing usings, member/type collisions,")
     print("                                 deprecated Unity APIs, accidental nesting,")
     print("                                 phantom usings, shadowed locals, called members,")
-    print("                                 content ids)")
+    print("                                 content ids, command routing)")
     print("  errors .................... %d" % len(report.errors))
     print("  warnings .................. %d%s" % (len(report.warnings), " (hidden by --quiet)" if args.quiet and report.warnings else ""))
     print("")

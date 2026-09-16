@@ -9,6 +9,12 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Changed — the validator checks command routing
+
+A sixteenth check, `ROUTE`: every command struct has a `Register<…>` in the composition root, and
+every command an interactable builds has a route in `InteractionSystem.Dispatch`. Three commands
+were once built by the world and silently refused for a phase; proven to fire by deleting a route.
+
 ### Added — the recorder and the flame: "No."
 
 §8:00's un-failable guard: the recorder held to a burning fire is refused with one word, and

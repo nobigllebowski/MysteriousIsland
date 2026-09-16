@@ -130,6 +130,11 @@ clean tone on 5.240; a low knock on basalt and a bright ring on chert; crackle w
 burns. The beds must pause with the game and resume where they were. Every constant is a first
 guess made without an ear (ADR-0027).
 
+Then the hook: read the cut vine beside the gully mouth. The sub-bass under everything must
+rise over four seconds until it is plainly there, and six seconds after the vine she must say
+"That's not the sea." Lay grass at a site and wait four minutes for the knock; throw sparks and
+wait four minutes for the rope chip to lean every six seconds, then lay the fibre and see it stop.
+
 The things most likely to be wrong, in order: a shader that does not compile (magenta); a UI
 Toolkit API used with the wrong signature in `RadioPanel` or `SlateScreen`; a pointer-capture
 edge in the dial strip; `Mesh.bounds` not being the culling volume for the sea. Everything else
