@@ -51,6 +51,7 @@ Full text and rationale in [`architecture/00-decisions.md`](architecture/00-deci
 | 0020 | Inventory is a top-of-screen tray; combining is tap-then-tap, with tap-again to cancel | **Implemented** (Phase 3) |
 | 0021 | The world is drawn with this project's own shaders, kept under `Resources` | **Implemented** — **never compiled** |
 | 0022 | The radio: one service (5th save participant), one world object, one shared piece of tuning arithmetic | **Implemented** (Phase 6 slice) |
+| 0023 | The Field Slate is a derived view of progression and the radio; not a save participant | **Implemented** (Phase 6 slice) |
 
 **Why 0014 reversed:** the uGUI choice assumed a greenfield start. It was not one — the team's
 NATION: WORLD ORDER project already contained a working, code-built UI Toolkit mobile framework at

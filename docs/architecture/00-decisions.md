@@ -501,6 +501,29 @@ readers.
 
 ---
 
+## ADR-0023 — The Field Slate is a derived view, and it is not a save participant
+
+**Status.** Accepted. Implemented as `Core.Progress.Slate`, `Game.Progress.SlateDirector`,
+`UI.Screens.SlateScreen`, `UI.Controllers.SlateController`.
+
+**Decision.** The notebook's three tabs are computed from progression and the radio's facts by a
+pure function, on every change. Nothing about the Slate is stored. Opening it is navigation on the
+screen stack, not a game-state change; the world continues underneath.
+
+**Why.** ADR-0015 already established that objectives are derived so they can never disagree with
+the record. The Slate is the same thing with three tabs: a second record of "what has been found"
+would be a second thing to migrate and the first thing to drift. Deriving also gives the design's
+rule for free — the record is never lost, because its inputs are in the save.
+
+**Consequence.**
+- Adding content means adding a line to `Slate.Build` and its rows; there is no schema.
+- The UNRESOLVED count is `SlateContents.OpenQuestions`, and the HUD badge shows that number.
+- `Resolved` exists on every line and is false everywhere in the prologue; Act 2 sets it.
+- When the radio's facts grow, `SlateFacts` grows; the derivation stays engine-free and testable
+  with a struct literal.
+
+---
+
 ---
 
 ## Open items — tracked, not resolved

@@ -81,6 +81,12 @@ namespace ForgottenIsle.Game.Radio
         /// <summary>Stations the needle has locked onto at least once, in the order heard.</summary>
         public IReadOnlyList<string> Heard => _heard;
 
+        /// <summary>True once the needle has locked onto the station at least once.</summary>
+        public bool HasHeard(string stationId)
+        {
+            return !string.IsNullOrEmpty(stationId) && _heard.Contains(stationId);
+        }
+
         /// <summary>True once the transmission has been received. It is recorded; it is never lost.</summary>
         public bool TransmissionReceived => _heard.Contains(Stations.TheVoice);
 

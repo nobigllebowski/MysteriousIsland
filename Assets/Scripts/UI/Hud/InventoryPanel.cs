@@ -68,7 +68,7 @@ namespace ForgottenIsle.UI.Hud
             // the bottom edge -- the movement stick on the left, the look pad on the right -- and
             // an opened tray down there is an opaque sheet over the controls the player is holding.
             // The top strip is the only part of a portrait screen a thumb never rests on.
-            _root.style.top = 72f;
+            _root.style.top = 72f + 48f + Theme.Space8 + 48f + Theme.Space8;
             _root.pickingMode = PickingMode.Ignore;
             _root.style.alignItems = Align.FlexEnd;
             parent.Add(_root);

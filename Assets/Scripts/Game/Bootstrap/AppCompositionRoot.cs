@@ -72,6 +72,9 @@ namespace ForgottenIsle.Game.Bootstrap
             // The recorded-percent figure the pause summary and the save header show. Computed by
             // nothing for two phases; every header said 0%.
             var recordKeeper = new RecordKeeper(progress, session, signals);
+
+            // The notebook: a derived view of progression and the radio, announced on every change.
+            var slate = new SlateDirector(progress, radio, signals);
             var interactions = new InteractionSystem(progress, inventory, dispatcher, signals, log);
 
             // ADR-0011: every phase adds its participant in the same pull
@@ -112,7 +115,7 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));
             dispatcher.Register<SqueezeMicCommand>(new SqueezeMicHandler(states, radio, signals));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, slate, participants);
         }
 
         /// <summary>

@@ -69,6 +69,7 @@ namespace ForgottenIsle.Game.Bootstrap
             RadioService radio,
             AutosaveDirector autosave,
             RecordKeeper recordKeeper,
+            SlateDirector slate,
             IReadOnlyList<ISaveParticipant> saveParticipants)
         {
             if (log == null)
@@ -142,6 +143,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Radio = radio ?? throw new ArgumentNullException(nameof(radio));
             Autosave = autosave;
             RecordKeeper = recordKeeper;
+            Slate = slate;
             Input = input;
 
             // Copied defensively. The participant list is what a save iterates; handing out the
@@ -208,6 +210,9 @@ namespace ForgottenIsle.Game.Bootstrap
 
         /// <summary>Keeps the session's recorded-percent figure in step with progression. Null tolerated.</summary>
         public RecordKeeper RecordKeeper { get; }
+
+        /// <summary>The Field Slate's director: derives and announces the notebook. Null tolerated.</summary>
+        public SlateDirector Slate { get; }
 
         /// <summary>
         /// Player input, already gated on the state machine so it reads as centred outside

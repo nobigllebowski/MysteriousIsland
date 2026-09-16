@@ -9,6 +9,32 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the Field Slate: OBSERVED, PEOPLE, UNRESOLVED
+
+Nadia's notebook, from `design/04-first-30-minutes.md` §3:30. Full screen, paper-coloured, a ruled
+margin, three tabs down the fore-edge, and a number on UNRESOLVED that is the entire quest system.
+One tap on the page closes it. The HUD carries a Slate tab with the same number.
+
+**Derived, never stored.** The same rule as objectives (ADR-0015): `Slate.Build` computes the three
+tabs from progression and a handful of radio facts, `SlateDirector` announces the result on every
+change, and the controller translates keys into lines. An entry appears the moment its fact is
+true and can never be lost, because the facts are in the save. "The record is never lost in this
+game" is a property of a function, not a promise.
+
+What it writes on this slice: the standing stone, the tag (which shows SOMEONE and asks WHO
+RE-WICKS A LANTERN), the cut wall, the reel, the sluice, the deck (which asks WHO KEEPS THE MAINS
+ALIVE — this slice's own question), the radio found and working (with T.R. from the battery door),
+the two false positives, and the transmission — as an entry, or as TRANSCRIPT — NO AUDIO when the
+recorder's cells went into the set: the permanent scar the design asks for. The voice redraws
+SOMEONE into THE VOICE and asks WHAT ARE THE GATES and WHY WON'T SHE ANSWER.
+
+Deviations, named: SIX HULLS, ONE LINE is not derived — the hull-sightline beat it comes from is
+not built; the Slate tab sits with the other top-right controls rather than on the bottom edge,
+because that edge is where both thumbs live on this layout; the handwriting, wet-ink reveal,
+sketches and the crew-list page are art tasks and are not faked. Recorded as ADR-0023.
+
+Both gates pass; six new EditMode cases. Not compiled.
+
 ### Fixed — NEW GAME after three runs, and a recorded figure that was always 0%
 
 **O-11.** With every manual slot full the menu refused NEW GAME forever; there was no delete path.

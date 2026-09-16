@@ -298,3 +298,50 @@ narration.radio.mic.2,"Hello. — Hiss."
 narration.radio.mic.3,"I heard you. — Hiss."
 narration.radio.mic.4,"I know you're there. — Hiss."
 narration.radio.mic.5,"Why aren't you answering."
+# --- Phase 6: the Field Slate --------------------------------------------------
+ui.hud.slate_open,Slate
+ui.slate.tab.observed,OBSERVED
+ui.slate.tab.people,PEOPLE
+ui.slate.tab.unresolved,UNRESOLVED
+ui.slate.empty,Nothing written here yet.
+ui.slate.hint,TAP THE PAGE TO CLOSE
+slate.observed.marker.rib_stone,STANDING STONE
+slate.observed.marker.rib_stone.body,"Set upright, faced to the water. Not fallen there. Placed, by someone who wanted it seen from a boat."
+slate.observed.discovery.brass_tag,"BOOTS, PAIRED. BRASS TAG."
+slate.observed.discovery.brass_tag.body,"Wired to the net drum. Stamped 11.04.97 and two initials. Someone serviced this. Who re-wicks a lantern on an island with nobody on it?"
+slate.observed.marker.aqueduct_cut,THE CUT WALL
+slate.observed.marker.aqueduct_cut.body,"Dressed stone, cut to carry water, older than anything that should be here. The channel below it is dry."
+slate.observed.discovery.waterlogged_reel,QUARTER-INCH TAPE
+slate.observed.discovery.waterlogged_reel.body,"Waterlogged, spooled loose. Something recorded down here, and meant to keep it. It will not play as found."
+slate.observed.mechanism.channel_sluice,THE SLUICE
+slate.observed.mechanism.channel_sluice.body,"Three turns and it gave. Water found the channel before the gate was fully open, as if it had been waiting."
+slate.observed.mechanism.tape_deck,THE DECK
+slate.observed.mechanism.tape_deck.body,"Wired into the wall, and powered. A woman counting. Not numbers: pressures, read aloud, one every hour, for as long as the tape runs."
+slate.observed.radio.found,A RADIO
+slate.observed.radio.found.body,"A 1970s marine set on a crate, under canvas, inside a hull somebody cut a door into. Clean. Eleven brass tags on eleven nails beside it; the newest is three weeks old."
+slate.observed.radio.working,THE SET WORKS
+slate.observed.radio.working.body,"Torch cells, a scraped terminal, a spring for a fuse. Inside the battery door, scratched with a knife: THE SET WORKS. THE ISLAND DOESN'T. — T.R."
+slate.observed.radio.working_recorder,THE SET WORKS
+slate.observed.radio.working_recorder.body,"The recorder's cells. Nine per cent, gone. Inside the battery door, scratched with a knife: THE SET WORKS. THE ISLAND DOESN'T. — T.R."
+slate.observed.radio.hull_thump,8.291 — THE HULL
+slate.observed.radio.hull_thump.body,"A slow hollow thump, eleven minutes apart. Not radio. The hull, through a loose gland. There is a note in this hull."
+slate.observed.radio.bulletin,12.510 — WEATHER
+slate.observed.radio.bulletin.body,"Portuguese. A forecast for a sea area nine hundred kilometres from here. The set works. Nobody is looking."
+slate.observed.radio.the_voice,5.240 — THE TRANSMISSION
+slate.observed.radio.the_voice.body,"Recorded. 'Tide table corrected for the twelfth. Gate two, ballast at four. Gate three, ballast at four. Gate four is stiff again. Lantern seven replaced. Bridge two re-roped. Day eleven thousand, five hundred and ninety-one. No vessel.'"
+slate.observed.radio.the_voice_transcript,5.240 — THE TRANSMISSION
+slate.observed.radio.the_voice_transcript.body,"TRANSCRIPT — NO AUDIO. I heard it. I didn't capture it. I've done that before. 'Tide table corrected for the twelfth. Gate two, ballast at four. Gate four is stiff again. Day eleven thousand, five hundred and ninety-one. No vessel.'"
+slate.people.someone,SOMEONE
+slate.people.someone.body,"Services equipment. Keeps batteries separately. Keeps a frequency list. Competent, and current."
+slate.people.tr,T.R.
+slate.people.tr.body,"Initials only. Scratched inside a battery door, not stamped: IF YOU ARE READING THIS I AM PROBABLY DEAD."
+slate.people.the_voice,THE VOICE
+slate.people.the_voice.body,"Female, 60s. Local carrier. Day 11,591. Reads a maintenance list. Does not answer."
+slate.unresolved.who_rewicks_a_lantern,WHO RE-WICKS A LANTERN
+slate.unresolved.who_rewicks_a_lantern.body,"On an island with nobody on it."
+slate.unresolved.who_keeps_the_mains_alive,WHO KEEPS THE MAINS ALIVE
+slate.unresolved.who_keeps_the_mains_alive.body,"The deck is powered. Something out here still has a supply, and somebody still maintains it."
+slate.unresolved.what_are_the_gates,WHAT ARE THE GATES
+slate.unresolved.what_are_the_gates.body,"Gate two, gate three, gate four. Ballast at four. She checks them like a tide table."
+slate.unresolved.why_wont_she_answer,WHY WON'T SHE ANSWER
+slate.unresolved.why_wont_she_answer.body,"She is close. She is on a schedule. She has been here since I was ten. Doing what?"

@@ -29,6 +29,7 @@ namespace ForgottenIsle.UI.Hud
         private static readonly LocKey RadioMicKey = new LocKey("ui.radio.mic");
         private static readonly LocKey RadioFineKey = new LocKey("ui.radio.fine");
         private static readonly LocKey RadioUnitKey = new LocKey("ui.radio.unit");
+        private static readonly LocKey SlateTabKey = new LocKey("ui.hud.slate_open");
         private static readonly LocKey InventoryEmptyKey = new LocKey("ui.hud.inventory_empty");
 
         /// <summary>Milliseconds a narration line stays up before it has been read at all.</summary>
@@ -52,6 +53,8 @@ namespace ForgottenIsle.UI.Hud
         private TouchControls _touch;
         private InventoryPanel _inventory;
         private RadioPanel _radio;
+        private Button _slateTab;
+        private Label _slateBadge;
         private IVisualElementScheduledItem _sequenceTimer;
         private IVisualElementScheduledItem _narrationTimer;
 
@@ -102,6 +105,9 @@ namespace ForgottenIsle.UI.Hud
         /// </remarks>
         public event System.Action InteractRequested;
 
+        /// <summary>Raised when the Slate tab is tapped.</summary>
+        public event System.Action SlateRequested;
+
         /// <inheritdoc />
         protected override void Build(VisualElement root)
         {
@@ -113,6 +119,7 @@ namespace ForgottenIsle.UI.Hud
 
             BuildObjective(root);
             BuildPauseButton(root);
+            BuildSlateTab(root);
             BuildPrompt(root);
             BuildNarration(root);
 
@@ -378,6 +385,47 @@ namespace ForgottenIsle.UI.Hud
             };
 
             _sequenceTimer = _narrationCard.schedule.Execute(step).StartingIn(VisibleMsFor(copy[0]));
+        }
+
+        /// <summary>Sets the number on the Slate tab. Zero hides it.</summary>
+        public void SetOpenQuestions(int count)
+        {
+            if (!IsBuilt)
+            {
+                return;
+            }
+
+            _slateBadge.text = count > 0 ? count.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty;
+        }
+
+        private void BuildSlateTab(VisualElement root)
+        {
+            // Under the pause button, above the Items tab's row: the top strip, where no thumb rests.
+            // The design puts the notebook's tab on the bottom edge; on this game's portrait layout
+            // the bottom edge is where both thumbs live, so it joins the other top-right controls.
+            _slateTab = Buttons.Ghost(Loc.Get(SlateTabKey), () =>
+            {
+                var handler = SlateRequested;
+                if (handler != null)
+                {
+                    handler();
+                }
+            });
+            _slateTab.name = "slate-tab";
+            _slateTab.style.position = Position.Absolute;
+            _slateTab.style.right = Theme.Space16;
+            _slateTab.style.top = 72f + 48f + Theme.Space8;
+            _slateTab.style.minWidth = 48f;
+            _slateTab.style.minHeight = 48f;
+            root.Add(_slateTab);
+
+            _slateBadge = Typography.Caption(string.Empty);
+            _slateBadge.style.position = Position.Absolute;
+            _slateBadge.style.top = 2f;
+            _slateBadge.style.right = 4f;
+            _slateBadge.style.color = Theme.Gold;
+            _slateBadge.pickingMode = PickingMode.Ignore;
+            _slateTab.Add(_slateBadge);
         }
 
         private void RaiseInteractRequested()

@@ -4,6 +4,7 @@
 // collapsed into one file and retargeted at state, zone, save and sim-hour events.
 
 using System.Collections.Generic;
+using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Core.Radio;
 using ForgottenIsle.Core.State;
 
@@ -327,6 +328,19 @@ namespace ForgottenIsle.Core.Signals
             StationId = stationId;
             LineKey = lineKey;
             IsOpen = isOpen;
+        }
+    }
+
+    /// <summary>The notebook changed. Carries the whole derived contents; the UI may not read a service.</summary>
+    public readonly struct SlateChangedSignal : ISignal
+    {
+        /// <summary>The three tabs. Never null.</summary>
+        public readonly SlateContents Contents;
+
+        /// <param name="contents">The derived notebook.</param>
+        public SlateChangedSignal(SlateContents contents)
+        {
+            Contents = contents;
         }
     }
 }

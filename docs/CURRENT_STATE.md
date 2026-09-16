@@ -91,9 +91,13 @@ leaves out (phone mic, hint timers, the Field Slate).
 mechanism and a zone unlock. Solved mechanisms are progression and survive a save. On touch, the
 prompt card is the world verb; there is no raw tap binding.
 
-**Still not implemented.** The Field Slate, survival meters, camp (Phase 5, blocked on
-CONFLICT-6), weather, hint escalation, a proper slot picker (a two-tap overwrite stands in), and
-any audio content.
+**Added — the Field Slate.** Three tabs derived from the record (ADR-0023); the UNRESOLVED
+count is the quest system and the HUD's Slate tab shows it. Handwriting, sketches and the
+crew-list page are art tasks, not faked.
+
+**Still not implemented.** Survival meters, camp (Phase 5, blocked on CONFLICT-6), weather, hint
+escalation, the hull-sightline beat (so SIX HULLS, ONE LINE is not in the notebook yet), a proper
+slot picker (a two-tap overwrite stands in), and any audio content.
 
 ## 2. Verification status — read this before trusting anything
 
@@ -108,7 +112,7 @@ any audio content.
 | **First editor open** | **FAILED, 2026-09-14** — 88 × CS0619, all inside `com.unity.inputsystem@1.14.0` (wrong version for `6000.6.0f1`; `1.19.0` is the correct one). Zero errors in project code. Pin corrected; re-open pending. |
 | **Second editor open** | **2026-09-14** — package errors gone, project code compiled for the first time: **3 errors, all real** (2 × CS0246 missing using, 1 × CS0102 name collision). Fixed, and the validator gained checks for both classes. |
 | **Compilation** | **STILL UNCONFIRMED.** Three known errors are fixed but the result has not been seen in the editor. The two HIGH RISK areas (input binding strings, `experimental.animation`) remain untested — the compiler had not reached the UI or Input assemblies. | No Unity, no .NET SDK, no Mono in the dev environment; the proxy blocks Microsoft SDK downloads. |
-| **Tests** | **UNCONFIRMED — 303 tests written (289 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
+| **Tests** | **UNCONFIRMED — 309 tests written (295 EditMode + 14 PlayMode), 0 executed.** The PlayMode suite self-skips without the scenes, so *ignored* must never be read as *passed*. |
 | **Third editor open (graphics pass)** | **2026-09-15** — the project compiled and ran; the five shaders compiled (a procedural sky was on screen). The game view showed only sky: the island had been built 440–730 m under the sea by a `Mathf.SmoothStep` misuse in the new coastline. Root-caused by reading, fixed, **re-run pending.** |
 | **Shaders** | Compiled once (2026-09-15, sky visible on screen). Subsequent edits **not recompiled.** The five files under `Assets/Resources/Shaders` have not been through Unity's shader compiler, and neither CI gate can look at them — both read C#. A shader that fails to compile renders magenta, so this is visible immediately in the editor and invisible until then. |
 

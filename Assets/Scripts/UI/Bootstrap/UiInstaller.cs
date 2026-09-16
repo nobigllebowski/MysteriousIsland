@@ -14,6 +14,7 @@ using ForgottenIsle.Game.Scenes;
 using ForgottenIsle.UI.Controllers;
 using ForgottenIsle.UI.Core;
 using ForgottenIsle.UI.Hud;
+using ForgottenIsle.UI.Screens;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -69,6 +70,7 @@ namespace ForgottenIsle.UI.Bootstrap
         private PauseController _pause;
         private IdleScreen _idleScreen;
         private HudController _hud;
+        private SlateController _slate;
         private IVisualElementScheduledItem _inputPump;
         private LoadFailedScreen _loadFailedScreen;
         private IDisposable _stateSubscription;
@@ -203,6 +205,12 @@ namespace ForgottenIsle.UI.Bootstrap
             // The prompt card's tap is the touch world verb. It goes through the router's gate
             // exactly as a key press does, so a tap while paused or suppressed is dropped there.
             _hud.InteractRequested += () => context.Input.RequestInteract();
+
+            // The notebook. Opens on UNRESOLVED, because the number on that tab is the reason a
+            // player opens it; the badge on the HUD tab is that same number.
+            _slate = new SlateController(_ui, context.Signals, context.Localization);
+            _hud.Screen.SlateRequested += () => _slate.Open(SlateScreen.Unresolved);
+            _slate.OpenQuestionsChanged += count => _hud.Screen.SetOpenQuestions(count);
 
             _menu = new MainMenuController(_ui, context.Commands, _slots, context.Log, Application.version);
 
@@ -443,6 +451,13 @@ namespace ForgottenIsle.UI.Bootstrap
                     _ui.Screens.ReplaceAll(_hud.Screen);
                     _hud.PrimeObjective(_context.Progress.ObjectiveKey);
                     _hud.PrimeInventory(_context.Inventory.Inventory.Items);
+                    _hud.Screen.SetOpenQuestions(_slate.OpenQuestions);
+                    if (_context.Slate != null)
+                    {
+                        // Prime the pages: the notebook's contents were announced during load,
+                        // before the controller could have translated them into a built screen.
+                        _context.Slate.Publish();
+                    }
                     _hud.SetGameplayActive(true);
                     StartInputPump();
                     break;
