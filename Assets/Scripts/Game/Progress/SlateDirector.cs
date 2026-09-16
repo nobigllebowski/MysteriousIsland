@@ -20,7 +20,7 @@ namespace ForgottenIsle.Game.Progress
         private readonly ProgressService _progress;
         private readonly RadioService _radio;
         private readonly SignalBus _signals;
-        private readonly List<IDisposable> _subscriptions = new List<IDisposable>(3);
+        private readonly List<IDisposable> _subscriptions = new List<IDisposable>(4);
 
         /// <param name="progress">The record.</param>
         /// <param name="radio">The set. Null reads as a radio never found.</param>
@@ -36,12 +36,14 @@ namespace ForgottenIsle.Game.Progress
                 return;
             }
 
-            _subscriptions.Add(signals.Subscribe<ProgressChangedSignal>(_ => Publish()));
+            // Every change marks the notebook dirty; the rebuild happens once, on the next tick.
+            // A single inspection publishes a progress change AND an objective change, and the
+            // radio a change and its narration; rebuilding three lists per signal was a cost
+            // with no reader when the tick that follows would show the same page.
+            _subscriptions.Add(signals.Subscribe<ProgressChangedSignal>(_ => _dirty = true));
             _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(OnRadioChanged));
-
-            // The "Next:" line is the objective, which the fire and the radio move without a
-            // progress change; its own signal is the cheapest way to keep the page current.
-            _subscriptions.Add(signals.Subscribe<ObjectiveChangedSignal>(_ => Publish()));
+            _subscriptions.Add(signals.Subscribe<ObjectiveChangedSignal>(_ => _dirty = true));
+            _subscriptions.Add(signals.Subscribe<TickCompletedSignal>(_ => Flush()));
         }
 
         /// <summary>The notebook as it stands.</summary>
@@ -50,12 +52,23 @@ namespace ForgottenIsle.Game.Progress
             return Slate.Build(_progress.Progress, Facts(), _progress.ObjectiveKey);
         }
 
-        /// <summary>Announces the notebook now. Called on every change, and to prime the HUD.</summary>
+        private bool _dirty;
+
+        /// <summary>Rebuilds and announces the notebook now. Priming uses this; changes wait for the tick.</summary>
         public void Publish()
         {
+            _dirty = false;
             if (_signals != null)
             {
                 _signals.Publish(new SlateChangedSignal(Current()));
+            }
+        }
+
+        private void Flush()
+        {
+            if (_dirty)
+            {
+                Publish();
             }
         }
 
@@ -81,7 +94,7 @@ namespace ForgottenIsle.Game.Progress
                 case RadioChangeKind.Repaired:
                 case RadioChangeKind.PoweredUp:
                 case RadioChangeKind.Heard:
-                    Publish();
+                    _dirty = true;
                     break;
             }
         }

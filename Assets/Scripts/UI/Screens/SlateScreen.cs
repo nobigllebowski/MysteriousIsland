@@ -45,7 +45,6 @@ namespace ForgottenIsle.UI.Screens
         private readonly Label[] _badges = new Label[3];
         private Label _next;
         private string _nextText = string.Empty;
-        private static readonly LocKey NextKey = new LocKey("ui.slate.next");
         private readonly List<string>[] _titles = { new List<string>(), new List<string>(), new List<string>() };
         private readonly List<string>[] _bodies = { new List<string>(), new List<string>(), new List<string>() };
         private readonly List<bool>[] _resolved = { new List<bool>(), new List<bool>(), new List<bool>() };
@@ -107,7 +106,6 @@ namespace ForgottenIsle.UI.Screens
             }
         }
 
-        /// <inheritdoc />
         /// <summary>
         /// Writes the "Next:" line at the head of the page. Already-localized; empty hides it.
         /// </summary>
@@ -126,6 +124,7 @@ namespace ForgottenIsle.UI.Screens
             }
         }
 
+        /// <inheritdoc />
         protected override void Build(VisualElement root)
         {
             root.style.flexDirection = FlexDirection.Row;

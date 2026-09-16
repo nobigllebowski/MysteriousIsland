@@ -655,6 +655,37 @@ and none of them is a binary asset.
 
 ---
 
+## ADR-0028 — Cues are signals; a container is taken for its contents
+
+**Status.** Accepted. Implemented as `Core.Signals.HintStagingSignal`, `HintTier.Staging`,
+`ItemIds.ContentsOf` / `IsContainer`, and `TakeItemHandler.Execute`.
+
+**Decision.** Two things that look like exceptions to the command path, and are not:
+
+1. **A hint rung that stages rather than says** — the knock she makes against a rock at her
+   feet, the rope shedding a fibre in the tray — is published by the hint director as a
+   `HintStagingSignal`, with no command and no handler. A cue is presentation, like a narration
+   line: nothing in the record moves, so there is nothing to validate. The tick that raises it
+   is already gated on `InGame`. Publishing `HintStaging.None` means "whatever was staged, stop",
+   and the director does so when the ladder that staged it stops.
+2. **A container item is taken for what is in it.** `TakeItemCommand(DryBag)` puts the bag's
+   contents into the hands and consumes the bag in the same `Execute`: the bag becomes the worn
+   inventory and is not a chip in it. Taken-then-consumed is what keeps the pickup off the sand
+   on every rebuild (`HasEverTaken`), without a second kind of pickup.
+
+**Why.** The command path exists so every state change is a named, validated value. A staging
+cue changes no state, and forcing it through a `StageHintCommand` with an empty `Validate` would
+be ceremony that teaches the wrong lesson about what the path is for. The bag, on the other hand,
+IS a state change and stays inside the take handler; what is unusual is only that one take yields
+three inventory changes, and that is the bag's nature, not a new mechanism.
+
+**Consequence.**
+- Anything that stages must also be un-staged: a director that publishes a staging must
+  publish `None` when its reason ends, or the tray sheds forever.
+- `ItemIds.ContentsOf` is the one table of containers; there is one entry.
+
+---
+
 ---
 
 ## Open items — tracked, not resolved

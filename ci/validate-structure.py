@@ -1798,7 +1798,9 @@ def check_deprecated_unity_apis(report, files):
 
 CONTENT_CONST_RE = re.compile(
     r"public\s+const\s+string\s+(?P<name>(Marker|Discovery|Mechanism|Remark)[A-Za-z0-9_]*)\s*=\s*\"(?P<id>[a-z0-9_.]+)\"")
-REMARK_LINES_RE = re.compile(r"case\s+(?P<name>Remark[A-Za-z0-9_]+)\s*:\s*return\s+(?P<count>\d+)\s*;")
+REMARK_LINES_RE = re.compile(r"(?P<labels>(?:case\s+Remark[A-Za-z0-9_]+\s*:\s*)+)return\s+(?P<count>\d+)\s*;")
+CASE_LABEL_RE = re.compile(r"case\s+(Remark[A-Za-z0-9_]+)\s*:")
+KIND_OF_BODY_RE = re.compile(r"KindOf\s*\(\s*string\s+id\s*\)\s*\{(?P<body>.*?)\n        \}", re.S)
 
 
 def check_content_ids(report, root, files, csv_keys):
@@ -1814,11 +1816,19 @@ def check_content_ids(report, root, files, csv_keys):
     content_code = sources[content_rel].code_with_strings
     recorded_code = sources[recorded_rel].code
     slate_code = sources[slate_rel].code
-    kind_of = content_code
 
+    # Only KindOf's own switch counts as a kind: a case label in RemarkLines is not one.
+    kind_match = KIND_OF_BODY_RE.search(content_code)
+    kind_of = kind_match.group("body") if kind_match else content_code
+    if not kind_match:
+        report.warn("CONTENT", content_rel, None, "could not isolate ContentIds.KindOf; checking the whole file instead")
+
+    # Stacked labels ("case A: case B: return 2;") all take the count that follows them.
     remark_lines = {}
     for match in REMARK_LINES_RE.finditer(content_code):
-        remark_lines[match.group("name")] = int(match.group("count"))
+        count = int(match.group("count"))
+        for label in CASE_LABEL_RE.findall(match.group("labels")):
+            remark_lines[label] = count
 
     for match in CONTENT_CONST_RE.finditer(content_code):
         name = match.group("name")

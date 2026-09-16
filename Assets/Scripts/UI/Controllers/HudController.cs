@@ -91,6 +91,10 @@ namespace ForgottenIsle.UI.Controllers
             {
                 _screen.StartShedding(ForgottenIsle.Core.Items.ItemIds.PolyRope);
             }
+            else if (signal.Staging == ForgottenIsle.Core.Hints.HintStaging.None)
+            {
+                _screen.StopShedding();
+            }
         }
 
         /// <summary>The HUD view, so the installer can push it onto the screen stack.</summary>

@@ -63,6 +63,7 @@ namespace ForgottenIsle.Game.Hints
         private readonly HintLadder _bag = HintLadders.Bag();
 
         private double _lastPlaytime;
+        private bool _staging;
         private float _lastMhz;
         private bool _haveMhz;
         private float _dialTravel;
@@ -156,6 +157,7 @@ namespace ForgottenIsle.Game.Hints
             _fireSpark.Forget();
             _fireTinder.Forget();
             _bag.Forget();
+            StopStaging();
             _haveMhz = false;
             _dialTravel = 0f;
             _lastPlaytime = _session.PlaytimeSeconds;
@@ -294,6 +296,21 @@ namespace ForgottenIsle.Game.Hints
             }
         }
 
+        /// <summary>Takes down whatever a rung staged: the rope stops shedding, and so on.</summary>
+        private void StopStaging()
+        {
+            if (!_staging)
+            {
+                return;
+            }
+
+            _staging = false;
+            if (_signals != null)
+            {
+                _signals.Publish(new HintStagingSignal(HintStaging.None));
+            }
+        }
+
         private void OnFireChanged(FireChangedSignal signal)
         {
             switch (signal.Kind)
@@ -312,11 +329,13 @@ namespace ForgottenIsle.Game.Hints
                 case FireChangeKind.FibreLaid:
                     // The right tinder is down; the ladder about tinder has nothing to add.
                     _fireTinder.Stop();
+                    StopStaging();
                     break;
 
                 case FireChangeKind.Lit:
                     _fireSpark.Stop();
                     _fireTinder.Stop();
+                    StopStaging();
                     return;
 
                 case FireChangeKind.BlewOut:
@@ -386,6 +405,7 @@ namespace ForgottenIsle.Game.Hints
                 // The object shows itself. No line, no command, no record: a cue on the bus for
                 // the audio and the tray, the way a narration line is a cue for the card.
                 Staged++;
+                _staging = true;
                 if (_signals != null)
                 {
                     _signals.Publish(new HintStagingSignal(tier.Staging));

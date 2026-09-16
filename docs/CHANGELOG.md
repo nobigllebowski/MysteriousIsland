@@ -9,6 +9,20 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — from a review of the bag, the staging and the Next line
+
+- **A caller with no inventory was told "Bag first."** `ObjectiveFacts.HasKit` defaulted to
+  false as a struct default must; the fact is now `BagOnTheSand`, false by default, and the
+  keeper states the facts once at construction. Three existing objective tests would have
+  failed on that; one new test pins the default.
+- **The rope stopped shedding only when it left the tray.** `HintStaging.None` now means "stop",
+  published when the ladder that staged something stops or the world is re-entered (ADR-0028).
+- The validator's remark-line parse handles stacked case labels, and checks kinds inside `KindOf`
+  alone.
+- The tray sheds once per period; the Slate director rebuilds once per tick rather than once
+  per signal; a dead key and a misplaced doc comment in `SlateScreen`.
+- ADR-0028 records the two choices the review found undocumented.
+
 ### Added — the fire hints' tier 2s: the object shows itself
 
 A rung can stage instead of say (`HintTier.Staging`, `HintStagingSignal`; no command, nothing in

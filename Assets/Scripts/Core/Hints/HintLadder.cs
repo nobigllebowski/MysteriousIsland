@@ -11,6 +11,7 @@ namespace ForgottenIsle.Core.Hints
     /// </summary>
     public enum HintStaging : byte
     {
+        /// <summary>Nothing staged. Published, it means: whatever was staged, stop.</summary>
         None = 0,
 
         /// <summary>She flicks the multitool's spine against a rock at her feet; the dull knock plays.</summary>

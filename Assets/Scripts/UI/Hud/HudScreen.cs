@@ -306,6 +306,12 @@ namespace ForgottenIsle.UI.Hud
             _inventory?.StartShedding(id);
         }
 
+        /// <summary>Stops the shedding loop, if any.</summary>
+        public void StopShedding()
+        {
+            _inventory?.StopShedding();
+        }
+
         /// <summary>Replaces what the tray shows.</summary>
         /// <remarks>
         /// Restored after a rewrite of the narration sequence sliced it out of the file while the

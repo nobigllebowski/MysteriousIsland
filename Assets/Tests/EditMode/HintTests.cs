@@ -424,6 +424,13 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(staged, Is.EqualTo(new[] { HintStaging.KnockTest }), "The knock, at four minutes.");
             Assert.That(_said, Is.EqualTo(new[] { "narration." + ContentIds.RemarkFireSpine }), "And no line for it.");
             Assert.That(_hints.Staged, Is.EqualTo(1));
+
+            // Sparks fly, the tinder ladder stages the rope; the fibre laid takes the staging down.
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.ChertNodule, true);
+            Play(241d);
+            Assert.That(staged[staged.Count - 1], Is.EqualTo(HintStaging.RopeSheds));
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.PolyFibre, true);
+            Assert.That(staged[staged.Count - 1], Is.EqualTo(HintStaging.None), "Whatever was staged, stop.");
         }
 
         [Test]

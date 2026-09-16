@@ -48,6 +48,9 @@ namespace ForgottenIsle.Game.Progress
             _subscriptions.Add(signals.Subscribe<FireChangedSignal>(_ => Refresh()));
             _subscriptions.Add(signals.Subscribe<GameStateChangedSignal>(_ => Refresh()));
             _subscriptions.Add(signals.Subscribe<InventoryChangedSignal>(_ => Refresh()));
+
+            // Stated once at construction, so the line is right before any signal arrives.
+            Refresh();
         }
 
         /// <summary>Restates the facts now. Cheap; a no-op when nothing changed.</summary>
@@ -85,7 +88,7 @@ namespace ForgottenIsle.Game.Progress
                 _radio != null && _radio.TransmissionReceived,
                 engaged,
                 _fire != null && _fire.IsLit,
-                _inventory == null || _inventory.Has(ItemIds.Multitool));
+                _inventory != null && !_inventory.Has(ItemIds.Multitool));
         }
     }
 }

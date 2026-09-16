@@ -137,6 +137,17 @@ namespace ForgottenIsle.Tests.EditMode
         }
 
         [Test]
+        public void Objective_WithNoFactsAtAll_NeverDemandsTheBag()
+        {
+            // default(ObjectiveFacts) is what ProgressService starts with before any keeper speaks,
+            // and what the two-argument overload passes: it must read as "the bag is worn".
+            var progress = new WorldProgress();
+            Assert.That(Objectives.Current(progress, ContentIds.ZoneRibcage).Value, Is.EqualTo("objective.explore_ribcage"));
+            Assert.That(Objectives.Current(progress, ContentIds.ZoneRibcage, new ObjectiveFacts(false, false, false, false, false, true)).Value,
+                Is.EqualTo("objective.bag_first"));
+        }
+
+        [Test]
         public void Objective_NamesTheFire_WhileSomethingIsLaidAndNothingBurns()
         {
             var progress = new WorldProgress();

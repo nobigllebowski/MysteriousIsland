@@ -240,8 +240,10 @@ namespace ForgottenIsle.UI.Hud
         {
             StopShedding();
             _sheddingId = id;
+            // The scheduler runs the first execution on its next update and then every period
+            // (⚠ VERIFY: https://docs.unity3d.com/ScriptReference/UIElements.IVisualElementScheduler.Execute.html),
+            // so the first shed is not called by hand as well.
             _shedding = _tab.schedule.Execute(Shed).Every(SheddingLoopMs);
-            Shed();
         }
 
         /// <summary>Stops the loop. Idempotent.</summary>
@@ -276,8 +278,7 @@ namespace ForgottenIsle.UI.Hud
             }
 
             chip.Lean(4f);
-            var leaning = chip;
-            chip.Root.schedule.Execute(() => leaning.Lean(0f)).ExecuteLater(LeanMs);
+            chip.Root.schedule.Execute(() => chip.Lean(0f)).ExecuteLater(LeanMs);
         }
 
         /// <summary>Draws one chip as held, or none. Called from the game's own idea of what is held.</summary>
