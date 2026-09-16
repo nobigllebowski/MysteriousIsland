@@ -90,6 +90,21 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(contents.OpenQuestions, Is.EqualTo(contents.Unresolved.Count));
         }
 
+        [Test]
+        public void LookingAtASeizedMechanism_WritesNothing_UntilItIsFixed()
+        {
+            // Examining empty-handed is an InspectCommand and lands in the inspected set; the
+            // notebook entry is written in the past tense of having opened it, so it waits.
+            var progress = new WorldProgress();
+            progress.Inspect(ContentIds.MechanismSluice);
+
+            Assert.That(Slate.Build(progress, NoRadio).Observed.Count, Is.Zero);
+            Assert.That(Recorded.Percent(progress), Is.Zero, "And the record does not credit it either.");
+
+            progress.Solve(ContentIds.MechanismSluice);
+            Assert.That(Slate.Build(progress, NoRadio).Observed.Count, Is.EqualTo(1));
+        }
+
         private static bool HasTitle(SlateContents contents, string key)
         {
             for (var i = 0; i < contents.Observed.Count; i++)

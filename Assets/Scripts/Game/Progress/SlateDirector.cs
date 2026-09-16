@@ -37,7 +37,7 @@ namespace ForgottenIsle.Game.Progress
             }
 
             _subscriptions.Add(signals.Subscribe<ProgressChangedSignal>(_ => Publish()));
-            _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(_ => Publish()));
+            _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(OnRadioChanged));
         }
 
         /// <summary>The notebook as it stands.</summary>
@@ -64,6 +64,22 @@ namespace ForgottenIsle.Game.Progress
             }
 
             _subscriptions.Clear();
+        }
+
+        private void OnRadioChanged(RadioChangedSignal signal)
+        {
+            // Not on every needle move. Tuned is raised per pointer-move on the dial, and Opened
+            // and Closed change nothing the notebook records; rebuilding three lists and thirty
+            // lookups per thumb movement is a cost with no reader.
+            switch (signal.Kind)
+            {
+                case RadioChangeKind.Diagnosed:
+                case RadioChangeKind.Repaired:
+                case RadioChangeKind.PoweredUp:
+                case RadioChangeKind.Heard:
+                    Publish();
+                    break;
+            }
         }
 
         private SlateFacts Facts()

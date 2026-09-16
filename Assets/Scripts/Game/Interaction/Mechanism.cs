@@ -24,7 +24,6 @@ namespace ForgottenIsle.Game.Interaction
     {
         private string _contentId;
         private string _nameKey;
-        private string _idleLineKey;
         private string _solvedLineKey;
         private string _requiredItemId;
         private bool _consumesItem;
@@ -33,23 +32,25 @@ namespace ForgottenIsle.Game.Interaction
         /// <summary>
         /// Configures the mechanism. Called by zone building; there is no Inspector pass.
         /// </summary>
+        /// <remarks>
+        /// There is no idle-line key: examining the mechanism empty-handed is an InspectCommand,
+        /// and the inspect handler narrates <c>narration.</c> + the content id. That convention is
+        /// the contract; a parameter for it was dead code that invited tuning a line nobody read.
+        /// </remarks>
         /// <param name="contentId">A <c>ContentIds</c> id.</param>
         /// <param name="nameKey">Localization key naming it in the prompt.</param>
-        /// <param name="idleLineKey">Line shown when examined without the part it needs.</param>
         /// <param name="solvedLineKey">Line shown the moment it is made to work.</param>
         /// <param name="requiredItemId">The one item that fits.</param>
         /// <param name="consumesItem">Whether the part stays in the machine.</param>
         public void Configure(
             string contentId,
             string nameKey,
-            string idleLineKey,
             string solvedLineKey,
             string requiredItemId,
             bool consumesItem)
         {
             _contentId = contentId;
             _nameKey = nameKey;
-            _idleLineKey = idleLineKey;
             _solvedLineKey = solvedLineKey;
             _requiredItemId = requiredItemId;
             _consumesItem = consumesItem;

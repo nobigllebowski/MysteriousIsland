@@ -239,12 +239,7 @@ namespace ForgottenIsle.Game.Bootstrap
             // Only the run's own facts are filled in. Slot, timestamp, build version and schema version
             // are stamped by the slot service over a copy of this header, so setting them here would
             // create a second opinion about what was just saved.
-            var header = new SaveMetadata();
-            header.ActId = _session.ActId;
-            header.ZoneId = _session.ZoneId;
-            header.ZoneDisplayKey = SceneKeys.ZoneDisplayKey(_session.ZoneId);
-            header.PlaytimeSeconds = _session.PlaytimeSeconds;
-            header.RecordedPercent = _session.RecordedPercent;
+            var header = SaveHeaders.Build(_session);
 
             var code = _slots.Save(slot, header);
             if (code != ResultCode.Ok)

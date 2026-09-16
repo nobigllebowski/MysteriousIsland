@@ -114,6 +114,34 @@ namespace ForgottenIsle.Core.Progress
             ContentIds.MechanismTapeDeck
         };
 
+        /// <summary>
+        /// Whether a content id has been recorded in the sense its kind means.
+        /// </summary>
+        /// <remarks>
+        /// A mechanism counts when it is SOLVED, not when it is looked at: examining a seized
+        /// sluice empty-handed is an InspectCommand and lands in the inspected set, and the
+        /// notebook entry for the sluice is written in the past tense of having opened it.
+        /// </remarks>
+        public static bool IsRecorded(WorldProgress progress, string id)
+        {
+            if (progress == null || string.IsNullOrEmpty(id))
+            {
+                return false;
+            }
+
+            if (id.StartsWith("mechanism.", System.StringComparison.Ordinal))
+            {
+                return progress.HasSolved(id);
+            }
+
+            if (id.StartsWith("discovery.", System.StringComparison.Ordinal))
+            {
+                return progress.HasCollected(id);
+            }
+
+            return progress.HasInspected(id);
+        }
+
         public static SlateContents Build(WorldProgress progress, SlateFacts facts)
         {
             var observed = new List<SlateLine>(12);
@@ -125,7 +153,7 @@ namespace ForgottenIsle.Core.Progress
                 for (var i = 0; i < ObservedOrder.Length; i++)
                 {
                     var id = ObservedOrder[i];
-                    if (progress.HasInspected(id) || progress.HasCollected(id) || progress.HasSolved(id))
+                    if (IsRecorded(progress, id))
                     {
                         observed.Add(new SlateLine("slate.observed." + id, false));
                     }

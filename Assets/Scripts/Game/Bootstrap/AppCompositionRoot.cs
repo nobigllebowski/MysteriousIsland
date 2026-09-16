@@ -65,13 +65,15 @@ namespace ForgottenIsle.Game.Bootstrap
             var inventory = new InventoryService(signals, log);
             var radio = new RadioService(signals, inventory, log);
 
+            // The recorded-percent figure the pause summary and the save header show. Computed by
+            // nothing for two phases; every header said 0%. Built BEFORE the autosave director:
+            // the bus dispatches in subscription order, and a header stamped before the keeper has
+            // refreshed the figure is one step stale in exactly the saves that carry the change.
+            var recordKeeper = new RecordKeeper(progress, session, signals);
+
             // The autosave ring's only writer. Held by the context so it lives as long as the run
             // does; it subscribes in its constructor and is inert without a bus.
             var autosave = new AutosaveDirector(slots, session, states, signals, log);
-
-            // The recorded-percent figure the pause summary and the save header show. Computed by
-            // nothing for two phases; every header said 0%.
-            var recordKeeper = new RecordKeeper(progress, session, signals);
 
             // The notebook: a derived view of progression and the radio, announced on every change.
             var slate = new SlateDirector(progress, radio, signals);

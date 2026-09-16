@@ -9,6 +9,21 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — from a review of the last three commits
+
+- **The "arriving in a zone" autosave could never fire**: `ZoneChangedSignal` is published while
+  the machine is still in Loading, so the `InGame` guard refused every one. The beat is now the
+  transition Loading → InGame. Every autosave is also **deferred to the next tick**: the beats are
+  raised from inside command handlers (a solve is announced before the part is consumed), and a
+  capture at that instant would restore a fixed machine with its part still in the pockets.
+- `RecordKeeper` is built before `AutosaveDirector`, so the percent a header carries is not one
+  step stale in exactly the saves that carry the change. One `SaveHeaders.Build` for both paths.
+- **A mechanism counted as recorded when looked at.** Examining the seized sluice empty-handed is an
+  inspect, and both the notebook and the percent took it as done. Mechanisms count when solved.
+- The notebook is not rebuilt on every needle move; the installer disposes the slate controller;
+  the dead idle-line parameter is gone from `Mechanism`; the Input System claim behind the touch
+  verb carries its VERIFY and a docs link.
+
 ### Added — the Field Slate: OBSERVED, PEOPLE, UNRESOLVED
 
 Nadia's notebook, from `design/04-first-30-minutes.md` §3:30. Full screen, paper-coloured, a ruled

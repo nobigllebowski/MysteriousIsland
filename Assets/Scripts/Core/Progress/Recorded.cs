@@ -33,8 +33,8 @@ namespace ForgottenIsle.Core.Progress
             var done = 0;
             for (var i = 0; i < Recordable.Length; i++)
             {
-                var id = Recordable[i];
-                if (progress.HasInspected(id) || progress.HasCollected(id) || progress.HasSolved(id))
+                // By kind: a mechanism is recorded when it is fixed, not when it is looked at.
+                if (Slate.IsRecorded(progress, Recordable[i]))
                 {
                     done++;
                 }

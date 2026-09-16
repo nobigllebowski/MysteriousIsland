@@ -598,6 +598,7 @@ namespace ForgottenIsle.UI.Bootstrap
                 _context.Input.Pause -= OnPauseRequested;
                 _inputPump?.Pause();
                 _hud?.Dispose();
+                _slate?.Dispose();
                 _context.Input.Resume -= OnResumeRequested;
             }
         }

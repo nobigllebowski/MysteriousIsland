@@ -99,8 +99,15 @@ run. Then walk the Phase 3 chain in `CURRENT_STATE.md` §1: spindle → reel →
 sluice key → sluice → tape deck. Run both test suites, confirming the PlayMode ones ran rather
 than were ignored.
 
-Then the Phase 6 radio slice (`ROADMAP.md`): one radio object, one frequency list, one
-transmission, the tuning band. Phase 5 stays blocked on CONFLICT-6.
+Then walk the Phase 6 slice: examine the set in the trawler hull twice (found, list), take the
+torch off the nail, use it, the multitool and the spring on the set, TUNE, drag to 5.240, read the
+transmission, open the Slate from its HUD tab and check UNRESOLVED reads 3. Pause with the dial
+open and resume; save and continue; tap NEW GAME twice with every slot full.
+
+The things most likely to be wrong, in order: a shader that does not compile (magenta); a UI
+Toolkit API used with the wrong signature in `RadioPanel` or `SlateScreen`; a pointer-capture
+edge in the dial strip; `Mesh.bounds` not being the culling volume for the sea. Everything else
+in the last twelve commits was traced by reading, not run. Phase 5 stays blocked on CONFLICT-6.
 
 Still outstanding behind that, unchanged by Phase 2:
 

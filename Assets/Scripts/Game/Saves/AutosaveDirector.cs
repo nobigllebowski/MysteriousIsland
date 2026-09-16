@@ -19,7 +19,8 @@ namespace ForgottenIsle.Game.Saves
     /// never filled. This is the writer. It fires on the beats the design names as unlosable --
     /// arriving in a zone, hearing the voice, making a machine work -- and only while a run is in
     /// the world. It is not on a timer: a save every N seconds is a save mid-fall or mid-menu, and
-    /// this project has already learned what a save taken at a bad moment costs.
+    /// this project has already learned what a save taken at a bad moment costs. The write itself
+    /// happens on the next tick, after the command that raised the beat has completed.
     /// <para>
     /// Not a save participant itself; it asks the slot service to capture the participants that
     /// are, exactly as the manual save does, and builds the same header.
@@ -53,10 +54,16 @@ namespace ForgottenIsle.Game.Saves
                 return;
             }
 
-            _subscriptions.Add(signals.Subscribe<ZoneChangedSignal>(_ => Autosave("zone")));
+            // "Arriving in a zone" is the transition INTO the world, not ZoneChangedSignal: that
+            // signal is published by SetZone while the machine is still in Loading, so a guard on
+            // InGame would refuse every one of them and the beat would never fire.
+            _subscriptions.Add(signals.Subscribe<GameStateChangedSignal>(OnStateChanged));
             _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(OnRadioChanged));
             _subscriptions.Add(signals.Subscribe<ProgressChangedSignal>(OnProgressChanged));
+            _subscriptions.Add(signals.Subscribe<TickCompletedSignal>(_ => Flush()));
         }
+
+        private string _pending;
 
         /// <summary>Slots written by this director since it was built. For tests and the overlay.</summary>
         public int Writes { get; private set; }
@@ -72,11 +79,19 @@ namespace ForgottenIsle.Game.Saves
             _subscriptions.Clear();
         }
 
+        private void OnStateChanged(GameStateChangedSignal signal)
+        {
+            if (signal.To == GameStateId.InGame && signal.From == GameStateId.Loading)
+            {
+                Request("arrived");
+            }
+        }
+
         private void OnRadioChanged(RadioChangedSignal signal)
         {
             if (signal.Kind == RadioChangeKind.Heard && signal.StationId == Stations.TheVoice)
             {
-                Autosave("transmission");
+                Request("transmission");
             }
         }
 
@@ -84,8 +99,35 @@ namespace ForgottenIsle.Game.Saves
         {
             if (signal.Kind == ProgressChangeKind.Solved || signal.Kind == ProgressChangeKind.ZoneUnlocked)
             {
-                Autosave("progress");
+                Request("progress");
             }
+        }
+
+        /// <summary>
+        /// Asks for a write on the next tick rather than writing now.
+        /// </summary>
+        /// <remarks>
+        /// The beats arrive as signals published from INSIDE a command handler -- a solve is
+        /// announced from Mechanism.Use, before UseItemHandler has consumed the part. A save taken
+        /// at that instant captures a machine that works and a part still in the pockets, and
+        /// restoring it hands the player a duplicate. Deferring to the tick means the command has
+        /// completed and every participant is consistent when the capture runs.
+        /// </remarks>
+        private void Request(string reason)
+        {
+            _pending = reason;
+        }
+
+        private void Flush()
+        {
+            if (_pending == null)
+            {
+                return;
+            }
+
+            var reason = _pending;
+            _pending = null;
+            Autosave(reason);
         }
 
         private void Autosave(string reason)
@@ -98,12 +140,7 @@ namespace ForgottenIsle.Game.Saves
                 return;
             }
 
-            var header = new SaveMetadata();
-            header.ActId = _session.ActId;
-            header.ZoneId = _session.ZoneId;
-            header.ZoneDisplayKey = SceneKeys.ZoneDisplayKey(_session.ZoneId);
-            header.PlaytimeSeconds = _session.PlaytimeSeconds;
-            header.RecordedPercent = _session.RecordedPercent;
+            var header = SaveHeaders.Build(_session);
 
             int slot;
             var code = _slots.SaveAutosave(header, out slot);

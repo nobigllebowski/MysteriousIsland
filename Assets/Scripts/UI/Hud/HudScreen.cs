@@ -98,10 +98,11 @@ namespace ForgottenIsle.UI.Hud
         /// Raised when the prompt card is tapped. On touch this IS the world verb.
         /// </summary>
         /// <remarks>
-        /// There is no touchscreen binding for Interact, on purpose: the Input System reads a tap
-        /// from the device with no idea what was under the finger, and every tap on the pause
-        /// button or a chip was also the world verb. The card is a real control now, 48 dp tall,
-        /// and what it does is decided by the router's gate, not here.
+        /// There is no touchscreen binding for Interact, on purpose: an action bound to the raw
+        /// tap fires whatever UI element was under the finger (VERIFY on device; see the note in
+        /// VardholmControls), and every tap on the pause button or a chip was also the world verb.
+        /// The card is a real control now, 48 dp tall, and what it does is decided by the router's
+        /// gate, not here.
         /// </remarks>
         public event System.Action InteractRequested;
 
