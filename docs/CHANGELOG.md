@@ -9,6 +9,30 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the beachcomber's Ribcage, and the hook
+
+The design's reward for the player who looks (§28:20 FAILURE, item 30): seven optional
+inspectables, Slate entries only, nothing locked behind any of them. A boot print in dried mud
+above the tide line, going inland; a ringed cormorant on the wrack; and in and around the trawler
+hull, chalked tide marks on the plate, oxy-cut slag under the doorway, a broom's arc in the sand,
+and the folded canvas that was over the set. Any of the last four puts SOMEONE on the PEOPLE tab
+before the boots do; a print and a dead bird do not. And beside the gully mouth, at chest height,
+**the cut vine** — one clean stroke, the face pale and wet — whose entry is the notebook's last
+and whose question, WHO CUT THE VINE, is the fourth the player leaves the prologue with (§2).
+`ZoneBuilder.CreateInspectable` shapes each (a pad, a stem, a chalk slab) so they can be found by
+eye. The record now has fourteen recordable ids; `RecordedTests` had pinned six, a count that was
+already stale, and now pins fourteen.
+
+### Added — the other fuse: the mic cord
+
+The design's second valid fuse fix (§4.2). Once the contacts are clean, the multitool offered
+again strips a loop of the hand-mic's curly cord bare and bends it across the holder.
+`RadioRepair.FaultFor(item)` asks the set which fault an item would address now, so the same tool
+fits twice; `RadioSet` uses it instead of the static table. `FuseFromCord` is a third repair flag
+(bit 32; older saves read as the spring), the Slate's THE SET WORKS body says which conductor and
+which cells (four bodies), and the mic still keys. Tests: three repair cases, three Slate cases.
+375 written, none executed.
+
 ### Added — hint escalation: the timers (ADR-0025)
 
 The design's "never hard-block, never nag" rule, as a system. `Core.Hints.HintLadder` is the

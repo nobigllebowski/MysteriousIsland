@@ -358,3 +358,38 @@ slate.unresolved.what_are_the_gates,WHAT ARE THE GATES
 slate.unresolved.what_are_the_gates.body,"Gate two, gate three, gate four. Ballast at four. She checks them like a tide table."
 slate.unresolved.why_wont_she_answer,WHY WON'T SHE ANSWER
 slate.unresolved.why_wont_she_answer.body,"She is close. She is on a schedule. She has been here since I was ten. Doing what?"
+interactable.boot_print,Boot Print
+narration.marker.boot_print,"A boot print in the dried mud above the tide line, going up. One heel worn far more than the other. I have seen that heel."
+slate.observed.marker.boot_print,A BOOT PRINT
+slate.observed.marker.boot_print.body,"Dried mud above the tide line, going inland. Size 44, the same worn heel as the boots. Whoever paired them walked away from them, uphill."
+interactable.leg_band,Cormorant Leg Band
+narration.marker.leg_band,"A dead cormorant. Not food, not comment. But there is a ring on its leg: a number, RETURN TO, and an address. Somebody, somewhere, was counting these."
+slate.observed.marker.leg_band,A RINGED BIRD
+slate.observed.marker.leg_band.body,"A cormorant on the wrack with a numbered ring on its leg. The scheme is real and the address is on the mainland. Something here is still on somebody's list."
+interactable.tide_mark,Chalked Tide Mark
+narration.marker.tide_mark,"Chalk lines on the plate, one above another, a date beside each. Where the water reached. The newest is the highest, and it is this year."
+slate.observed.marker.tide_mark,THE TIDE MARKS
+slate.observed.marker.tide_mark.body,"Chalk on the trawler's plate: where the water reached, dated, for years. The highest line is the newest. Somebody stands here with chalk after every big tide."
+interactable.oxy_slag,Cut Slag
+narration.marker.oxy_slag,"Beads of slag in the sand under the doorway. That door was not rusted out. It was cut, with gas, by somebody who brought gas."
+slate.observed.marker.oxy_slag,SLAG UNDER THE DOOR
+slate.observed.marker.oxy_slag.body,"Oxy-cut beads in the sand. The door in the trawler's flank was made on purpose, with equipment carried here for the job."
+interactable.broom_arc,Broom Arc
+narration.marker.broom_arc,"An arc in the sand inside the door, the width of a broom. Somebody sweeps this. Nobody sweeps a wreck."
+slate.observed.marker.broom_arc,A SWEPT FLOOR
+slate.observed.marker.broom_arc.body,"A broom's arc in the sand inside the trawler. Swept, and recently: the drift has not come back over it."
+interactable.canvas_square,Canvas Square
+narration.marker.canvas_square,"A square of canvas, folded, that was over the set. Dry underneath. Covered. Not dumped."
+slate.observed.marker.canvas_square,"COVERED, NOT DUMPED"
+slate.observed.marker.canvas_square.body,"The canvas over the radio was folded to shed water and the set under it was dry. Nobody covers a thing they have finished with."
+interactable.cut_vine,The Cut Vine
+narration.marker.cut_vine,"A clean, angled cut. One stroke, with weight behind it. The cut face is pale green and wet: not blackened, not healed. That's this week."
+slate.observed.marker.cut_vine,THE CUT VINE
+slate.observed.marker.cut_vine.body,"The vine across the gully mouth, cut with one stroke of a heavy blade. The cut face is wet. Days old, not decades. The only way inland, and somebody has just used it."
+slate.unresolved.who_cut_the_vine,WHO CUT THE VINE
+slate.unresolved.who_cut_the_vine.body,"That's this week. Somebody with a blade went in ahead of me, and the only way off this beach is after them."
+narration.radio.fixed.fuse_cord,"The mic's curly cord: a loop of it stripped bare with the blade and bent across the holder. That is not a fuse either. The mic still keys. It is a long cord."
+slate.observed.radio.working_cord,THE SET WORKS
+slate.observed.radio.working_cord.body,"Torch cells, a scraped terminal, a bare loop of the mic cord across the fuse holder. Inside the battery door, scratched with a knife: THE SET WORKS. THE ISLAND DOESN'T. — T.R."
+slate.observed.radio.working_recorder_cord,THE SET WORKS
+slate.observed.radio.working_recorder_cord.body,"The recorder's cells. Nine per cent, gone. A bare loop of the mic cord across the fuse holder. Inside the battery door, scratched with a knife: THE SET WORKS. THE ISLAND DOESN'T. — T.R."

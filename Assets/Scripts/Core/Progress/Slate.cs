@@ -39,9 +39,13 @@ namespace ForgottenIsle.Core.Progress
         public readonly bool HeardTheVoice;
         public readonly bool UsedRecorderCells;
 
+        /// <summary>The fuse was bypassed with the mic cord's copper rather than the torch's spring.</summary>
+        public readonly bool FuseFromCord;
+
         public SlateFacts(
             bool radioFound, bool radioPowerFixed, bool radioWorking,
-            bool heardHull, bool heardBulletin, bool heardTheVoice, bool usedRecorderCells)
+            bool heardHull, bool heardBulletin, bool heardTheVoice, bool usedRecorderCells,
+            bool fuseFromCord = false)
         {
             RadioFound = radioFound;
             RadioPowerFixed = radioPowerFixed;
@@ -50,6 +54,7 @@ namespace ForgottenIsle.Core.Progress
             HeardBulletin = heardBulletin;
             HeardTheVoice = heardTheVoice;
             UsedRecorderCells = usedRecorderCells;
+            FuseFromCord = fuseFromCord;
         }
     }
 
@@ -107,11 +112,31 @@ namespace ForgottenIsle.Core.Progress
         {
             ContentIds.MarkerHullLine,
             ContentIds.MarkerRibStone,
+            ContentIds.MarkerBootPrint,
+            ContentIds.MarkerLegBand,
             ContentIds.DiscoveryBrassTag,
+            ContentIds.MarkerTideMark,
+            ContentIds.MarkerOxySlag,
+            ContentIds.MarkerBroomArc,
+            ContentIds.MarkerCanvasSquare,
             ContentIds.MarkerAqueductCut,
             ContentIds.DiscoveryWaterloggedReel,
             ContentIds.MechanismSluice,
-            ContentIds.MechanismTapeDeck
+            ContentIds.MechanismTapeDeck,
+            ContentIds.MarkerCutVine
+        };
+
+        /// <summary>
+        /// The optional inspectables that are evidence of a person: any one of them puts SOMEONE
+        /// on the PEOPLE tab. A boot print and a dead bird are not; a swept floor is.
+        /// </summary>
+        private static readonly string[] SignsOfSomeone =
+        {
+            ContentIds.MarkerTideMark,
+            ContentIds.MarkerOxySlag,
+            ContentIds.MarkerBroomArc,
+            ContentIds.MarkerCanvasSquare,
+            ContentIds.MarkerCutVine
         };
 
         /// <summary>
@@ -167,8 +192,11 @@ namespace ForgottenIsle.Core.Progress
 
             if (facts.RadioWorking)
             {
+                // Which cells and which conductor: four ways the set came to work, four bodies.
                 observed.Add(new SlateLine(
-                    facts.UsedRecorderCells ? "slate.observed.radio.working_recorder" : "slate.observed.radio.working", false));
+                    "slate.observed.radio.working"
+                    + (facts.UsedRecorderCells ? "_recorder" : string.Empty)
+                    + (facts.FuseFromCord ? "_cord" : string.Empty), false));
             }
 
             if (facts.HeardHull)
@@ -190,13 +218,18 @@ namespace ForgottenIsle.Core.Progress
             }
 
             var haveTag = progress != null && progress.HasCollected(ContentIds.DiscoveryBrassTag);
+            var someone = haveTag || facts.RadioFound;
+            for (var sign = 0; !someone && progress != null && sign < SignsOfSomeone.Length; sign++)
+            {
+                someone = progress.HasInspected(SignsOfSomeone[sign]);
+            }
 
             // PEOPLE. The SOMEONE silhouette redraws into THE VOICE; they are not two people.
             if (facts.HeardTheVoice)
             {
                 people.Add(new SlateLine("slate.people.the_voice", false));
             }
-            else if (haveTag || facts.RadioFound)
+            else if (someone)
             {
                 people.Add(new SlateLine("slate.people.someone", false));
             }
@@ -227,6 +260,12 @@ namespace ForgottenIsle.Core.Progress
             {
                 unresolved.Add(new SlateLine("slate.unresolved.what_are_the_gates", false));
                 unresolved.Add(new SlateLine("slate.unresolved.why_wont_she_answer", false));
+            }
+
+            if (progress != null && progress.HasInspected(ContentIds.MarkerCutVine))
+            {
+                // The last of the four questions the player leaves the prologue with (§2).
+                unresolved.Add(new SlateLine("slate.unresolved.who_cut_the_vine", false));
             }
 
             return new SlateContents(observed, people, unresolved);

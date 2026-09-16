@@ -52,6 +52,14 @@ namespace ForgottenIsle.Core.Radio
         /// <summary>True when the recorder's cells went into the set. The unflagged decision.</summary>
         public bool UsedRecorderCells => _usedRecorderCells;
 
+        /// <summary>
+        /// True when the fuse was bypassed with copper stripped from the hand-mic's cord rather
+        /// than the torch's spring. The design's other valid answer (§4.2).
+        /// </summary>
+        public bool FuseFromCord => _fuseFromCord;
+
+        private bool _fuseFromCord;
+
         /// <summary>Which fault an item addresses, if any.</summary>
         /// <remarks>
         /// The table is here rather than on the items because it is the radio that knows what fits
@@ -72,6 +80,26 @@ namespace ForgottenIsle.Core.Radio
                 default:
                     return RadioFault.None;
             }
+        }
+
+        /// <summary>
+        /// Which fault the item would address on THIS set, given what is still wrong with it.
+        /// </summary>
+        /// <remarks>
+        /// The multitool answers two faults in order: the scraper cleans the contacts, and once
+        /// they are clean the blade strips a loop of the mic cord for the fuse. So the same tool
+        /// offered twice does two different things, and the second is the alternate fuse fix a
+        /// player without the spring can still find.
+        /// </remarks>
+        public RadioFault FaultFor(string itemId)
+        {
+            if (itemId == ItemIds.Multitool && (_outstanding & RadioFault.Contacts) == 0 && (_outstanding & RadioFault.Fuse) != 0)
+            {
+                return RadioFault.Fuse;
+            }
+
+            var fault = FaultAddressedBy(itemId);
+            return (_outstanding & fault) != 0 ? fault : RadioFault.None;
         }
 
         /// <summary>Whether the item is spent by the repair.</summary>
@@ -99,8 +127,8 @@ namespace ForgottenIsle.Core.Radio
         public bool TryApply(string itemId, out RadioFault cleared)
         {
             cleared = RadioFault.None;
-            var fault = FaultAddressedBy(itemId);
-            if (fault == RadioFault.None || (_outstanding & fault) == 0)
+            var fault = FaultFor(itemId);
+            if (fault == RadioFault.None)
             {
                 return false;
             }
@@ -111,6 +139,11 @@ namespace ForgottenIsle.Core.Radio
             if (itemId == ItemIds.FieldRecorder)
             {
                 _usedRecorderCells = true;
+            }
+
+            if (itemId == ItemIds.Multitool && fault == RadioFault.Fuse)
+            {
+                _fuseFromCord = true;
             }
 
             if (itemId == ItemIds.DeadTorch)
@@ -148,20 +181,22 @@ namespace ForgottenIsle.Core.Radio
             _outstanding = RadioFault.All;
             _usedRecorderCells = false;
             _torchTakenApart = false;
+            _fuseFromCord = false;
         }
 
-        /// <summary>Packs the state for a save. Three bits of faults, two flags.</summary>
+        /// <summary>Packs the state for a save. Three bits of faults, three flags.</summary>
         public int Capture()
         {
-            return (int)_outstanding | (_usedRecorderCells ? 8 : 0) | (_torchTakenApart ? 16 : 0);
+            return (int)_outstanding | (_usedRecorderCells ? 8 : 0) | (_torchTakenApart ? 16 : 0) | (_fuseFromCord ? 32 : 0);
         }
 
-        /// <summary>Restores from <see cref="Capture"/>.</summary>
+        /// <summary>Restores from <see cref="Capture"/>. A save without the cord bit reads as the spring.</summary>
         public void Restore(int packed)
         {
             _outstanding = (RadioFault)(packed & (int)RadioFault.All);
             _usedRecorderCells = (packed & 8) != 0;
             _torchTakenApart = (packed & 16) != 0;
+            _fuseFromCord = (packed & 32) != 0;
         }
     }
 }

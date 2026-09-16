@@ -113,11 +113,11 @@ namespace ForgottenIsle.Game.Interaction
                 return null;
             }
 
-            var outstanding = _radio.Repair.Outstanding;
+            // Asked of the set, not of a static table: the multitool fits twice (the contacts,
+            // then the cord for the fuse), and only the repair knows which turn it is.
             for (var i = 0; i < Candidates.Length; i++)
             {
-                var fault = RadioRepair.FaultAddressedBy(Candidates[i]);
-                if ((outstanding & fault) != 0 && services.HasItem(Candidates[i]))
+                if (_radio.Repair.FaultFor(Candidates[i]) != RadioFault.None && services.HasItem(Candidates[i]))
                 {
                     return Candidates[i];
                 }

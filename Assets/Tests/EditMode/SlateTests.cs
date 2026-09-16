@@ -50,6 +50,43 @@ namespace ForgottenIsle.Tests.EditMode
         }
 
         [Test]
+        public void HowTheSetCameToWork_IsFourBodies()
+        {
+            var progress = new WorldProgress();
+            Assert.That(HasTitle(Slate.Build(progress, new SlateFacts(true, true, true, false, false, false, false, false)), "slate.observed.radio.working"), Is.True);
+            Assert.That(HasTitle(Slate.Build(progress, new SlateFacts(true, true, true, false, false, false, true, false)), "slate.observed.radio.working_recorder"), Is.True);
+            Assert.That(HasTitle(Slate.Build(progress, new SlateFacts(true, true, true, false, false, false, false, true)), "slate.observed.radio.working_cord"), Is.True);
+            Assert.That(HasTitle(Slate.Build(progress, new SlateFacts(true, true, true, false, false, false, true, true)), "slate.observed.radio.working_recorder_cord"), Is.True);
+        }
+
+        [Test]
+        public void ASweptFloor_PutsSomeoneOnThePeopleTab_ButABootPrintDoesNot()
+        {
+            var progress = new WorldProgress();
+            progress.Inspect(ContentIds.MarkerBootPrint);
+            Assert.That(Slate.Build(progress, NoRadio).People.Count, Is.Zero, "A print is not yet a person.");
+
+            progress.Inspect(ContentIds.MarkerBroomArc);
+            var contents = Slate.Build(progress, NoRadio);
+            Assert.That(contents.People.Count, Is.EqualTo(1));
+            Assert.That(contents.People[0].TitleKey, Is.EqualTo("slate.people.someone"));
+            Assert.That(contents.Observed.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void TheCutVine_IsTheLastEntry_AndTheFourthQuestion()
+        {
+            var progress = new WorldProgress();
+            progress.Inspect(ContentIds.MarkerCutVine);
+
+            var contents = Slate.Build(progress, NoRadio);
+
+            Assert.That(contents.Observed[contents.Observed.Count - 1].TitleKey, Is.EqualTo("slate.observed." + ContentIds.MarkerCutVine));
+            Assert.That(HasTitle(contents, "slate.unresolved.who_cut_the_vine"), Is.True);
+            Assert.That(contents.People[0].TitleKey, Is.EqualTo("slate.people.someone"), "A blade means a hand.");
+        }
+
+        [Test]
         public void SpendingTheRecorder_LeavesAScarInTheEvidence()
         {
             var spent = Slate.Build(new WorldProgress(), new SlateFacts(true, true, true, false, false, true, true));

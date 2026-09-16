@@ -162,7 +162,9 @@ namespace ForgottenIsle.Game.Radio
 
             var line = itemId == ItemIds.FieldRecorder
                 ? "narration.radio.fixed.power_recorder"
-                : "narration.radio.fixed." + FaultName(cleared);
+                : itemId == ItemIds.Multitool && cleared == RadioFault.Fuse
+                    ? "narration.radio.fixed.fuse_cord"
+                    : "narration.radio.fixed." + FaultName(cleared);
 
             if (_repair.IsWorking)
             {

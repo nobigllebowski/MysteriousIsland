@@ -135,7 +135,45 @@ namespace ForgottenIsle.Tests.EditMode
 
             Assert.That(repair.TryApply(ItemIds.DrySpindle, out cleared), Is.False);
             Assert.That(repair.TryApply(ItemIds.Multitool, out cleared), Is.True);
-            Assert.That(repair.TryApply(ItemIds.Multitool, out cleared), Is.False, "Already clean.");
+            Assert.That(repair.TryApply(ItemIds.CopperSpring, out cleared), Is.True);
+            Assert.That(repair.TryApply(ItemIds.Multitool, out cleared), Is.False, "Already clean, and the fuse is done.");
+            Assert.That(repair.TryApply(ItemIds.CopperSpring, out cleared), Is.False, "One spring is enough.");
+        }
+
+        [Test]
+        public void TheMultitool_StripsTheMicCord_ForTheFuse_OnceTheContactsAreClean()
+        {
+            // The design's other valid fuse fix (§4.2): a player who never found the spring.
+            var repair = new RadioRepair();
+            RadioFault cleared;
+
+            Assert.That(repair.FaultFor(ItemIds.Multitool), Is.EqualTo(RadioFault.Contacts), "First the scraper.");
+            Assert.That(repair.TryApply(ItemIds.Multitool, out cleared), Is.True);
+            Assert.That(cleared, Is.EqualTo(RadioFault.Contacts));
+
+            Assert.That(repair.FaultFor(ItemIds.Multitool), Is.EqualTo(RadioFault.Fuse), "Then the blade, on the cord.");
+            Assert.That(repair.TryApply(ItemIds.Multitool, out cleared), Is.True);
+            Assert.That(cleared, Is.EqualTo(RadioFault.Fuse));
+            Assert.That(repair.FuseFromCord, Is.True);
+            Assert.That(repair.TryApply(ItemIds.CopperSpring, out cleared), Is.False, "The holder is already bridged.");
+
+            var restored = new RadioRepair();
+            restored.Restore(repair.Capture());
+            Assert.That(restored.FuseFromCord, Is.True, "The cord survives a save.");
+            Assert.That(restored.Outstanding, Is.EqualTo(RadioFault.Power));
+        }
+
+        [Test]
+        public void TheSpringFirst_LeavesTheCordAlone()
+        {
+            var repair = new RadioRepair();
+            RadioFault cleared;
+            repair.TryApply(ItemIds.CopperSpring, out cleared);
+            repair.TryApply(ItemIds.Multitool, out cleared);
+
+            Assert.That(cleared, Is.EqualTo(RadioFault.Contacts));
+            Assert.That(repair.FuseFromCord, Is.False);
+            Assert.That(repair.FaultFor(ItemIds.Multitool), Is.EqualTo(RadioFault.None));
         }
 
         [Test]

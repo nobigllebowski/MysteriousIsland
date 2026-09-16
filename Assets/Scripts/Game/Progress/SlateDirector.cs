@@ -97,7 +97,8 @@ namespace ForgottenIsle.Game.Progress
                 _radio.HasHeard(Stations.HullThump),
                 _radio.HasHeard(Stations.Bulletin),
                 _radio.TransmissionReceived,
-                _radio.Repair.UsedRecorderCells);
+                _radio.Repair.UsedRecorderCells,
+                _radio.Repair.FuseFromCord);
         }
     }
 }

@@ -49,6 +49,13 @@ namespace ForgottenIsle.Core.Progress
                 case MarkerRibStone:
                 case MarkerHullLine:
                 case MarkerAqueductCut:
+                case MarkerBootPrint:
+                case MarkerLegBand:
+                case MarkerTideMark:
+                case MarkerOxySlag:
+                case MarkerBroomArc:
+                case MarkerCanvasSquare:
+                case MarkerCutVine:
                     return ContentKind.Marker;
                 case DiscoveryBrassTag:
                 case DiscoveryWaterloggedReel:
@@ -95,6 +102,33 @@ namespace ForgottenIsle.Core.Progress
 
         /// <summary>The graded channel wall in Fernmaw, cut too regularly to be natural.</summary>
         public const string MarkerAqueductCut = "marker.aqueduct_cut";
+
+        // The Ribcage's optional inspectables (design §28:20 FAILURE, item 30): flavour for the
+        // player who beachcombs. Slate entries only; nothing is locked behind any of them.
+
+        /// <summary>A boot print in dried mud above the tide line. The same worn heel.</summary>
+        public const string MarkerBootPrint = "marker.boot_print";
+
+        /// <summary>A dead cormorant on the wrack, and a ring on its leg.</summary>
+        public const string MarkerLegBand = "marker.leg_band";
+
+        /// <summary>Chalk lines on the trawler's plate, dated: where the water reached.</summary>
+        public const string MarkerTideMark = "marker.tide_mark";
+
+        /// <summary>Beads of slag in the sand under the trawler's doorway. Oxy-cut, not rusted.</summary>
+        public const string MarkerOxySlag = "marker.oxy_slag";
+
+        /// <summary>An arc in the sand inside the doorway, the width of a broom.</summary>
+        public const string MarkerBroomArc = "marker.broom_arc";
+
+        /// <summary>The canvas that was folded over the set. Dry underneath.</summary>
+        public const string MarkerCanvasSquare = "marker.canvas_square";
+
+        /// <summary>
+        /// The vine across the gully mouth, already cut: one clean stroke, the face pale and wet.
+        /// The hook (§28:20, §2).
+        /// </summary>
+        public const string MarkerCutVine = "marker.cut_vine";
 
         // --- Discoveries (collected once, then gone) ---------------------------------------
 

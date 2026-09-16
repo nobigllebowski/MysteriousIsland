@@ -598,6 +598,46 @@ namespace ForgottenIsle.Game.World
                 "interactable.gully_mouth",
                 ContentIds.ZoneFernmaw,
                 gatePos);
+
+            // THE HOOK (§28:20, §2). Beside the gate, at chest height: the vine that is already
+            // cut. A thin green stem with a pale end, and the last thing she reads on this beach.
+            // Distinct from the gate so the gate keeps its one verb and the vine keeps its line.
+            var vineAt = new Vector3(1.35f, 0f, 28.7f);
+            vineAt.y = Height(vineAt.x, vineAt.z, recipe) + 1.25f;
+            CreateInspectable(
+                root, interactions,
+                ContentIds.MarkerCutVine,
+                "interactable.cut_vine",
+                vineAt,
+                Quaternion.Euler(12f, 0f, 20f),
+                new Vector3(0.06f, 1.1f, 0.06f),
+                new Color(0.22f, 0.36f, 0.18f));
+
+            // THE BEACHCOMBER'S REWARDS (§28:20 FAILURE, item 30). Flavour with no mechanical
+            // effect, placed off the route so they are found by the player who looks. A boot
+            // print in the dried mud above the tide line, going inland; and on the wrack, a dead
+            // cormorant with a ring on its leg. The cormorant is not food and she does not say so.
+            var printAt = new Vector3(-19f, 0f, -5f);
+            printAt.y = Height(printAt.x, printAt.z, recipe) + 0.03f;
+            CreateInspectable(
+                root, interactions,
+                ContentIds.MarkerBootPrint,
+                "interactable.boot_print",
+                printAt,
+                Quaternion.Euler(0f, 35f, 0f),
+                new Vector3(0.32f, 0.05f, 0.14f),
+                new Color(0.30f, 0.26f, 0.20f));
+
+            var birdAt = new Vector3(-27f, 0f, 4f);
+            birdAt.y = Height(birdAt.x, birdAt.z, recipe) + 0.08f;
+            CreateInspectable(
+                root, interactions,
+                ContentIds.MarkerLegBand,
+                "interactable.leg_band",
+                birdAt,
+                Quaternion.Euler(0f, -60f, 0f),
+                new Vector3(0.55f, 0.14f, 0.22f),
+                new Color(0.10f, 0.10f, 0.11f));
         }
 
 
@@ -829,6 +869,46 @@ namespace ForgottenIsle.Game.World
                 interactions.Register(set);
             }
 
+            // What the hull says about its keeper, for the player who looks: the canvas that was
+            // over the set, folded on the floor by the crate; a broom's arc in the sand inside
+            // the door; chalk tide marks on the flank plate, dated; and slag beads in the sand
+            // under the doorway, because the door was cut with gas, not rusted out.
+            CreateInspectable(
+                root, interactions,
+                ContentIds.MarkerCanvasSquare,
+                "interactable.canvas_square",
+                hull.TransformPoint(new Vector3(1.5f, 0.03f, -0.4f)),
+                hull.rotation * Quaternion.Euler(0f, 25f, 0f),
+                new Vector3(0.5f, 0.05f, 0.42f),
+                new Color(0.52f, 0.48f, 0.36f));
+
+            CreateInspectable(
+                root, interactions,
+                ContentIds.MarkerBroomArc,
+                "interactable.broom_arc",
+                hull.TransformPoint(new Vector3(-0.7f, 0.01f, -0.7f)),
+                hull.rotation * Quaternion.Euler(0f, -30f, 0f),
+                new Vector3(0.9f, 0.02f, 0.5f),
+                new Color(0.62f, 0.58f, 0.50f));
+
+            CreateInspectable(
+                root, interactions,
+                ContentIds.MarkerTideMark,
+                "interactable.tide_mark",
+                hull.TransformPoint(new Vector3(-1.2f, 1.05f, 1.43f)),
+                hull.rotation * Quaternion.Euler(-8f, 0f, 0f),
+                new Vector3(0.5f, 0.42f, 0.015f),
+                new Color(0.93f, 0.92f, 0.86f));
+
+            CreateInspectable(
+                root, interactions,
+                ContentIds.MarkerOxySlag,
+                "interactable.oxy_slag",
+                hull.TransformPoint(new Vector3(0.3f, 0.02f, -2.1f)),
+                hull.rotation,
+                new Vector3(0.6f, 0.04f, 0.3f),
+                new Color(0.20f, 0.17f, 0.15f));
+
             // The nail row: eleven tags on eleven nails, hung like keys, and the torch among them.
             var tagBrass = CreateMaterial(new Color(0.68f, 0.56f, 0.24f), "Tag");
             for (var i = 0; i < 11; i++)
@@ -1004,6 +1084,36 @@ namespace ForgottenIsle.Game.World
             go.transform.localScale = new Vector3(0.7f, 2.2f, 0.45f);
             go.transform.rotation = Quaternion.Euler(0f, 18f, 3f);
             Dress(go.GetComponent<MeshRenderer>(), stone);
+
+            var marker = go.AddComponent<AncientMarker>();
+            marker.Configure(contentId, nameKey, "narration." + contentId);
+
+            if (interactions != null)
+            {
+                interactions.Register(marker);
+            }
+        }
+
+        /// <summary>
+        /// An optional inspectable: a shaped, coloured thing with an inspect prompt and a line.
+        /// </summary>
+        /// <remarks>
+        /// Unlike <see cref="CreateMarker"/> this is not a standing stone: a boot print is a pad
+        /// in the sand and a vine is a stem, and the shape is what makes them findable by eye.
+        /// The narration and Slate keys follow the content id, as every marker's do.
+        /// </remarks>
+        private static void CreateInspectable(
+            Transform root, InteractionSystem interactions,
+            string contentId, string nameKey, Vector3 position, Quaternion rotation, Vector3 scale, Color color)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "Inspectable " + contentId;
+            StripCollider(go);
+            go.transform.SetParent(root, false);
+            go.transform.position = position;
+            go.transform.rotation = rotation;
+            go.transform.localScale = scale;
+            Dress(go.GetComponent<MeshRenderer>(), CreatePropMaterial(color, "Inspectable " + contentId));
 
             var marker = go.AddComponent<AncientMarker>();
             marker.Configure(contentId, nameKey, "narration." + contentId);
