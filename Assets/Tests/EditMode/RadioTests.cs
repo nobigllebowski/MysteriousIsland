@@ -355,7 +355,7 @@ namespace ForgottenIsle.Tests.EditMode
         // --- the command layer --------------------------------------------------------------
 
         [Test]
-        public void ANewGame_StartsWithTheKit_AndABrokenRadio()
+        public void ANewGame_StartsWithNothingInHand_AndABrokenRadio()
         {
             var signals = new SignalBus();
             var inventory = new InventoryService(signals, null);
@@ -368,8 +368,7 @@ namespace ForgottenIsle.Tests.EditMode
             StartNewGameHandler.PrepareNewRun(null, inventory, radio);
 
             Assert.That(inventory.Has(ItemIds.SluiceKey), Is.False, "The previous run's pockets are emptied.");
-            Assert.That(inventory.Has(ItemIds.Multitool), Is.True);
-            Assert.That(inventory.Has(ItemIds.FieldRecorder), Is.True);
+            Assert.That(inventory.Inventory.Count, Is.Zero, "The kit is in the bag on the sand (§2:00).");
             Assert.That(radio.Repair.Outstanding, Is.EqualTo(RadioFault.All));
         }
 

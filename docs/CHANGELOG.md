@@ -9,6 +9,17 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the bag (§2:00)
+
+A run now holds nothing: the orange dry bag lies ten metres up the beach, ahead and a little
+left, the only saturated colour in the first frame, and everything she owns is in it. TAKE it and
+the multitool and the recorder come out into the tray; the bag itself becomes the worn inventory
+and is not a chip. The objective reads *"Bag first."* until then, and forty seconds without taking
+it she says so, once, without irritation (`HintLadders.Bag`). The surf pushing the bag closer at
+ninety is animation and is not built. `ItemIds.ContentsOf` / `IsContainer`; `TakeItemHandler`
+takes a container for what is in it; `ObjectiveFacts.HasKit` (default true, so a caller without
+an inventory never demands a bag already worn). Tests updated and added.
+
 ### Added — the Slate's "Next:" line
 
 The design's rule for a player who comes back mid-puzzle (§"Quit mid-puzzle"): the notebook says

@@ -185,6 +185,7 @@ act.one.subtitle,Thirty-six hours of fresh water
 # --- Phase 2: objectives -----------------------------------------------------
 # One line, present tense, no exclamation marks. The objective tells the player where to point
 # themselves, never what to feel about it.
+objective.bag_first,Bag first.
 objective.explore_ribcage,Explore the shore.
 objective.inspect_rib_stone,Read the standing stone.
 objective.find_the_tag,Something here was tagged. Find it.
@@ -259,6 +260,9 @@ ui.hud.inventory_empty,Nothing yet.
 ui.hud.inventory_open,Items
 ui.hud.combine_hint,"Tap two to put them together. Tap one, then the prompt, to use it on what is in front of you."
 # --- Phase 6: the radio -------------------------------------------------------
+item.dry_bag,Dry Bag
+narration.item.dry_bag,"The bag. Orange, half-buried, heavier than I remember. Everything I own: the multitool, the recorder, the hydrophone, a pencil. It goes on. It stays on."
+narration.remark.bag_first,"Bag first. Everything I own is in that bag."
 item.multitool,Multitool
 item.field_recorder,Field Recorder
 item.dead_torch,Dead Torch

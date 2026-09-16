@@ -30,8 +30,26 @@ namespace ForgottenIsle.Core.Items
         /// </remarks>
         public const string FieldRecorder = "item.field_recorder";
 
-        /// <summary>What a new run starts holding.</summary>
-        public static readonly string[] StartingKit = { Multitool, FieldRecorder };
+        /// <summary>
+        /// The orange dry bag, ten metres up the beach, half-buried: the only colour in the first
+        /// frame. Taken, it becomes the worn inventory and is not an item any more.
+        /// </summary>
+        public const string DryBag = "item.dry_bag";
+
+        /// <summary>What comes out of the bag (§2:20). A run holds nothing until the bag is taken.</summary>
+        public static readonly string[] BagContents = { Multitool, FieldRecorder };
+
+        /// <summary>What an item contains, to be taken with it; empty for everything but the bag.</summary>
+        public static string[] ContentsOf(string itemId)
+        {
+            return itemId == DryBag ? BagContents : System.Array.Empty<string>();
+        }
+
+        /// <summary>True for a container that becomes the inventory itself rather than a chip in it.</summary>
+        public static bool IsContainer(string itemId)
+        {
+            return itemId == DryBag;
+        }
 
         // --- Found in the trawler hull --------------------------------------------------------
 

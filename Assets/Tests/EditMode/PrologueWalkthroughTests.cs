@@ -75,8 +75,8 @@ namespace ForgottenIsle.Tests.EditMode
                 Records = new RecordKeeper(Progress, Session, Signals);
                 Autosave = new AutosaveDirector(Slots, Session, States, Signals, null);
                 Slate = new SlateDirector(Progress, Radio, Signals);
-                Objectives = new ObjectiveKeeper(Progress, Radio, Fire, Signals);
-                Hints = new HintDirector(Session, States, Progress, Radio, Fire, Commands, Signals, null);
+                Objectives = new ObjectiveKeeper(Progress, Radio, Fire, Signals, Inventory);
+                Hints = new HintDirector(Session, States, Progress, Radio, Fire, Commands, Signals, null, Inventory);
 
                 Commands.Register<InspectCommand>(new InspectHandler(States, Progress, Signals));
                 Commands.Register<CollectCommand>(new CollectHandler(States, Progress, Signals, Inventory));
@@ -200,11 +200,19 @@ namespace ForgottenIsle.Tests.EditMode
             using (var w = new World(_root))
             {
                 w.NewGame();
-                Assert.That(w.Inventory.Has(ItemIds.Multitool), Is.True, "The starting kit.");
-                Assert.That(w.Objective, Is.EqualTo("objective.explore_ribcage"));
+                Assert.That(w.Inventory.Inventory.Count, Is.Zero, "Face-down in black sand, one boot missing.");
+                Assert.That(w.Objective, Is.EqualTo("objective.bag_first"));
+                Assert.That(w.Hints.Bag.IsRunning, Is.True);
                 Assert.That(w.Autosave.Writes, Is.Zero, "The arrival beat waits for the tick.");
                 w.Tick(0.1d);
                 Assert.That(w.Autosave.Writes, Is.EqualTo(1), "Arrived.");
+
+                // 2:00 -- the bag.
+                w.Do(new TakeItemCommand(ItemIds.DryBag));
+                Assert.That(w.Inventory.Has(ItemIds.Multitool), Is.True, "The kit, out of the bag.");
+                Assert.That(w.Inventory.Has(ItemIds.DryBag), Is.False, "The bag is the tray now.");
+                Assert.That(w.Hints.Bag.IsRunning, Is.False);
+                Assert.That(w.Objective, Is.EqualTo("objective.explore_ribcage"));
 
                 // 2:40 -- the stone, and the line.
                 w.Do(new InspectCommand(ContentIds.MarkerRibStone));
@@ -346,6 +354,7 @@ namespace ForgottenIsle.Tests.EditMode
             using (var w = new World(_root))
             {
                 w.NewGame();
+                w.Do(new TakeItemCommand(ItemIds.DryBag));
                 w.Do(new TakeItemCommand(ItemIds.DeadTorch));
                 w.Do(new UseItemCommand(ItemIds.DeadTorch, ContentIds.RadioSet));
                 w.Do(new UseItemCommand(ItemIds.CopperSpring, ContentIds.RadioSet));

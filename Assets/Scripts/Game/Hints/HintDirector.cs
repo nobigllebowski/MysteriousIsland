@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ForgottenIsle.Core.Commands;
 using ForgottenIsle.Core.Fire;
 using ForgottenIsle.Core.Hints;
+using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Core.Radio;
@@ -10,6 +11,7 @@ using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Core.State;
 using ForgottenIsle.Game.Bootstrap;
 using ForgottenIsle.Game.Fire;
+using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Radio;
 using ForgottenIsle.Game.Session;
@@ -48,6 +50,7 @@ namespace ForgottenIsle.Game.Hints
         private readonly ProgressService _progress;
         private readonly RadioService _radio;
         private readonly FireService _fire;
+        private readonly InventoryService _inventory;
         private readonly CommandDispatcher _commands;
         private readonly ICoreLog _log;
         private readonly List<IDisposable> _subscriptions = new List<IDisposable>(4);
@@ -56,6 +59,7 @@ namespace ForgottenIsle.Game.Hints
         private readonly HintLadder _radioLadder = HintLadders.Radio();
         private readonly HintLadder _fireSpark = HintLadders.FireSpark();
         private readonly HintLadder _fireTinder = HintLadders.FireTinder();
+        private readonly HintLadder _bag = HintLadders.Bag();
 
         private double _lastPlaytime;
         private float _lastMhz;
@@ -68,6 +72,7 @@ namespace ForgottenIsle.Game.Hints
         /// <param name="radio">Read to know whether the set works and the voice is heard.</param>
         /// <param name="fire">Read to know whether sparks have flown and whether a fire burns.</param>
         /// <param name="commands">Where every rung is dispatched.</param>
+        /// <param name="inventory">Read to know whether the bag has been taken. Null means it has.</param>
         /// <param name="signals">Bus the ticks and actions arrive on. Null makes this inert.</param>
         /// <param name="log">Diagnostics sink. Null tolerated.</param>
         public HintDirector(
@@ -78,8 +83,10 @@ namespace ForgottenIsle.Game.Hints
             FireService fire,
             CommandDispatcher commands,
             SignalBus signals,
-            ICoreLog log)
+            ICoreLog log,
+            InventoryService inventory = null)
         {
+            _inventory = inventory;
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _states = states ?? throw new ArgumentNullException(nameof(states));
             _progress = progress ?? throw new ArgumentNullException(nameof(progress));
@@ -98,7 +105,11 @@ namespace ForgottenIsle.Game.Hints
             _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(OnRadioChanged));
             _subscriptions.Add(signals.Subscribe<ProgressChangedSignal>(OnProgressChanged));
             _subscriptions.Add(signals.Subscribe<FireChangedSignal>(OnFireChanged));
+            _subscriptions.Add(signals.Subscribe<InventoryChangedSignal>(OnInventoryChanged));
         }
+
+        /// <summary>The bag's ladder. Exposed for tests.</summary>
+        public HintLadder Bag => _bag;
 
         /// <summary>The fire's no-spark ladder. Exposed for tests.</summary>
         public HintLadder FireSpark => _fireSpark;
@@ -139,6 +150,7 @@ namespace ForgottenIsle.Game.Hints
             _radioLadder.Forget();
             _fireSpark.Forget();
             _fireTinder.Forget();
+            _bag.Forget();
             _haveMhz = false;
             _dialTravel = 0f;
             _lastPlaytime = _session.PlaytimeSeconds;
@@ -146,6 +158,12 @@ namespace ForgottenIsle.Game.Hints
             if (!_progress.HasInspected(ContentIds.MarkerHullLine))
             {
                 _hullLine.Start();
+            }
+
+            if (_inventory != null && !_inventory.Has(ItemIds.Multitool))
+            {
+                // The first forty seconds of a run: the bag is the only colour on the screen.
+                _bag.Start();
             }
 
             if (_radio.IsWorking && !_radio.TransmissionReceived)
@@ -194,8 +212,13 @@ namespace ForgottenIsle.Game.Hints
                 Say(due);
             }
 
-            // The fire is on the Ribcage shore, like the hulls.
+            // The fire is on the Ribcage shore, like the hulls. So is the bag.
             var onTheShore = string.Equals(_session.ZoneId, ContentIds.ZoneRibcage, StringComparison.Ordinal);
+            if (onTheShore && _bag.TryAdvance(delta, out due))
+            {
+                Say(due);
+            }
+
             if (onTheShore && _fireSpark.TryAdvance(delta, out due))
             {
                 Say(due);
@@ -315,6 +338,14 @@ namespace ForgottenIsle.Game.Hints
             if (!_fire.Sparked && !_fire.IsLit && !_fireSpark.IsRunning && !_fireSpark.IsExhausted)
             {
                 _fireSpark.Start();
+            }
+        }
+
+        private void OnInventoryChanged(InventoryChangedSignal signal)
+        {
+            if (signal.Kind == InventoryChangeKind.Added && signal.ItemId == ItemIds.Multitool)
+            {
+                _bag.Stop();
             }
         }
 

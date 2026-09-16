@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Core.Signals;
+using ForgottenIsle.Core.Items;
 using ForgottenIsle.Game.Fire;
+using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Radio;
 
 namespace ForgottenIsle.Game.Progress
@@ -22,17 +24,20 @@ namespace ForgottenIsle.Game.Progress
         private readonly ProgressService _progress;
         private readonly RadioService _radio;
         private readonly FireService _fire;
-        private readonly List<IDisposable> _subscriptions = new List<IDisposable>(3);
+        private readonly InventoryService _inventory;
+        private readonly List<IDisposable> _subscriptions = new List<IDisposable>(4);
 
         /// <param name="progress">Owner of the objective line.</param>
         /// <param name="radio">Read for found, working, heard. Null tolerated.</param>
         /// <param name="fire">Read for engaged, lit. Null tolerated.</param>
         /// <param name="signals">Bus the changes arrive on. Null makes this inert.</param>
-        public ObjectiveKeeper(ProgressService progress, RadioService radio, FireService fire, SignalBus signals)
+        /// <param name="inventory">Read for the kit. Null means "the kit is in hand".</param>
+        public ObjectiveKeeper(ProgressService progress, RadioService radio, FireService fire, SignalBus signals, InventoryService inventory = null)
         {
             _progress = progress ?? throw new ArgumentNullException(nameof(progress));
             _radio = radio;
             _fire = fire;
+            _inventory = inventory;
 
             if (signals == null)
             {
@@ -42,6 +47,7 @@ namespace ForgottenIsle.Game.Progress
             _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(_ => Refresh()));
             _subscriptions.Add(signals.Subscribe<FireChangedSignal>(_ => Refresh()));
             _subscriptions.Add(signals.Subscribe<GameStateChangedSignal>(_ => Refresh()));
+            _subscriptions.Add(signals.Subscribe<InventoryChangedSignal>(_ => Refresh()));
         }
 
         /// <summary>Restates the facts now. Cheap; a no-op when nothing changed.</summary>
@@ -78,7 +84,8 @@ namespace ForgottenIsle.Game.Progress
                 _radio != null && _radio.IsWorking,
                 _radio != null && _radio.TransmissionReceived,
                 engaged,
-                _fire != null && _fire.IsLit);
+                _fire != null && _fire.IsLit,
+                _inventory == null || _inventory.Has(ItemIds.Multitool));
         }
     }
 }

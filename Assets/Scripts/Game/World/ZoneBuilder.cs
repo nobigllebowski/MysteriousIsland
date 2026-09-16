@@ -551,6 +551,20 @@ namespace ForgottenIsle.Game.World
                 Dress(rib.AddComponent<MeshRenderer>(), boneMaterial);
             }
 
+            // THE BAG (§2:00). Ten metres up the beach, half-buried, and the only saturated colour
+            // in the first frame: everything she owns is in it, and the run holds nothing until
+            // it is taken. Ahead and a little left of the spawn, so the first push of the stick
+            // is toward it.
+            var bagAt = new Vector3(-2.6f, 0f, 9.5f);
+            bagAt.y = Height(bagAt.x, bagAt.z, recipe) + 0.12f;
+            CreateItem(
+                root, interactions,
+                ItemIds.DryBag,
+                "item.dry_bag",
+                bagAt,
+                new Color(0.98f, 0.42f, 0.06f),
+                new Vector3(0.62f, 0.34f, 0.40f));
+
             // THE MARKER. IT WAS BEHIND THE PLAYER, and that is the whole reason the stone was
             // never seen. The rig spawns at the origin facing +Z with no yaw, and the marker sat at
             // z = -1.5 — 2.45 m away at 128° from the camera's forward vector, which is to say

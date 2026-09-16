@@ -89,6 +89,7 @@ namespace ForgottenIsle.Core.Progress
                 case RemarkFireTearsRope:
                 case RemarkFireWind:
                 case RemarkFireCarriesKit:
+                case RemarkBagFirst:
                     return ContentKind.Remark;
                 default:
                     return ContentKind.Unknown;
@@ -255,6 +256,9 @@ namespace ForgottenIsle.Core.Progress
 
         /// <summary>Seven blow-outs: she carries the kit to the lee and sets it down.</summary>
         public const string RemarkFireCarriesKit = "remark.fire.carries_kit";
+
+        /// <summary>Forty seconds without approaching the bag: "Bag first. Everything I own is in that bag."</summary>
+        public const string RemarkBagFirst = "remark.bag_first";
 
         /// <summary>
         /// How many lines a remark is said in. One means the key is "narration." + id; more means

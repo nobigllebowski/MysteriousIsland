@@ -84,13 +84,13 @@ namespace ForgottenIsle.Game.Bootstrap
             var slate = new SlateDirector(progress, radio, signals);
 
             // The objective line's other inputs: the radio and the fire, restated on their signals.
-            var objectives = new ObjectiveKeeper(progress, radio, fire, signals);
+            var objectives = new ObjectiveKeeper(progress, radio, fire, signals, inventory);
             var interactions = new InteractionSystem(progress, inventory, dispatcher, signals, log);
 
             // The hint timers (design §3.5): count play seconds, say each rung through the
             // dispatcher, forget everything on entering the world. Not a participant on purpose
             // (ADR-0025).
-            var hints = new HintDirector(session, states, progress, radio, fire, dispatcher, signals, log);
+            var hints = new HintDirector(session, states, progress, radio, fire, dispatcher, signals, log, inventory);
 
             // ADR-0011: every phase adds its participant in the same pull
             // request that adds its system. Registration order is capture and restore order, and the

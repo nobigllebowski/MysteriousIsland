@@ -123,11 +123,9 @@ namespace ForgottenIsle.Game.Bootstrap
 
             if (inventory != null)
             {
+                // Nothing in hand. The kit is in the orange bag ten metres up the beach (§2:00),
+                // and taking it is the first thing the run teaches.
                 inventory.ResetForNewRun();
-                for (var i = 0; i < ItemIds.StartingKit.Length; i++)
-                {
-                    inventory.Take(ItemIds.StartingKit[i]);
-                }
             }
 
             if (radio != null)
@@ -788,12 +786,29 @@ namespace ForgottenIsle.Game.Bootstrap
         /// <inheritdoc />
         public void Execute(in TakeItemCommand command)
         {
-            if (!_inventory.Take(command.ItemId) || _signals == null)
+            if (!_inventory.Take(command.ItemId))
             {
                 return;
             }
 
-            _signals.Publish(new NarrationSignal(InspectHandler.NarrationPrefix + command.ItemId));
+            // A container is taken for what is in it: the bag's contents go into the hands and
+            // the bag itself becomes the worn inventory, which is to say it stops being an item.
+            // Taken-then-consumed keeps the pickup off the sand on every rebuild.
+            var contents = ItemIds.ContentsOf(command.ItemId);
+            for (var i = 0; i < contents.Length; i++)
+            {
+                _inventory.Take(contents[i]);
+            }
+
+            if (ItemIds.IsContainer(command.ItemId))
+            {
+                _inventory.Consume(command.ItemId);
+            }
+
+            if (_signals != null)
+            {
+                _signals.Publish(new NarrationSignal(InspectHandler.NarrationPrefix + command.ItemId));
+            }
         }
     }
 

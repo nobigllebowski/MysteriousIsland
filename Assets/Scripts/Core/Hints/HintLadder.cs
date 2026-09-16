@@ -222,6 +222,15 @@ namespace ForgottenIsle.Core.Hints
         }
 
         /// <summary>
+        /// The bag (§2:00 FAILURE): forty seconds without taking it and she says so, without
+        /// irritation. The surf pushing the bag closer at ninety is animation, and is not built.
+        /// </summary>
+        public static HintLadder Bag()
+        {
+            return new HintLadder(new HintTier(ContentIds.RemarkBagFirst, 40d));
+        }
+
+        /// <summary>
         /// The fire, no spark yet (§7:10 FAILURE): tier 1 at 2:30 she thinks aloud about the
         /// spine; tier 3 at 6:00 she picks up the chert herself. Tier 2 (she flicks the spine
         /// against a rock at her feet, and the knock plays) is staging with no line, and is not

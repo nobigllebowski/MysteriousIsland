@@ -32,19 +32,24 @@ namespace ForgottenIsle.Core.Progress
         public readonly bool FireEngaged;
         public readonly bool FireLit;
 
-        public ObjectiveFacts(bool radioFound, bool radioWorking, bool heardTheVoice, bool fireEngaged, bool fireLit)
+        /// <summary>The bag has been taken: the kit is in hand. False for the first metres of a run.</summary>
+        public readonly bool HasKit;
+
+        public ObjectiveFacts(bool radioFound, bool radioWorking, bool heardTheVoice, bool fireEngaged, bool fireLit, bool hasKit = true)
         {
             RadioFound = radioFound;
             RadioWorking = radioWorking;
             HeardTheVoice = heardTheVoice;
             FireEngaged = fireEngaged;
             FireLit = fireLit;
+            HasKit = hasKit;
         }
 
         public bool Equals(ObjectiveFacts other)
         {
             return RadioFound == other.RadioFound && RadioWorking == other.RadioWorking
-                && HeardTheVoice == other.HeardTheVoice && FireEngaged == other.FireEngaged && FireLit == other.FireLit;
+                && HeardTheVoice == other.HeardTheVoice && FireEngaged == other.FireEngaged && FireLit == other.FireLit
+                && HasKit == other.HasKit;
         }
     }
 
@@ -68,6 +73,7 @@ namespace ForgottenIsle.Core.Progress
         /// <param name="progress">What the player has found so far. Null yields <see cref="None"/>.</param>
         /// <param name="zoneId">The zone the player is standing in.</param>
         /// <returns>A localization key, or <see cref="LocKey.Empty"/> when nothing should be shown.</returns>
+        private static readonly LocKey BagFirst = new LocKey("objective.bag_first");
         private static readonly LocKey MakeFire = new LocKey("objective.make_fire");
         private static readonly LocKey FixTheSet = new LocKey("objective.fix_the_set");
         private static readonly LocKey FindTheFrequency = new LocKey("objective.find_the_frequency");
@@ -113,6 +119,13 @@ namespace ForgottenIsle.Core.Progress
             }
 
             // The Ribcage, and anywhere unexpected: the shore chain is the spine of the slice.
+            if (!facts.HasKit)
+            {
+                // "Bag first. Everything I own is in that bag." The default is true so a caller
+                // without an inventory to ask never demands a bag that is already worn.
+                return BagFirst;
+            }
+
             if (!progress.HasInspected(ContentIds.MarkerRibStone))
             {
                 return ExploreRibcage;

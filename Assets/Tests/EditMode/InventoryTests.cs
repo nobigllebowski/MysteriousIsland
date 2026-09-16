@@ -327,5 +327,31 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(service.Has(ItemIds.DrySpindle), Is.True);
             Assert.That(service.HasEverTaken(ItemIds.DrySpindle), Is.True, "Carried counts as taken.");
         }
+
+        // --- The bag ---------------------------------------------------------------------------
+
+        [Test]
+        public void TakingTheBag_PutsTheKitInHand_AndTheBagBecomesTheInventory()
+        {
+            var signals = new SignalBus();
+            var states = new GameStateMachine(null, signals);
+            var service = new InventoryService(signals, null);
+            var dispatcher = new CommandDispatcher(null);
+            dispatcher.Register<TakeItemCommand>(new TakeItemHandler(states, service, signals));
+            states.TryTransition(GameStateId.MainMenu);
+            states.TryTransition(GameStateId.Loading);
+            states.TryTransition(GameStateId.InGame);
+            string said = null;
+            signals.Subscribe<NarrationSignal>(n => said = n.LineKey);
+
+            Assert.That(dispatcher.Dispatch(new TakeItemCommand(ItemIds.DryBag)).Success, Is.True);
+
+            Assert.That(service.Has(ItemIds.Multitool), Is.True);
+            Assert.That(service.Has(ItemIds.FieldRecorder), Is.True);
+            Assert.That(service.Has(ItemIds.DryBag), Is.False, "Not a chip in the tray: it is the tray.");
+            Assert.That(service.HasEverTaken(ItemIds.DryBag), Is.True, "And it does not lie on the sand again.");
+            Assert.That(said, Is.EqualTo("narration." + ItemIds.DryBag));
+            Assert.That(ItemIds.ContentsOf(ItemIds.Multitool), Is.Empty);
+        }
     }
 }

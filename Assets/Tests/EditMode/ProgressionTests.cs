@@ -177,7 +177,10 @@ namespace ForgottenIsle.Tests.EditMode
             var inventory = new ForgottenIsle.Game.Items.InventoryService(signals, null);
             var radio = new ForgottenIsle.Game.Radio.RadioService(signals, inventory, null);
             var fire = new ForgottenIsle.Game.Fire.FireService(signals, inventory, null);
-            var keeper = new ObjectiveKeeper(service, radio, fire, signals);
+            var keeper = new ObjectiveKeeper(service, radio, fire, signals, inventory);
+            Assert.That(service.ObjectiveKey, Is.EqualTo("objective.bag_first"), "Nothing in hand yet.");
+            inventory.Take(ItemIds.DryBag);
+            inventory.Take(ItemIds.Multitool);
             service.Inspect(ContentIds.MarkerRibStone);
 
             fire.Apply(ContentIds.FireSiteOpenA, ItemIds.DryGrass, true);

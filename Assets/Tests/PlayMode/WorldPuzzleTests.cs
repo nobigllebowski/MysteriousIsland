@@ -87,6 +87,9 @@ namespace ForgottenIsle.Tests.PlayMode
             var context = RequireContext();
             yield return StartRun(context);
 
+            Assert.That(FindPickup(ItemIds.DryBag), Is.Not.Null, "The bag on the sand.");
+            Assert.That(context.Commands.Dispatch(new TakeItemCommand(ItemIds.DryBag)).Success, Is.True);
+            Assert.That(context.Inventory.Has(ItemIds.Multitool), Is.True, "The kit, out of the bag.");
             context.Commands.Dispatch(new TakeItemCommand(ItemIds.PolyFibre));
             context.Commands.Dispatch(new TakeItemCommand(ItemIds.DriftwoodDry));
             context.Commands.Dispatch(new TakeItemCommand(ItemIds.ChertNodule));
@@ -130,6 +133,7 @@ namespace ForgottenIsle.Tests.PlayMode
         {
             var context = RequireContext();
             yield return StartRun(context);
+            context.Commands.Dispatch(new TakeItemCommand(ItemIds.DryBag));
 
             var rocks = UnityEngine.Object.FindObjectsByType<RockNode>(FindObjectsInactive.Include);
             RockNode chert = null;

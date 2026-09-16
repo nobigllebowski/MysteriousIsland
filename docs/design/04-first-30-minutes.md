@@ -84,7 +84,7 @@ If the thumb never lands: after 40 s Nadia says *"Bag first. Everything I own is
 
 **FAILURE.** If the player walks *away* from the bag, they can. The beach is open. After 40 s of not approaching it, Nadia says, without irritation: *"Bag first. Everything I own is in that bag."* (the same line serves the thumb that never landed, above). After 90 s, the surf pushes the bag two metres closer and a wave slaps it — a movement cue in peripheral vision. There is no third nag. The player cannot leave the Ribcage without the bag because the *gully* (the exit) requires the multitool, so the world holds the line, not the UI.
 
-*(Shipped state: the run starts with the multitool and the recorder already in the tray and no bag on the sand; the joystick and look pad are in, the stand animation and the 40 s / 90 s cues are not. See `CURRENT_STATE.md`.)*
+*(Shipped state: the bag lies on the sand ahead and left of the spawn and yields the kit when taken; the objective reads "Bag first." until then, and the 40 s line is in. The joystick and look pad are in; the stand animation, the 90 s wave, and the assist's one-line offer are not. See `CURRENT_STATE.md`.)*
 
 ---
 

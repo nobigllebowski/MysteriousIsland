@@ -106,6 +106,10 @@ torch off the nail, use it, the multitool and the spring on the set, TUNE, drag 
 transmission, open the Slate from its HUD tab and check UNRESOLVED reads 3. Pause with the dial
 open and resume; save and continue; tap NEW GAME twice with every slot full.
 
+First the bag: a new run must start with an empty tray, an orange bag ahead-left of the spawn,
+"Bag first." on the HUD, and the multitool and the recorder must appear in the tray when it is
+taken (the bag itself must not). Wait forty seconds without taking it and she should say so once.
+
 Then the observation and hint slice: stand past the near hull's bow and look down the beach (the
 chalk should snap in at ±4° and SIX HULLS, ONE LINE appear in the Slate); stand at the third
 hull instead (three chalk in; "Try the far end"); leave the set powered up and untouched for

@@ -152,7 +152,7 @@ namespace ForgottenIsle.Tests.EditMode
             _inventory = inventory;
             _dispatcher.Register<TakeItemCommand>(new TakeItemHandler(_states, inventory, _signals));
             _dispatcher.Register<CarryFireKitCommand>(new CarryFireKitHandler(_states, _fire));
-            _hints = new HintDirector(_session, _states, _progress, _radio, _fire, _dispatcher, _signals, null);
+            _hints = new HintDirector(_session, _states, _progress, _radio, _fire, _dispatcher, _signals, null, inventory);
             _said = new System.Collections.Generic.List<string>();
             _signals.Subscribe<NarrationSignal>(s => _said.Add(s.LineKey));
             _signals.Subscribe<NarrationSequenceSignal>(s => _said.AddRange(s.LineKeys));
@@ -164,8 +164,15 @@ namespace ForgottenIsle.Tests.EditMode
             _hints.Dispose();
         }
 
-        private void EnterTheWorld()
+        private void EnterTheWorld(bool withTheKit = true)
         {
+            // Every ladder but the bag's is tested with the kit in hand, as it would be by then.
+            if (withTheKit && !_inventory.Has(ItemIds.Multitool))
+            {
+                _inventory.Take(ItemIds.Multitool);
+                _inventory.Take(ItemIds.FieldRecorder);
+            }
+
             _states.TryTransition(GameStateId.MainMenu);
             _states.TryTransition(GameStateId.Loading);
             _session.BeginNewRun(0, string.Empty, ContentIds.ZoneRibcage, 1);
@@ -467,6 +474,32 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(_fire.IsLit, Is.True);
 
             Play(700d);
+            Assert.That(_said, Is.Empty);
+        }
+
+        [Test]
+        public void TheBag_AtForty_SheSaysSo_Once_AndNotOnceItIsTaken()
+        {
+            EnterTheWorld(withTheKit: false);
+            Assert.That(_hints.Bag.IsRunning, Is.True, "Nothing in hand: the bag is the first thing.");
+
+            Play(39d);
+            Assert.That(_said, Is.Empty);
+            Play(2d);
+            Assert.That(_said, Is.EqualTo(new[] { "narration." + ContentIds.RemarkBagFirst }));
+
+            _inventory.Take(ItemIds.Multitool);
+            Assert.That(_hints.Bag.IsRunning, Is.False);
+        }
+
+        [Test]
+        public void TheBag_AlreadyTaken_IsNeverAskedFor()
+        {
+            _inventory.Take(ItemIds.Multitool);
+            EnterTheWorld();
+
+            Assert.That(_hints.Bag.IsRunning, Is.False);
+            Play(60d);
             Assert.That(_said, Is.Empty);
         }
 
