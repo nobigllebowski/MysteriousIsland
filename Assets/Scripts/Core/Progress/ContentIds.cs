@@ -75,6 +75,9 @@ namespace ForgottenIsle.Core.Progress
                 case RemarkRadioReadsList:
                 case RemarkRadioSweep:
                 case RemarkFireHolds:
+                case RemarkFireLee:
+                case RemarkFireOpenA:
+                case RemarkFireOpenB:
                 case RemarkRockLook:
                 case RemarkRockKnock:
                 case RemarkRockRing:
@@ -206,6 +209,15 @@ namespace ForgottenIsle.Core.Progress
 
         /// <summary>Examining a burning fire.</summary>
         public const string RemarkFireHolds = "remark.fire.holds";
+
+        /// <summary>Examining the lee: the blown sand breaks around the hull and lies still.</summary>
+        public const string RemarkFireLee = "remark.fire.lee";
+
+        /// <summary>Examining the open sand under the ribs.</summary>
+        public const string RemarkFireOpenA = "remark.fire.open_a";
+
+        /// <summary>Examining the open sand on the wrack.</summary>
+        public const string RemarkFireOpenB = "remark.fire.open_b";
 
         /// <summary>Examining a rock: dark, glassy, everywhere.</summary>
         public const string RemarkRockLook = "remark.rock.look";

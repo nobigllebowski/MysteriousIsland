@@ -33,6 +33,18 @@ namespace ForgottenIsle.Tests.EditMode
         }
 
         [Test]
+        public void Grass_NeverReplacesLaidFibre()
+        {
+            var site = new FireSiteState("open", false);
+            site.Apply(ItemIds.PolyFibre, true);
+
+            Assert.That(site.Apply(ItemIds.DryGrass, true), Is.EqualTo(FireAct.GrassPointless));
+            Assert.That(site.Tinder, Is.EqualTo(Tinder.Fibre), "The one rope's fibre is not lost to a flare.");
+            Assert.That(FireRules.IsRefusal(FireAct.GrassPointless), Is.True, "The grass stays in the bag.");
+            Assert.That(FireRules.Consumes(FireAct.GrassPointless), Is.False);
+        }
+
+        [Test]
         public void Fibre_WithNoWood_HoldsAnEmberAndStarves_KeepingTheFibre()
         {
             var site = new FireSiteState("lee", true);
@@ -275,6 +287,28 @@ namespace ForgottenIsle.Tests.EditMode
 
             restored.Advance(61d);
             Assert.That(other.Has(ItemIds.DriftwoodDry), Is.True, "The warm zone's clock survives a save.");
+        }
+
+        [Test]
+        public void AChertThatRang_StaysRung_AcrossASave()
+        {
+            InventoryService inventory;
+            SignalBus signals;
+            var fire = NewService(out inventory, out signals);
+            fire.MarkRung("rock.chert.2");
+            Assert.That(fire.HasRung("rock.chert.2"), Is.True);
+            Assert.That(fire.HasRung("rock.chert.1"), Is.False);
+
+            var doc = new SaveDocument();
+            fire.Capture(doc);
+            InventoryService other;
+            SignalBus otherSignals;
+            var restored = NewService(out other, out otherSignals);
+            restored.Restore(doc);
+
+            Assert.That(restored.HasRung("rock.chert.2"), Is.True);
+            restored.ResetForNewRun();
+            Assert.That(restored.HasRung("rock.chert.2"), Is.False);
         }
 
         [Test]

@@ -9,6 +9,18 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — from a review of the fire slice
+
+- **Grass never replaces laid fibre.** Laying grass on a site where the one rope's fibre was
+  already down replaced it, and the flare then took the fibre with it: an unsolvable fire until
+  a reload. Grass on fibre is now refused ("the fibre is down already").
+- **Examining a fire site is a remark.** It was an inspection, which wrote `fire.lee` into the
+  inspected set — the same lie in the save the rocks were built to avoid.
+- **A chert that rang stays rung.** The rung state lived on the node and the zone is rebuilt on
+  every entry; `FireService` now remembers rung ids and saves them (a sixth field; older saves
+  read as none).
+- The site caches its three children instead of three name walks per site per frame.
+
 ### Changed — the objective line follows the puzzles
 
 The HUD's one line named only the tag chain; the fire and the radio, the prologue's two puzzles,

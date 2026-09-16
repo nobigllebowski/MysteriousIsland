@@ -50,6 +50,7 @@ namespace ForgottenIsle.Game.Fire
         private readonly ICoreLog _log;
         private readonly List<IDisposable> _subscriptions = new List<IDisposable>(1);
 
+        private readonly HashSet<string> _rung = new HashSet<string>(StringComparer.Ordinal);
         private bool _sparked;
         private int _blowOuts;
         private double _dryingRemaining;
@@ -100,6 +101,21 @@ namespace ForgottenIsle.Game.Fire
 
                 return false;
             }
+        }
+
+        /// <summary>Remembers that this chert has rung under the multitool.</summary>
+        public void MarkRung(string rockId)
+        {
+            if (!string.IsNullOrEmpty(rockId))
+            {
+                _rung.Add(rockId);
+            }
+        }
+
+        /// <summary>True once this chert has rung. Survives zone rebuilds and saves.</summary>
+        public bool HasRung(string rockId)
+        {
+            return !string.IsNullOrEmpty(rockId) && _rung.Contains(rockId);
         }
 
         /// <summary>The site with this id, or null.</summary>
@@ -253,6 +269,7 @@ namespace ForgottenIsle.Game.Fire
             _blowOuts = 0;
             _dryingRemaining = 0d;
             _dryingSiteId = null;
+            _rung.Clear();
         }
 
         /// <inheritdoc />
@@ -263,7 +280,7 @@ namespace ForgottenIsle.Game.Fire
                 return;
             }
 
-            // sites (id:packed;...) | sparked | blow-outs | drying seconds | drying site
+            // sites (id:packed;...) | sparked | blow-outs | drying seconds | drying site | rung rocks
             var builder = new System.Text.StringBuilder(96);
             for (var i = 0; i < _sites.Length; i++)
             {
@@ -280,6 +297,10 @@ namespace ForgottenIsle.Game.Fire
                 .Append(Separator).Append(_blowOuts.ToString(CultureInfo.InvariantCulture))
                 .Append(Separator).Append(_dryingRemaining.ToString("R", CultureInfo.InvariantCulture))
                 .Append(Separator).Append(_dryingSiteId ?? string.Empty);
+
+            var rung = new List<string>(_rung);
+            rung.Sort(StringComparer.Ordinal);
+            builder.Append(Separator).Append(string.Join(SiteSeparator.ToString(), rung));
 
             doc.PutSection(SectionId, builder.ToString());
         }
@@ -332,6 +353,15 @@ namespace ForgottenIsle.Game.Fire
             {
                 _dryingRemaining = drying;
                 _dryingSiteId = string.IsNullOrEmpty(parts[4]) ? null : parts[4];
+            }
+
+            if (parts.Length > 5 && !string.IsNullOrEmpty(parts[5]))
+            {
+                var rung = parts[5].Split(SiteSeparator);
+                for (var r = 0; r < rung.Length; r++)
+                {
+                    _rung.Add(rung[r]);
+                }
             }
         }
 

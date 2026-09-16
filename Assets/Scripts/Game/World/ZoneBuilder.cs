@@ -219,7 +219,7 @@ namespace ForgottenIsle.Game.World
                 BuildRibcageContent(root, recipe, stoneMaterial, interactions);
                 BuildTrawlerHull(root, recipe, stoneMaterial, interactions, radio);
                 BuildHullLine(root, recipe, interactions);
-                BuildWrack(root, recipe, interactions);
+                BuildWrack(root, recipe, interactions, fire);
                 BuildFireSites(root, recipe, interactions, fire);
             }
 
@@ -658,7 +658,7 @@ namespace ForgottenIsle.Game.World
         /// metres of the lee, all looking like rocks. The chert is paler and banded up close; the
         /// test the design relies on is the sound, so nothing here labels one.
         /// </remarks>
-        private static void BuildWrack(Transform root, Recipe recipe, InteractionSystem interactions)
+        private static void BuildWrack(Transform root, Recipe recipe, InteractionSystem interactions, FireService fire)
         {
             var wrack = new GameObject("The Wrack").transform;
             wrack.SetParent(root, false);
@@ -697,7 +697,7 @@ namespace ForgottenIsle.Game.World
             var chertAt = new[] { new Vector3(-13f, 0f, -6f), new Vector3(-21f, 0f, 3f), new Vector3(-7f, 0f, -8f) };
             for (var i = 0; i < chertAt.Length; i++)
             {
-                CreateRock(wrack, interactions, cobble, chert, "rock.chert." + (i + 1), chertAt[i], recipe, true, recipe.Seed + i);
+                CreateRock(wrack, interactions, fire, cobble, chert, "rock.chert." + (i + 1), chertAt[i], recipe, true, recipe.Seed + i);
             }
 
             var random = new System.Random(recipe.Seed + 4441);
@@ -705,7 +705,7 @@ namespace ForgottenIsle.Game.World
             {
                 var x = -30f + (float)random.NextDouble() * 26f;
                 var z = -10f + (float)random.NextDouble() * 18f;
-                CreateRock(wrack, interactions, cobble, basalt, "rock.basalt." + (i + 1), new Vector3(x, 0f, z), recipe, false, recipe.Seed + 100 + i);
+                CreateRock(wrack, interactions, fire, cobble, basalt, "rock.basalt." + (i + 1), new Vector3(x, 0f, z), recipe, false, recipe.Seed + 100 + i);
             }
 
             // "Basalt. Basalt. That's not basalt." -- said within three metres of the chert nearest
@@ -723,7 +723,7 @@ namespace ForgottenIsle.Game.World
         }
 
         private static void CreateRock(
-            Transform parent, InteractionSystem interactions, Mesh mesh, Material material,
+            Transform parent, InteractionSystem interactions, FireService fire, Mesh mesh, Material material,
             string contentId, Vector3 at, Recipe recipe, bool isChert, int seed)
         {
             var random = new System.Random(seed);
@@ -739,7 +739,7 @@ namespace ForgottenIsle.Game.World
             Dress(go.AddComponent<MeshRenderer>(), material);
 
             var node = go.AddComponent<RockNode>();
-            node.Configure(contentId, "interactable.rock", isChert);
+            node.Configure(contentId, "interactable.rock", isChert, fire);
             if (interactions != null)
             {
                 interactions.Register(node);
@@ -761,13 +761,13 @@ namespace ForgottenIsle.Game.World
             var parent = new GameObject("Fire Sites").transform;
             parent.SetParent(root, false);
 
-            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteLee, "interactable.fire_lee", new Vector3(-9.6f, 0f, -10f), recipe);
-            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenA, "interactable.fire_open", new Vector3(-2f, 0f, -5f), recipe);
-            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenB, "interactable.fire_open", new Vector3(-18f, 0f, 1f), recipe);
+            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteLee, "interactable.fire_lee", ContentIds.RemarkFireLee, new Vector3(-9.6f, 0f, -10f), recipe);
+            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenA, "interactable.fire_open", ContentIds.RemarkFireOpenA, new Vector3(-2f, 0f, -5f), recipe);
+            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenB, "interactable.fire_open", ContentIds.RemarkFireOpenB, new Vector3(-18f, 0f, 1f), recipe);
         }
 
         private static void CreateFireSite(
-            Transform parent, InteractionSystem interactions, FireService fire, string siteId, string nameKey, Vector3 at, Recipe recipe)
+            Transform parent, InteractionSystem interactions, FireService fire, string siteId, string nameKey, string examineRemarkId, Vector3 at, Recipe recipe)
         {
             at.y = Height(at.x, at.z, recipe);
 
@@ -815,7 +815,7 @@ namespace ForgottenIsle.Game.World
             flame.gameObject.SetActive(false);
 
             var component = site.gameObject.AddComponent<FireSite>();
-            component.Configure(fire, siteId, nameKey);
+            component.Configure(fire, siteId, nameKey, examineRemarkId);
             if (interactions != null && fire != null)
             {
                 interactions.Register(component);

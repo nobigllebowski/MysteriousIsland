@@ -22,13 +22,28 @@ namespace ForgottenIsle.Game.Interaction
         private FireService _fire;
         private string _siteId;
         private string _nameKey;
+        private string _examineRemarkId;
+        private Transform _kit;
+        private Transform _panel;
+        private Transform _flame;
 
-        /// <summary>Configures the site. Called by zone building.</summary>
-        public void Configure(FireService fire, string siteId, string nameKey)
+        /// <summary>Configures the site. Called by zone building, after its children exist.</summary>
+        /// <param name="fire">The fire service.</param>
+        /// <param name="siteId">A <c>ContentIds</c> fire site id.</param>
+        /// <param name="nameKey">Localization key naming the site.</param>
+        /// <param name="examineRemarkId">The remark said when the site is examined unlit.</param>
+        public void Configure(FireService fire, string siteId, string nameKey, string examineRemarkId)
         {
             _fire = fire;
             _siteId = siteId;
             _nameKey = nameKey;
+            _examineRemarkId = examineRemarkId;
+
+            // Looked up once: the scan calls CanInteract every frame for every site, and three
+            // name walks per site per frame is a cost with no reader.
+            _kit = transform.Find("Kit");
+            _panel = transform.Find("Panel");
+            _flame = transform.Find("Flame");
             SyncVisuals();
         }
 
@@ -55,10 +70,10 @@ namespace ForgottenIsle.Game.Interaction
         /// <inheritdoc />
         public override ICommand BuildCommand(IInteractionServices services)
         {
+            // A remark, not an inspection: a site id in the inspected set would be a lie in the
+            // save, the same lie a rock id would be. What the site says is its own line.
             var state = State;
-            return state != null && state.IsLit
-                ? new InspectCommand(ContentId, ContentIds.RemarkFireHolds)
-                : new InspectCommand(ContentId);
+            return new RemarkCommand(state != null && state.IsLit ? ContentIds.RemarkFireHolds : _examineRemarkId);
         }
 
         /// <inheritdoc />
@@ -107,14 +122,13 @@ namespace ForgottenIsle.Game.Interaction
         private void SyncVisuals()
         {
             var state = State;
-            Show("Kit", state != null && state.HasKit && !state.IsLit);
-            Show("Panel", state != null && state.PanelPlaced);
-            Show("Flame", state != null && state.IsLit);
+            Show(_kit, state != null && state.HasKit && !state.IsLit);
+            Show(_panel, state != null && state.PanelPlaced);
+            Show(_flame, state != null && state.IsLit);
         }
 
-        private void Show(string childName, bool visible)
+        private static void Show(Transform child, bool visible)
         {
-            var child = transform.Find(childName);
             if (child != null && child.gameObject.activeSelf != visible)
             {
                 child.gameObject.SetActive(visible);

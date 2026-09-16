@@ -1,6 +1,7 @@
 using ForgottenIsle.Core.Commands;
 using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Progress;
+using ForgottenIsle.Game.Fire;
 using UnityEngine;
 
 namespace ForgottenIsle.Game.Interaction
@@ -21,13 +22,19 @@ namespace ForgottenIsle.Game.Interaction
         private bool _isChert;
         private bool _rang;
         private bool _canTake;
+        private FireService _fire;
 
         /// <summary>Configures the node. Called by zone building.</summary>
-        public void Configure(string contentId, string nameKey, bool isChert)
+        /// <param name="contentId">A unique rock id.</param>
+        /// <param name="nameKey">Localization key naming it.</param>
+        /// <param name="isChert">Whether it rings.</param>
+        /// <param name="fire">Remembers which chert has rung, across zone rebuilds and saves. Null tolerated.</param>
+        public void Configure(string contentId, string nameKey, bool isChert, FireService fire)
         {
             _contentId = contentId;
             _nameKey = nameKey;
             _isChert = isChert;
+            _fire = fire;
         }
 
         /// <inheritdoc />
@@ -76,7 +83,20 @@ namespace ForgottenIsle.Game.Interaction
             }
 
             _rang = true;
+            if (_fire != null)
+            {
+                _fire.MarkRung(ContentId);
+            }
+
             return UseOutcome.Worked("narration." + ContentIds.RemarkRockRing);
+        }
+
+        /// <inheritdoc />
+        public override void ApplyRestoredState(IInteractionServices services)
+        {
+            // A nodule that rang stays rung: the zone is rebuilt on every entry, and a chert that
+            // forgot it had chipped would ask the player to prove it twice.
+            _rang = _isChert && _fire != null && _fire.HasRung(ContentId);
         }
 
         /// <inheritdoc />

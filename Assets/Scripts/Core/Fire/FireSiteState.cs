@@ -53,7 +53,10 @@ namespace ForgottenIsle.Core.Fire
         BlewOut = 14,
 
         /// <summary>Fire.</summary>
-        Lit = 15
+        Lit = 15,
+
+        /// <summary>Grass offered where fibre is already laid: the better tinder stays.</summary>
+        GrassPointless = 16
     }
 
     /// <summary>
@@ -122,6 +125,13 @@ namespace ForgottenIsle.Core.Fire
                     if (IsLit)
                     {
                         return FireAct.AlreadyLit;
+                    }
+
+                    if (Tinder == Tinder.Fibre)
+                    {
+                        // The one rope's fibre must never be replaced by the tinder that cannot
+                        // work: a flare would take the fibre with it, and the run with the fibre.
+                        return FireAct.GrassPointless;
                     }
 
                     Tinder = Tinder.Grass;
@@ -291,6 +301,7 @@ namespace ForgottenIsle.Core.Fire
             switch (act)
             {
                 case FireAct.PanelPointless:
+                case FireAct.GrassPointless:
                 case FireAct.AlreadyLit:
                 case FireAct.WetWoodRefused:
                 case FireAct.KelpRefused:
@@ -337,6 +348,7 @@ namespace ForgottenIsle.Core.Fire
                 case FireAct.EmberStarved: return "narration.fire.ember_starved";
                 case FireAct.BlewOut: return "narration.fire.blew_out";
                 case FireAct.Lit: return "narration.fire.lit";
+                case FireAct.GrassPointless: return "narration.fire.grass_pointless";
                 default: return null;
             }
         }

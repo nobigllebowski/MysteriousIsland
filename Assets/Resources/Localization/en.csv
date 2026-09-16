@@ -339,14 +339,15 @@ narration.item.kelp,"Black kelp, wet through. Not food. Not yet."
 interactable.rock,Rock
 interactable.fire_lee,The Hull's Lee
 interactable.fire_open,Open Sand
-narration.fire.lee,"In the lee of the hull. The blown sand breaks around the wreck and lies still here. Out of the wind."
-narration.fire.open_a,"Open sand under the ribs. The wind takes everything laid here, and the sand streams past my boots."
-narration.fire.open_b,"Open sand on the wrack. The wind comes straight up the beach and nothing here stops it."
+narration.remark.fire.lee,"In the lee of the hull. The blown sand breaks around the wreck and lies still here. Out of the wind."
+narration.remark.fire.open_a,"Open sand under the ribs. The wind takes everything laid here, and the sand streams past my boots."
+narration.remark.fire.open_b,"Open sand on the wrack. The wind comes straight up the beach and nothing here stops it."
 narration.remark.fire.holds,"It holds. The hull above me is a ceiling of orange and rust, and the wet sand mirrors it."
 narration.fire.grass_laid,"Grass, laid in a hollow. It will go up like paper."
 narration.fire.fibre_laid,"The fibre, teased into a nest, in a hollow. Tinder."
 narration.fire.wood_stacked,"The dry wood, stacked to let the air in."
 narration.fire.panel_placed,"The panel, wedged upright in the sand on the windward side. A wall. It'll do. It'll do badly."
+narration.fire.grass_pointless,"The fibre is down already, and it is the better tinder. The grass can stay in the bag."
 narration.fire.panel_pointless,"Out of the wind already. The panel can stay in the bag."
 narration.fire.already_lit,"It's burning. Leave it be."
 narration.fire.wet_wood,"It's wet through. Nothing lights that."
