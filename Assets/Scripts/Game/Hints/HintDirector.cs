@@ -53,7 +53,8 @@ namespace ForgottenIsle.Game.Hints
         private readonly InventoryService _inventory;
         private readonly CommandDispatcher _commands;
         private readonly ICoreLog _log;
-        private readonly List<IDisposable> _subscriptions = new List<IDisposable>(4);
+        private readonly SignalBus _signals;
+        private readonly List<IDisposable> _subscriptions = new List<IDisposable>(6);
 
         private readonly HintLadder _hullLine = HintLadders.HullLine();
         private readonly HintLadder _radioLadder = HintLadders.Radio();
@@ -87,6 +88,7 @@ namespace ForgottenIsle.Game.Hints
             InventoryService inventory = null)
         {
             _inventory = inventory;
+            _signals = signals;
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _states = states ?? throw new ArgumentNullException(nameof(states));
             _progress = progress ?? throw new ArgumentNullException(nameof(progress));
@@ -119,6 +121,9 @@ namespace ForgottenIsle.Game.Hints
 
         /// <summary>Rungs dispatched since this director was built. For tests and the overlay.</summary>
         public int Said { get; private set; }
+
+        /// <summary>Rungs staged rather than said. For tests.</summary>
+        public int Staged { get; private set; }
 
         /// <summary>The hull line's ladder. Exposed for tests.</summary>
         public HintLadder HullLine => _hullLine;
@@ -376,6 +381,19 @@ namespace ForgottenIsle.Game.Hints
 
         private void Say(HintTier tier)
         {
+            if (tier.IsStaging)
+            {
+                // The object shows itself. No line, no command, no record: a cue on the bus for
+                // the audio and the tray, the way a narration line is a cue for the card.
+                Staged++;
+                if (_signals != null)
+                {
+                    _signals.Publish(new HintStagingSignal(tier.Staging));
+                }
+
+                return;
+            }
+
             if (tier.GrantsItemId != null)
             {
                 // She picks it up herself. Refused only when it is already carried, which means

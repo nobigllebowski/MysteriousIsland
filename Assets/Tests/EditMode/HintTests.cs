@@ -109,6 +109,14 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(hull.Tiers[0].AfterSeconds, Is.EqualTo(360d), "6:00 (§2:40 FAILURE).");
             Assert.That(hull.Tiers[0].RecordsMarkerId, Is.EqualTo(ContentIds.MarkerHullLine), "The Slate entry writes itself.");
 
+            var spark = HintLadders.FireSpark();
+            Assert.That(spark.Tiers[1].IsStaging, Is.True, "Tier 2 shows the test, it does not say it.");
+            Assert.That(spark.Tiers[1].Staging, Is.EqualTo(HintStaging.KnockTest));
+            Assert.That(spark.Tiers[1].AfterSeconds, Is.EqualTo(240d));
+            var tinder = HintLadders.FireTinder();
+            Assert.That(tinder.Tiers[1].Staging, Is.EqualTo(HintStaging.RopeSheds));
+            Assert.That(tinder.Tiers[0].IsStaging, Is.False);
+
             var radio = HintLadders.Radio();
             Assert.That(radio.Tiers[0].AfterSeconds, Is.EqualTo(180d), "T+3:00 tier 1.");
             Assert.That(radio.Tiers[1].AfterSeconds, Is.EqualTo(600d), "T+10:00 tier 3.");
@@ -400,6 +408,22 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(_inventory.Has(ItemIds.ChertNodule), Is.True, "She picks it up herself.");
             Assert.That(_said[_said.Count - 1], Is.EqualTo("narration." + ContentIds.RemarkFireChert));
             Assert.That(_said, Does.Contain("narration." + ItemIds.ChertNodule), "The pickup line, as any take.");
+        }
+
+        [Test]
+        public void Fire_TierTwo_IsStagedNotSaid()
+        {
+            EnterTheWorld();
+            _said.Clear();
+            var staged = new System.Collections.Generic.List<HintStaging>();
+            _signals.Subscribe<HintStagingSignal>(s => staged.Add(s.Staging));
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.DryGrass, true);
+
+            Play(241d);
+
+            Assert.That(staged, Is.EqualTo(new[] { HintStaging.KnockTest }), "The knock, at four minutes.");
+            Assert.That(_said, Is.EqualTo(new[] { "narration." + ContentIds.RemarkFireSpine }), "And no line for it.");
+            Assert.That(_hints.Staged, Is.EqualTo(1));
         }
 
         [Test]

@@ -300,6 +300,12 @@ namespace ForgottenIsle.UI.Hud
             _inventory?.SetHeld(id);
         }
 
+        /// <summary>The chip for <paramref name="id"/> sheds a fibre on a loop until it is gone.</summary>
+        public void StartShedding(string id)
+        {
+            _inventory?.StartShedding(id);
+        }
+
         /// <summary>Replaces what the tray shows.</summary>
         /// <remarks>
         /// Restored after a rewrite of the narration sequence sliced it out of the file while the

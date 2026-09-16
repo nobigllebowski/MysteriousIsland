@@ -80,6 +80,17 @@ namespace ForgottenIsle.UI.Controllers
             _subscriptions.Add(signals.Subscribe<InventoryChangedSignal>(OnInventoryChanged));
             _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(OnRadioChanged));
             _subscriptions.Add(signals.Subscribe<NarrationSequenceSignal>(OnNarrationSequence));
+            _subscriptions.Add(signals.Subscribe<HintStagingSignal>(OnHintStaging));
+        }
+
+        private void OnHintStaging(HintStagingSignal signal)
+        {
+            // Fire hint tier 2: the rope, in the tray, sheds a fibre on a loop. The tray stops on
+            // its own the moment the rope is gone.
+            if (signal.Staging == ForgottenIsle.Core.Hints.HintStaging.RopeSheds)
+            {
+                _screen.StartShedding(ForgottenIsle.Core.Items.ItemIds.PolyRope);
+            }
         }
 
         /// <summary>The HUD view, so the installer can push it onto the screen stack.</summary>

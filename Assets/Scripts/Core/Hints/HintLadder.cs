@@ -5,6 +5,21 @@ using ForgottenIsle.Core.Progress;
 
 namespace ForgottenIsle.Core.Hints
 {
+    /// <summary>
+    /// A rung that stages something rather than saying it: the design's tier 2s, "the object
+    /// shows itself". Pure presentation; nothing in the record moves.
+    /// </summary>
+    public enum HintStaging : byte
+    {
+        None = 0,
+
+        /// <summary>She flicks the multitool's spine against a rock at her feet; the dull knock plays.</summary>
+        KnockTest = 1,
+
+        /// <summary>The rope, in the tray, visibly sheds a fibre on a six-second loop.</summary>
+        RopeSheds = 2
+    }
+
     /// <summary>One rung of a hint ladder: what is said, and how long after the timer last started.</summary>
     public readonly struct HintTier
     {
@@ -33,20 +48,29 @@ namespace ForgottenIsle.Core.Hints
         /// </summary>
         public readonly string GrantsItemId;
 
-        /// <param name="remarkId">The remark said when due.</param>
+        /// <summary>What the rung stages instead of saying, when <see cref="RemarkId"/> is null.</summary>
+        public readonly HintStaging Staging;
+
+        /// <param name="remarkId">The remark said when due, or null for a rung that only stages.</param>
         /// <param name="afterSeconds">Seconds of play after the last start or reset.</param>
         /// <param name="recordsMarkerId">A marker recorded as the tier speaks, or null.</param>
         /// <param name="beginsSweep">Whether the tier starts the radio's self-sweep.</param>
         /// <param name="grantsItemId">An item handed to the player as the tier speaks, or null.</param>
+        /// <param name="staging">What is staged, for a rung with no line.</param>
         public HintTier(
-            string remarkId, double afterSeconds, string recordsMarkerId = null, bool beginsSweep = false, string grantsItemId = null)
+            string remarkId, double afterSeconds, string recordsMarkerId = null, bool beginsSweep = false, string grantsItemId = null,
+            HintStaging staging = HintStaging.None)
         {
             RemarkId = remarkId;
             AfterSeconds = afterSeconds;
             RecordsMarkerId = recordsMarkerId;
             BeginsSweep = beginsSweep;
             GrantsItemId = grantsItemId;
+            Staging = staging;
         }
+
+        /// <summary>True for a rung that stages something and says nothing.</summary>
+        public bool IsStaging => RemarkId == null && Staging != HintStaging.None;
     }
 
     /// <summary>
@@ -232,26 +256,28 @@ namespace ForgottenIsle.Core.Hints
 
         /// <summary>
         /// The fire, no spark yet (§7:10 FAILURE): tier 1 at 2:30 she thinks aloud about the
-        /// spine; tier 3 at 6:00 she picks up the chert herself. Tier 2 (she flicks the spine
-        /// against a rock at her feet, and the knock plays) is staging with no line, and is not
-        /// built. Runs from the first thing laid at a fire site.
+        /// spine; tier 2 at 4:00 she flicks the spine against a rock at her feet and the dull
+        /// knock plays -- the player now knows the test exists; tier 3 at 6:00 she picks up the
+        /// chert herself. Runs from the first thing laid at a fire site.
         /// </summary>
         public static HintLadder FireSpark()
         {
             return new HintLadder(
                 new HintTier(ContentIds.RemarkFireSpine, 150d),
+                new HintTier(null, 240d, null, false, null, HintStaging.KnockTest),
                 new HintTier(ContentIds.RemarkFireChert, 360d, null, false, ItemIds.ChertNodule));
         }
 
         /// <summary>
-        /// The fire, sparks but nothing catching: tier 1 at 2:30 "grass is too quick"; tier 3 at
-        /// 6:00 she tears the rope apart herself and holds the fibre up. Tier 2 (the rope sheds a
-        /// fibre in the tray on a loop) is animation, not built. Runs from the first spark.
+        /// The fire, sparks but nothing catching: tier 1 at 2:30 "grass is too quick"; tier 2 at
+        /// 4:00 the rope, in the tray, sheds a fibre on a loop; tier 3 at 6:00 she tears the rope
+        /// apart herself and holds the fibre up. Runs from the first spark.
         /// </summary>
         public static HintLadder FireTinder()
         {
             return new HintLadder(
                 new HintTier(ContentIds.RemarkFireGrassTooQuick, 150d),
+                new HintTier(null, 240d, null, false, null, HintStaging.RopeSheds),
                 new HintTier(ContentIds.RemarkFireTearsRope, 360d, null, false, ItemIds.PolyFibre));
         }
     }

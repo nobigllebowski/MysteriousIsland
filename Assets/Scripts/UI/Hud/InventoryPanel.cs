@@ -219,6 +219,67 @@ namespace ForgottenIsle.UI.Hud
             }
         }
 
+        private IVisualElementScheduledItem _shedding;
+        private string _sheddingId;
+
+        /// <summary>Milliseconds between sheds: the design's six-second loop.</summary>
+        public const long SheddingLoopMs = 6000;
+
+        private const long LeanMs = 320;
+
+        /// <summary>
+        /// The chip for <paramref name="id"/> leans four degrees and back, every six seconds,
+        /// until the item is gone from the tray. Fire hint tier 2: the rope sheds a fibre.
+        /// </summary>
+        /// <remarks>
+        /// ⚠ VERIFY: <c>IStyle.rotate</c> and <c>Rotate(Angle)</c>
+        /// (https://docs.unity3d.com/ScriptReference/UIElements.Rotate.html) and the scheduler's
+        /// Every/ExecuteLater on an element attached to a panel.
+        /// </remarks>
+        public void StartShedding(string id)
+        {
+            StopShedding();
+            _sheddingId = id;
+            _shedding = _tab.schedule.Execute(Shed).Every(SheddingLoopMs);
+            Shed();
+        }
+
+        /// <summary>Stops the loop. Idempotent.</summary>
+        public void StopShedding()
+        {
+            if (_shedding != null)
+            {
+                _shedding.Pause();
+                _shedding = null;
+            }
+
+            _sheddingId = null;
+        }
+
+        private void Shed()
+        {
+            Chip chip = null;
+            for (var i = 0; i < _chips.Count; i++)
+            {
+                if (_chips[i].Id == _sheddingId)
+                {
+                    chip = _chips[i];
+                    break;
+                }
+            }
+
+            if (chip == null)
+            {
+                // The rope is gone -- teased, or never there. Nothing left to shed.
+                StopShedding();
+                return;
+            }
+
+            chip.Lean(4f);
+            var leaning = chip;
+            chip.Root.schedule.Execute(() => leaning.Lean(0f)).ExecuteLater(LeanMs);
+        }
+
         /// <summary>Draws one chip as held, or none. Called from the game's own idea of what is held.</summary>
         public void SetHeld(string id)
         {
@@ -257,6 +318,12 @@ namespace ForgottenIsle.UI.Hud
             internal VisualElement Root
             {
                 get { return _button; }
+            }
+
+            /// <summary>Tilts the chip by degrees; zero puts it straight.</summary>
+            internal void Lean(float degrees)
+            {
+                _button.style.rotate = new Rotate(new Angle(degrees, AngleUnit.Degree));
             }
 
             internal void SetSelected(bool selected)

@@ -108,6 +108,7 @@ namespace ForgottenIsle.Game.Audio
             signals.Subscribe<RadioChangedSignal>(OnRadioChanged);
             signals.Subscribe<FireChangedSignal>(OnFireChanged);
             signals.Subscribe<NarrationSignal>(OnNarration);
+            signals.Subscribe<HintStagingSignal>(OnHintStaging);
             signals.Subscribe<TickCompletedSignal>(_ => OnTick());
         }
 
@@ -335,6 +336,16 @@ namespace ForgottenIsle.Game.Audio
             if (_fire.clip != null && !_fire.isPlaying && _inGame)
             {
                 _fire.Play();
+            }
+        }
+
+        private void OnHintStaging(HintStagingSignal signal)
+        {
+            // Fire hint tier 2: she flicks the spine against a rock at her feet. The player now
+            // knows the test exists, because they heard it.
+            if (signal.Staging == Core.Hints.HintStaging.KnockTest)
+            {
+                PlayEffect("knock");
             }
         }
 

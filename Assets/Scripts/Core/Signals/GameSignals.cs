@@ -377,6 +377,23 @@ namespace ForgottenIsle.Core.Signals
         }
     }
 
+    /// <summary>A hint rung that stages something rather than saying it. Presentation only.</summary>
+    /// <remarks>
+    /// Published by the hint director; the audio plays the knock, the tray sheds the fibre. No
+    /// handler, because nothing in the record moves: it is a cue, like a narration line, not an act.
+    /// </remarks>
+    public readonly struct HintStagingSignal : ISignal
+    {
+        /// <summary>What is staged.</summary>
+        public readonly ForgottenIsle.Core.Hints.HintStaging Staging;
+
+        /// <param name="staging">What is staged.</param>
+        public HintStagingSignal(ForgottenIsle.Core.Hints.HintStaging staging)
+        {
+            Staging = staging;
+        }
+    }
+
     /// <summary>What a fire site just did.</summary>
     public enum FireChangeKind : byte
     {

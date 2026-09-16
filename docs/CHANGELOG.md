@@ -9,6 +9,15 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the fire hints' tier 2s: the object shows itself
+
+A rung can stage instead of say (`HintTier.Staging`, `HintStagingSignal`; no command, nothing in
+the record moves). At 4:00 without a spark she flicks the spine against a rock at her feet and
+the knock plays — the player now knows the test exists because they heard it. At 4:00 with sparks
+and nothing catching, the rope in the tray leans four degrees every six seconds until it is gone
+(`InventoryPanel.StartShedding`, ⚠ VERIFY the style rotate and the scheduler). The radio's tier 2
+(the set turns itself over in inspect view) still waits on an inspect view. Two tests.
+
 ### Changed — the validator asks whether content is wired
 
 A fifteenth check, `CONTENT`: every `Marker*`, `Discovery*` and `Mechanism*` id in `ContentIds`
