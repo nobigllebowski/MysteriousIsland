@@ -9,6 +9,15 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the hook: "That's not the sea."
+
+The final sixty seconds (§2), as far as they can be built without a cut to black. Reading the cut
+vine lifts the pressure cycle from wherever its breath is to −14 dBFS over four seconds, holds it,
+and lets it go over twelve (`Synth.HookRise`, driven from the tick like the cycle itself). Six
+seconds after the vine, she says it out loud for the first time: *"That's not the sea."* — a
+`HintLadders.Hook` rung on the same clock the hints use, said once. The "Day 1 / rev." card and
+the paywall are not built: Fernmaw is already the next zone here. Two tests.
+
 ### Fixed — from a review of the bag, the staging and the Next line
 
 - **A caller with no inventory was told "Bag first."** `ObjectiveFacts.HasKit` defaulted to

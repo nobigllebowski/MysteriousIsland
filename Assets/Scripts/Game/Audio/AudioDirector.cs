@@ -41,6 +41,9 @@ namespace ForgottenIsle.Game.Audio
         /// <summary>The pressure cycle's mix (§2:00): -38 dBFS, under everything, from the first frame.</summary>
         public const float PressureDbfs = -38f;
 
+        /// <summary>The hook's peak (§2, 29:32): -14 dBFS, "until the player cannot not hear it".</summary>
+        public const float HookDbfs = -14f;
+
         private readonly Dictionary<string, AudioClip> _cache = new Dictionary<string, AudioClip>();
         private readonly ICoreLog _log;
 
@@ -55,6 +58,7 @@ namespace ForgottenIsle.Game.Audio
         private string _currentZone = string.Empty;
         private bool _synthesisReported;
         private double _playSeconds;
+        private double _hookAt = double.NegativeInfinity;
         private bool _inGame;
 
         /// <param name="log">Diagnostics sink. Null tolerated.</param>
@@ -202,7 +206,12 @@ namespace ForgottenIsle.Game.Audio
             }
 
             _playSeconds += 1d / Ticker.TargetTicksPerRealSecond;
-            _pressure.volume = Synth.GainFor(PressureDbfs) * Synth.PressureCycle(_playSeconds);
+
+            // The cycle's own breath, and over it the hook's rise: from wherever the cycle is to
+            // the peak over four seconds, held, then let go. One breath a player cannot not hear.
+            var cycle = Synth.GainFor(PressureDbfs) * Synth.PressureCycle(_playSeconds);
+            var rise = Synth.HookRise(_playSeconds - _hookAt);
+            _pressure.volume = cycle + (Synth.GainFor(HookDbfs) - cycle) * rise;
         }
 
         private void OnRadioChanged(RadioChangedSignal signal)
@@ -370,10 +379,18 @@ namespace ForgottenIsle.Game.Audio
                 case ProgressChangeKind.Replaced:
                     // A new run, or a load: the breath starts again from its first frame.
                     _playSeconds = 0d;
+                    _hookAt = double.NegativeInfinity;
                     break;
 
                 case ProgressChangeKind.Inspected:
                     PlayEffect("inspect");
+                    if (signal.ContentId == ContentIds.MarkerCutVine)
+                    {
+                        // The hook: the thing under everything comes up until it is in the
+                        // speaker as a buzz. She says what it is six seconds from now.
+                        _hookAt = _playSeconds;
+                    }
+
                     break;
 
                 case ProgressChangeKind.Collected:

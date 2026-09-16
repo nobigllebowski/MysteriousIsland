@@ -263,6 +263,7 @@ ui.hud.combine_hint,"Tap two to put them together. Tap one, then the prompt, to 
 item.dry_bag,Dry Bag
 narration.item.dry_bag,"The bag. Orange, half-buried, heavier than I remember. Everything I own: the multitool, the recorder, the hydrophone, a pencil. It goes on. It stays on."
 narration.remark.bag_first,"Bag first. Everything I own is in that bag."
+narration.remark.not_the_sea,"That's not the sea."
 item.multitool,Multitool
 item.field_recorder,Field Recorder
 item.dead_torch,Dead Torch

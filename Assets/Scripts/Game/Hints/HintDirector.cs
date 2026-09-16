@@ -61,6 +61,7 @@ namespace ForgottenIsle.Game.Hints
         private readonly HintLadder _fireSpark = HintLadders.FireSpark();
         private readonly HintLadder _fireTinder = HintLadders.FireTinder();
         private readonly HintLadder _bag = HintLadders.Bag();
+        private readonly HintLadder _hook = HintLadders.Hook();
 
         private double _lastPlaytime;
         private bool _staging;
@@ -114,6 +115,9 @@ namespace ForgottenIsle.Game.Hints
         /// <summary>The bag's ladder. Exposed for tests.</summary>
         public HintLadder Bag => _bag;
 
+        /// <summary>The hook's one rung. Exposed for tests.</summary>
+        public HintLadder Hook => _hook;
+
         /// <summary>The fire's no-spark ladder. Exposed for tests.</summary>
         public HintLadder FireSpark => _fireSpark;
 
@@ -157,6 +161,7 @@ namespace ForgottenIsle.Game.Hints
             _fireSpark.Forget();
             _fireTinder.Forget();
             _bag.Forget();
+            _hook.Forget();
             StopStaging();
             _haveMhz = false;
             _dialTravel = 0f;
@@ -222,6 +227,11 @@ namespace ForgottenIsle.Game.Hints
             // The fire is on the Ribcage shore, like the hulls. So is the bag.
             var onTheShore = string.Equals(_session.ZoneId, ContentIds.ZoneRibcage, StringComparison.Ordinal);
             if (onTheShore && _bag.TryAdvance(delta, out due))
+            {
+                Say(due);
+            }
+
+            if (_hook.TryAdvance(delta, out due))
             {
                 Say(due);
             }
@@ -391,6 +401,11 @@ namespace ForgottenIsle.Game.Hints
             if (signal.Kind == ProgressChangeKind.Inspected && signal.ContentId == ContentIds.MarkerHullLine)
             {
                 _hullLine.Stop();
+            }
+            else if (signal.Kind == ProgressChangeKind.Inspected && signal.ContentId == ContentIds.MarkerCutVine)
+            {
+                // The hook. The audio is already rising; the words come when it cannot not be heard.
+                _hook.Start();
             }
             else if (signal.Kind == ProgressChangeKind.Collected && signal.ContentId == ContentIds.DiscoveryBrassTag)
             {

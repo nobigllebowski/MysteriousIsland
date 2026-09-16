@@ -90,6 +90,7 @@ namespace ForgottenIsle.Core.Progress
                 case RemarkFireWind:
                 case RemarkFireCarriesKit:
                 case RemarkBagFirst:
+                case RemarkNotTheSea:
                     return ContentKind.Remark;
                 default:
                     return ContentKind.Unknown;
@@ -259,6 +260,12 @@ namespace ForgottenIsle.Core.Progress
 
         /// <summary>Forty seconds without approaching the bag: "Bag first. Everything I own is in that bag."</summary>
         public const string RemarkBagFirst = "remark.bag_first";
+
+        /// <summary>
+        /// The hook (§2, 29:32): at the cut vine the pressure cycle rises until it cannot not be
+        /// heard, and she says it out loud for the first time. "That's not the sea."
+        /// </summary>
+        public const string RemarkNotTheSea = "remark.not_the_sea";
 
         /// <summary>
         /// How many lines a remark is said in. One means the key is "narration." + id; more means

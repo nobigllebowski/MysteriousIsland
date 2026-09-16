@@ -104,6 +104,19 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(Synth.GainFor(0f), Is.EqualTo(1f).Within(0.0001f));
         }
 
+        [Test]
+        public void TheHooksRise_TakesFourSeconds_Holds_AndLetsGo()
+        {
+            Assert.That(Synth.HookRise(-1d), Is.Zero, "Before the vine: nothing.");
+            Assert.That(Synth.HookRise(0d), Is.Zero);
+            Assert.That(Synth.HookRise(2d), Is.EqualTo(0.5f).Within(0.001f));
+            Assert.That(Synth.HookRise(4d), Is.EqualTo(1f).Within(0.001f), "The peak, at four seconds.");
+            Assert.That(Synth.HookRise(6d), Is.EqualTo(1f), "Held.");
+            Assert.That(Synth.HookRise(8d + 6d), Is.EqualTo(0.5f).Within(0.001f), "Halfway back.");
+            Assert.That(Synth.HookRise(8d + 12d), Is.Zero, "Gone into the cycle again.");
+            Assert.That(Synth.HookRise(1000d), Is.Zero);
+        }
+
         // --- the mix ---------------------------------------------------------------------------
 
         [Test]

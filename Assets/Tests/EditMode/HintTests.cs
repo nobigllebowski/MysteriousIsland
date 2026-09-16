@@ -524,6 +524,24 @@ namespace ForgottenIsle.Tests.EditMode
         }
 
         [Test]
+        public void TheHook_ReadingTheCutVine_SheSaysItSixSecondsLater()
+        {
+            EnterTheWorld();
+            _said.Clear();
+
+            _dispatcher.Dispatch(new InspectCommand(ContentIds.MarkerCutVine));
+            _said.Clear();
+            Assert.That(_hints.Hook.IsRunning, Is.True);
+
+            Play(5d);
+            Assert.That(_said, Is.Empty, "The audio is rising; the words wait.");
+            Play(1.5d);
+            Assert.That(_said, Is.EqualTo(new[] { "narration." + ContentIds.RemarkNotTheSea }));
+            Play(60d);
+            Assert.That(_said.Count, Is.EqualTo(1), "Said once.");
+        }
+
+        [Test]
         public void TheBag_AlreadyTaken_IsNeverAskedFor()
         {
             _inventory.Take(ItemIds.Multitool);

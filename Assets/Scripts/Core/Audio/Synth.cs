@@ -188,6 +188,40 @@ namespace ForgottenIsle.Core.Audio
             return (float)(0.5 - 0.5 * Math.Cos(phase));
         }
 
+        /// <summary>Seconds the hook's rise takes to reach its peak (§2, 29:32: "over four seconds").</summary>
+        public const double HookRiseSeconds = 4.0;
+
+        /// <summary>Seconds the peak holds before it lets go. The design cuts to black here; we cannot.</summary>
+        public const double HookHoldSeconds = 4.0;
+
+        /// <summary>Seconds the rise takes to fall back into the cycle.</summary>
+        public const double HookFallSeconds = 12.0;
+
+        /// <summary>
+        /// How far the pressure cycle is lifted toward the hook's peak at a moment after the
+        /// trigger, 0..1: a four-second rise, a hold, and a slow fall. Zero before and after.
+        /// </summary>
+        public static float HookRise(double secondsSinceTrigger)
+        {
+            if (secondsSinceTrigger < 0d)
+            {
+                return 0f;
+            }
+
+            if (secondsSinceTrigger < HookRiseSeconds)
+            {
+                return (float)(secondsSinceTrigger / HookRiseSeconds);
+            }
+
+            var afterHold = secondsSinceTrigger - HookRiseSeconds - HookHoldSeconds;
+            if (afterHold <= 0d)
+            {
+                return 1f;
+            }
+
+            return afterHold >= HookFallSeconds ? 0f : (float)(1.0 - afterHold / HookFallSeconds);
+        }
+
         private static float Next(ref uint state)
         {
             // xorshift32: cheap, deterministic, and good enough for noise nobody listens to twice.

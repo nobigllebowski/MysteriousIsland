@@ -247,6 +247,15 @@ namespace ForgottenIsle.Core.Hints
         }
 
         /// <summary>
+        /// The hook (§2): six seconds after the cut vine is read, the pressure cycle having risen
+        /// under her, she says it for the first time. Not a hint; the same clock, used once.
+        /// </summary>
+        public static HintLadder Hook()
+        {
+            return new HintLadder(new HintTier(ContentIds.RemarkNotTheSea, 6d));
+        }
+
+        /// <summary>
         /// The bag (§2:00 FAILURE): forty seconds without taking it and she says so, without
         /// irritation. The surf pushing the bag closer at ninety is animation, and is not built.
         /// </summary>
