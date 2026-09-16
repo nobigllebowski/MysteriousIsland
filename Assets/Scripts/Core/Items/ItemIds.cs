@@ -57,7 +57,42 @@ namespace ForgottenIsle.Core.Items
         /// <summary>A flat steel key for the sluice housing, left in its bracket.</summary>
         public const string SluiceKey = "item.sluice_key";
 
+        // --- The wrack: what the beach gives for a fire (design §5:00, §4.1) ----------------
+        /// <summary>An armful of bleached driftwood from above the tide mark. It clicks. Fuel.</summary>
+        public const string DriftwoodDry = "item.driftwood_dry";
+
+        /// <summary>An armful from below the mark. Dark, heavy, thuds. Will not light; dries by a fire.</summary>
+        public const string DriftwoodWet = "item.driftwood_wet";
+
+        /// <summary>A nest of grass from a crevice the sun got at. Flares and dies: an authored failure.</summary>
+        public const string DryGrass = "item.dry_grass";
+
+        /// <summary>Blue polypropylene rope, sun-rotted to felt. Teased with the blade, it is tinder.</summary>
+        public const string PolyRope = "item.poly_rope";
+
+        /// <summary>A pale, banded nodule from the strand line. Struck on the spine, it throws sparks.</summary>
+        public const string ChertNodule = "item.chert_nodule";
+
+        /// <summary>A safety-orange hull panel. A windbreak, and a stencil that pays off in Act 3.</summary>
+        public const string FibreglassPanel = "item.fibreglass_panel";
+
+        /// <summary>Black kelp, wet through. An honest dead end: not food, not yet.</summary>
+        public const string Kelp = "item.kelp";
+
         // --- Made, not found -----------------------------------------------------------------
+        /// <summary>The rope teased apart into a bird's nest of fibre. Holds an ember. Stinks.</summary>
+        public const string PolyFibre = "item.poly_fibre";
+
+        /// <summary>True for the things that are used and never used up.</summary>
+        /// <remarks>
+        /// A combination consumes its ingredients; a tool is not an ingredient. The multitool
+        /// teases the rope and is still a multitool afterwards.
+        /// </remarks>
+        public static bool IsTool(string itemId)
+        {
+            return itemId == Multitool;
+        }
+
 
         /// <summary>
         /// The reel wound onto the dry spindle. This is the only form the deck will accept.

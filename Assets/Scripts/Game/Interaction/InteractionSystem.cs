@@ -44,6 +44,10 @@ namespace ForgottenIsle.Game.Interaction
         /// <summary>The item the player is holding up for use, or null.</summary>
         string HeldItem { get; }
 
+        /// <summary>True when the item has ever been taken this run, carried now or not.</summary>
+        /// <param name="itemId">An <c>ItemIds</c> id.</param>
+        bool HasEverTaken(string itemId);
+
         /// <summary>True once the mechanism has been made to work, in this run or a saved one.</summary>
         bool HasSolved(string mechanismId);
 
@@ -172,6 +176,12 @@ namespace ForgottenIsle.Game.Interaction
         }
 
         public string HeldItem => _inventory != null ? _inventory.Held : null;
+
+        /// <inheritdoc />
+        public bool HasEverTaken(string itemId)
+        {
+            return _inventory != null && _inventory.HasEverTaken(itemId);
+        }
 
         public bool HasSolved(string mechanismId)
         {
@@ -433,6 +443,11 @@ namespace ForgottenIsle.Game.Interaction
             if (command is RemarkCommand remark)
             {
                 return _commands.Dispatch(remark);
+            }
+
+            if (command is CarryFireKitCommand carry)
+            {
+                return _commands.Dispatch(carry);
             }
 
             if (_log != null)

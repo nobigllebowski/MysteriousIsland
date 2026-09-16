@@ -1,4 +1,5 @@
 using ForgottenIsle.Core.Commands;
+using ForgottenIsle.Core.Fire;
 using ForgottenIsle.Core.Hints;
 using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Progress;
@@ -7,6 +8,7 @@ using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Core.State;
 using ForgottenIsle.Core.Time;
 using ForgottenIsle.Game.Bootstrap;
+using ForgottenIsle.Game.Fire;
 using ForgottenIsle.Game.Hints;
 using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Progress;
@@ -126,6 +128,8 @@ namespace ForgottenIsle.Tests.EditMode
         private RadioService _radio;
         private CommandDispatcher _dispatcher;
         private HintDirector _hints;
+        private FireService _fire;
+        private InventoryService _inventory;
         private System.Collections.Generic.List<string> _said;
 
         [SetUp]
@@ -144,7 +148,11 @@ namespace ForgottenIsle.Tests.EditMode
             _dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(_states, _radio, _signals));
             _dispatcher.Register<BeginSweepCommand>(new BeginSweepHandler(_states, _radio));
             _dispatcher.Register<SweepRadioCommand>(new SweepRadioHandler(_states, _radio, _signals));
-            _hints = new HintDirector(_session, _states, _progress, _radio, _dispatcher, _signals, null);
+            _fire = new FireService(_signals, inventory, null);
+            _inventory = inventory;
+            _dispatcher.Register<TakeItemCommand>(new TakeItemHandler(_states, inventory, _signals));
+            _dispatcher.Register<CarryFireKitCommand>(new CarryFireKitHandler(_states, _fire));
+            _hints = new HintDirector(_session, _states, _progress, _radio, _fire, _dispatcher, _signals, null);
             _said = new System.Collections.Generic.List<string>();
             _signals.Subscribe<NarrationSignal>(s => _said.Add(s.LineKey));
             _signals.Subscribe<NarrationSequenceSignal>(s => _said.AddRange(s.LineKeys));
@@ -361,6 +369,105 @@ namespace ForgottenIsle.Tests.EditMode
 
             Assert.That(_radio.IsSweeping, Is.False);
             Assert.That(_said, Does.Not.Contain("narration." + ContentIds.RemarkRadioSweep));
+        }
+
+        // --- The fire's ladders and counts ---------------------------------------------------------
+
+        [Test]
+        public void Fire_NoSpark_TheSpineLineAtTwoThirty_AndSheFindsTheChertAtSix()
+        {
+            EnterTheWorld();
+            _said.Clear();
+
+            // Laying anything is engagement; the clock starts here, not at the run's start.
+            Play(100d);
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.DryGrass, true);
+            Assert.That(_hints.FireSpark.IsRunning, Is.True);
+
+            Play(149d);
+            Assert.That(_said, Is.Empty);
+            Play(2d);
+            Assert.That(_said, Is.EqualTo(new[] { "narration." + ContentIds.RemarkFireSpine }));
+
+            Play(210d);
+            Assert.That(_inventory.Has(ItemIds.ChertNodule), Is.True, "She picks it up herself.");
+            Assert.That(_said[_said.Count - 1], Is.EqualTo("narration." + ContentIds.RemarkFireChert));
+            Assert.That(_said, Does.Contain("narration." + ItemIds.ChertNodule), "The pickup line, as any take.");
+        }
+
+        [Test]
+        public void Fire_ASpark_StopsTheSpineLadder_AndStartsTheTinderOne()
+        {
+            EnterTheWorld();
+            _said.Clear();
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.DryGrass, true);
+            Play(100d);
+
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.ChertNodule, true);
+            Assert.That(_hints.FireSpark.IsRunning, Is.False);
+            Assert.That(_hints.FireTinder.IsRunning, Is.True);
+
+            Play(151d);
+            Assert.That(_said, Is.EqualTo(new[] { "narration." + ContentIds.RemarkFireGrassTooQuick }));
+
+            Play(210d);
+            Assert.That(_inventory.Has(ItemIds.PolyFibre), Is.True, "She tears the rope apart herself.");
+        }
+
+        [Test]
+        public void Fire_LayingTheFibre_EndsTheTinderLadder()
+        {
+            EnterTheWorld();
+            _said.Clear();
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.ChertNodule, true);
+            Assert.That(_hints.FireTinder.IsRunning, Is.True);
+
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.PolyFibre, true);
+
+            Play(400d);
+            Assert.That(_said, Is.Empty);
+        }
+
+        [Test]
+        public void Fire_BlowOuts_AreCounted_ThreeIsTheWind_SevenSheCarriesIt()
+        {
+            EnterTheWorld();
+            _said.Clear();
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.PolyFibre, true);
+            _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.DriftwoodDry, true);
+
+            for (var i = 0; i < 3; i++)
+            {
+                _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.ChertNodule, true);
+            }
+
+            Assert.That(_said, Is.EqualTo(new[] { "narration." + ContentIds.RemarkFireWind }));
+
+            for (var i = 0; i < 4; i++)
+            {
+                _fire.Apply(ContentIds.FireSiteOpenA, ItemIds.ChertNodule, true);
+            }
+
+            Assert.That(_said[_said.Count - 1], Is.EqualTo("narration." + ContentIds.RemarkFireCarriesKit));
+            Assert.That(_fire.Site(ContentIds.FireSiteLee).Tinder, Is.EqualTo(Tinder.Fibre));
+            Assert.That(_fire.Site(ContentIds.FireSiteLee).HasWood, Is.True);
+            Assert.That(_fire.IsLit, Is.False, "She never does the last step.");
+        }
+
+        [Test]
+        public void Fire_Lit_StopsEveryFireLadder()
+        {
+            EnterTheWorld();
+            _said.Clear();
+            _fire.Apply(ContentIds.FireSiteLee, ItemIds.DryGrass, true);
+            _fire.Apply(ContentIds.FireSiteLee, ItemIds.ChertNodule, true);
+            _fire.Apply(ContentIds.FireSiteLee, ItemIds.PolyFibre, true);
+            _fire.Apply(ContentIds.FireSiteLee, ItemIds.DriftwoodDry, true);
+            _fire.Apply(ContentIds.FireSiteLee, ItemIds.ChertNodule, true);
+            Assert.That(_fire.IsLit, Is.True);
+
+            Play(700d);
+            Assert.That(_said, Is.Empty);
         }
 
         [Test]

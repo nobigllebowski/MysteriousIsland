@@ -114,6 +114,7 @@ namespace ForgottenIsle.Core.Progress
             ContentIds.MarkerRibStone,
             ContentIds.MarkerBootPrint,
             ContentIds.MarkerLegBand,
+            ContentIds.MechanismFire,
             ContentIds.DiscoveryBrassTag,
             ContentIds.MarkerTideMark,
             ContentIds.MarkerOxySlag,

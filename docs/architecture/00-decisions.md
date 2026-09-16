@@ -589,6 +589,41 @@ the set works; the voice is heard), so nothing about them can be lost.
 
 ---
 
+## ADR-0026 — The dry-fire problem is an environmental puzzle in play seconds; fuel life is not
+
+**Status.** Accepted. Implemented as `Core.Fire.FireSiteState`, `Core.Fire.FireRules`,
+`Game.Fire.FireService` (sixth `ISaveParticipant`), `Game.Interaction.FireSite`, `RockNode`,
+`ProximityRemark`, `CarryFireKitCommand`, and the fire ladders in `HintLadders`.
+
+**Decision.** The design's first puzzle (§7:10: spark, tinder, shelter) is built now, under
+Phase 6's "environmental puzzles", with every clock in it authored in play seconds: ninety for
+wet wood in the warm zone, the hint rungs at 2:30 and 6:00. The fire, once lit, stays lit. Fuel
+burn-down ("4 h fuel" in the MVP recipe table) belongs to the camp system, is authored in world
+hours, and waits on the world clock's scale (CONFLICT-6); nothing in this slice reads that clock.
+The strike is the aimed use of the chert on a site (the tray's held item and the prompt); the
+design's downward swipe is a gesture-polish item, not a rule. Inventory does not stack, so wood is
+an armful and the fire needs one, not three.
+
+**Why.** The puzzle is the prologue's spine between the hulls and the boots, and every part of it
+that matters — the audio test, the wet/dry distinction, the wind, the five honest failures, the
+hints that do everything except the last input — is a rule, not a clock. Holding all of it behind
+an unresolved constant about how fast the sun moves would have been holding the game behind a
+number nobody had asked for yet. When CONFLICT-6 is settled, fuel life is one field on
+`FireSiteState` and one tick in `FireService.Advance`.
+
+**Consequence.**
+- Three sites, one rule: the lee is sheltered by construction, the open sites by the panel.
+  There is no wind-shadow volume; "sheltered" is a fact of the site.
+- Pickups no longer grow back once taken: `InventoryService.HasEverTaken` is saved with the
+  inventory (a second list in the same section; older saves read as "nothing taken").
+- A tool survives combining (`ItemIds.IsTool`): the multitool teases the rope and is still a
+  multitool.
+- Rocks are remarks, not inspections: examining one records nothing.
+- The recorder ships dry (`ItemIds.FieldRecorder`'s premise), so §8:00's drying of it is not
+  built; when the recorder gains wetness, the warm zone is where it goes.
+
+---
+
 ---
 
 ## Open items — tracked, not resolved

@@ -50,7 +50,12 @@ namespace ForgottenIsle.Core.Items
         {
             // Wet tape binds on its own swollen core. Off it, onto something dry that will not
             // swell, and it will run. The spindle is on the shore because the net drum used one.
-            new Recipe(ItemIds.WaterloggedReel, ItemIds.DrySpindle, ItemIds.ReboundReel)
+            new Recipe(ItemIds.WaterloggedReel, ItemIds.DrySpindle, ItemIds.ReboundReel),
+
+            // The rope is sun-rotted to felt; teased apart with the blade it is a nest of fibre
+            // that holds an ember, and being plastic it catches from a spark far more readily
+            // than grass. The tool survives (ItemIds.IsTool); the rope does not.
+            new Recipe(ItemIds.PolyRope, ItemIds.Multitool, ItemIds.PolyFibre)
         };
 
         /// <summary>Finds what these two items make.</summary>

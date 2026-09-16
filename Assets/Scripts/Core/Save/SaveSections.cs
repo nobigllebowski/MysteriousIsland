@@ -26,5 +26,8 @@ namespace ForgottenIsle.Core.Save
 
         /// <summary>The radio: its faults, its needle, and what has been heard on it.</summary>
         public const string Radio = "radio";
+
+        /// <summary>The fire sites: what is laid where, what burns, what is drying.</summary>
+        public const string Fire = "fire";
     }
 }

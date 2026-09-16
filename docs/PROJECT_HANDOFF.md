@@ -110,6 +110,13 @@ hull instead (three chalk in; "Try the far end"); leave the set powered up and u
 sixteen minutes (tier 1 at 3:00, tier 3 at 10:00, then the dial opens and sweeps itself, locking
 the hull on the way and her at about ninety seconds; a tap on the strip must stop it).
 
+Then the fire: take the rope and the multitool, combine them in the tray (the multitool must
+survive); tap rocks with the multitool held (knock, then a ring at a pale one; TAKE it); lay
+fibre and wood on open sand and strike (it must blow out and the kit stay), then in the lee of
+the near hull (it must light, the point light come on, FIRE appear in the Slate, and an autosave
+write); lay wet wood by it and wait ninety seconds for dry wood to return to the tray. Leave a
+laid kit alone for six minutes and she should pick up the chert herself.
+
 The things most likely to be wrong, in order: a shader that does not compile (magenta); a UI
 Toolkit API used with the wrong signature in `RadioPanel` or `SlateScreen`; a pointer-capture
 edge in the dial strip; `Mesh.bounds` not being the culling volume for the sea. Everything else

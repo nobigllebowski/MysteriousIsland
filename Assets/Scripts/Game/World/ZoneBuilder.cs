@@ -1,5 +1,6 @@
 using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Progress;
+using ForgottenIsle.Game.Fire;
 using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Radio;
 using UnityEngine;
@@ -194,7 +195,8 @@ namespace ForgottenIsle.Game.World
         /// <param name="interactions">System the zone's interactables register with. Null tolerated.</param>
         /// <param name="radio">The radio the Ribcage's set reports into. Null yields no set.</param>
         /// <returns>The world position the player should spawn at.</returns>
-        public static Vector3 Build(string zoneKey, Transform root, InteractionSystem interactions, RadioService radio = null)
+        public static Vector3 Build(
+            string zoneKey, Transform root, InteractionSystem interactions, RadioService radio = null, FireService fire = null)
         {
             var fernmaw = zoneKey == ContentIds.ZoneFernmaw;
             var recipe = fernmaw ? FernmawRecipe : RibcageRecipe;
@@ -217,6 +219,8 @@ namespace ForgottenIsle.Game.World
                 BuildRibcageContent(root, recipe, stoneMaterial, interactions);
                 BuildTrawlerHull(root, recipe, stoneMaterial, interactions, radio);
                 BuildHullLine(root, recipe, interactions);
+                BuildWrack(root, recipe, interactions);
+                BuildFireSites(root, recipe, interactions, fire);
             }
 
             return new Vector3(0f, Height(0f, 0f, recipe) + 1.2f, 0f);
@@ -641,6 +645,180 @@ namespace ForgottenIsle.Game.World
         }
 
 
+
+        // --- The wrack and the fire ------------------------------------------------------------
+
+        /// <summary>
+        /// The strand line: what the beach gives for a fire, and the rocks, one kind of which rings.
+        /// </summary>
+        /// <remarks>
+        /// <c>design/04-first-30-minutes.md</c> §5:00 and §7:10 (a). Dry wood above the tide mark
+        /// and wet below it, grass caught high in the rocks, the rope, the orange panel, the kelp
+        /// that is for nothing. Twelve basalt cobbles and three chert nodules, all within forty
+        /// metres of the lee, all looking like rocks. The chert is paler and banded up close; the
+        /// test the design relies on is the sound, so nothing here labels one.
+        /// </remarks>
+        private static void BuildWrack(Transform root, Recipe recipe, InteractionSystem interactions)
+        {
+            var wrack = new GameObject("The Wrack").transform;
+            wrack.SetParent(root, false);
+
+            Vector3 at;
+
+            at = new Vector3(-14f, 0f, -2f);
+            at.y = Height(at.x, at.z, recipe) + 0.14f;
+            CreateItem(root, interactions, ItemIds.DriftwoodDry, "item.driftwood_dry", at, new Color(0.72f, 0.66f, 0.54f), new Vector3(0.9f, 0.22f, 0.3f));
+
+            at = new Vector3(-16f, 0f, -8f);
+            at.y = Height(at.x, at.z, recipe) + 0.14f;
+            CreateItem(root, interactions, ItemIds.DriftwoodWet, "item.driftwood_wet", at, new Color(0.30f, 0.25f, 0.20f), new Vector3(0.9f, 0.22f, 0.3f));
+
+            at = new Vector3(-22f, 0f, 6.5f);
+            at.y = Height(at.x, at.z, recipe) + 0.16f;
+            CreateItem(root, interactions, ItemIds.DryGrass, "item.dry_grass", at, new Color(0.78f, 0.70f, 0.40f), new Vector3(0.4f, 0.28f, 0.4f));
+
+            at = new Vector3(-24f, 0f, -1f);
+            at.y = Height(at.x, at.z, recipe) + 0.1f;
+            CreateItem(root, interactions, ItemIds.PolyRope, "item.poly_rope", at, new Color(0.20f, 0.36f, 0.70f), new Vector3(0.5f, 0.18f, 0.5f));
+
+            at = new Vector3(-28f, 0f, -4f);
+            at.y = Height(at.x, at.z, recipe) + 0.05f;
+            CreateItem(root, interactions, ItemIds.FibreglassPanel, "item.fibreglass_panel", at, new Color(0.95f, 0.45f, 0.10f), new Vector3(1.1f, 0.06f, 0.8f));
+
+            at = new Vector3(-20f, 0f, -8f);
+            at.y = Height(at.x, at.z, recipe) + 0.08f;
+            CreateItem(root, interactions, ItemIds.Kelp, "item.kelp", at, new Color(0.08f, 0.10f, 0.08f), new Vector3(1.2f, 0.12f, 0.5f));
+
+            // The rocks. Chert first, at fixed spots; basalt scattered by seed around them.
+            var basalt = CreatePropMaterial(new Color(0.15f, 0.15f, 0.17f), "Basalt");
+            var chert = CreatePropMaterial(new Color(0.60f, 0.56f, 0.48f), "Chert");
+            var cobble = ZoneMeshes.BuildRock(recipe.Seed + 977);
+
+            var chertAt = new[] { new Vector3(-13f, 0f, -6f), new Vector3(-21f, 0f, 3f), new Vector3(-7f, 0f, -8f) };
+            for (var i = 0; i < chertAt.Length; i++)
+            {
+                CreateRock(wrack, interactions, cobble, chert, "rock.chert." + (i + 1), chertAt[i], recipe, true, recipe.Seed + i);
+            }
+
+            var random = new System.Random(recipe.Seed + 4441);
+            for (var i = 0; i < 12; i++)
+            {
+                var x = -30f + (float)random.NextDouble() * 26f;
+                var z = -10f + (float)random.NextDouble() * 18f;
+                CreateRock(wrack, interactions, cobble, basalt, "rock.basalt." + (i + 1), new Vector3(x, 0f, z), recipe, false, recipe.Seed + 100 + i);
+            }
+
+            // "Basalt. Basalt. That's not basalt." -- said within three metres of the chert nearest
+            // the fire site, once, and never once a nodule is in the bag. One of these, not three:
+            // an observation made once is an observation; made three times it is a nag.
+            var near = new GameObject("Remark " + ContentIds.RemarkRockNotBasalt);
+            near.transform.SetParent(wrack, false);
+            near.transform.position = chertAt[0];
+            var remark = near.AddComponent<ProximityRemark>();
+            remark.Configure(ContentIds.RemarkRockNotBasalt, "interactable.rock", 3f, ItemIds.ChertNodule);
+            if (interactions != null)
+            {
+                interactions.Register(remark);
+            }
+        }
+
+        private static void CreateRock(
+            Transform parent, InteractionSystem interactions, Mesh mesh, Material material,
+            string contentId, Vector3 at, Recipe recipe, bool isChert, int seed)
+        {
+            var random = new System.Random(seed);
+            var scale = 0.28f + (float)random.NextDouble() * 0.16f;
+            at.y = Height(at.x, at.z, recipe) - scale * 0.25f;
+
+            var go = new GameObject("Rock " + contentId);
+            go.transform.SetParent(parent, false);
+            go.transform.position = at;
+            go.transform.rotation = Quaternion.Euler((float)random.NextDouble() * 20f, (float)random.NextDouble() * 360f, (float)random.NextDouble() * 20f);
+            go.transform.localScale = new Vector3(scale * 1.2f, scale * 0.8f, scale);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            Dress(go.AddComponent<MeshRenderer>(), material);
+
+            var node = go.AddComponent<RockNode>();
+            node.Configure(contentId, "interactable.rock", isChert);
+            if (interactions != null)
+            {
+                interactions.Register(node);
+            }
+        }
+
+        /// <summary>
+        /// Three places a fire can be laid: the lee of the near hull, and two patches of open sand.
+        /// </summary>
+        /// <remarks>
+        /// §7:10 (c). The lee is the answer: on the landward side of the first hull the blown sand
+        /// breaks around the wreck and lies still, and the examine line says so. The open sites
+        /// are where a player lays the first attempt, and where the wind teaches them. Each site
+        /// is a ring of dark stones with three hidden children the site toggles: the kit, the
+        /// panel, and the flame with its light.
+        /// </remarks>
+        private static void BuildFireSites(Transform root, Recipe recipe, InteractionSystem interactions, FireService fire)
+        {
+            var parent = new GameObject("Fire Sites").transform;
+            parent.SetParent(root, false);
+
+            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteLee, "interactable.fire_lee", new Vector3(-9.6f, 0f, -10f), recipe);
+            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenA, "interactable.fire_open", new Vector3(-2f, 0f, -5f), recipe);
+            CreateFireSite(parent, interactions, fire, ContentIds.FireSiteOpenB, "interactable.fire_open", new Vector3(-18f, 0f, 1f), recipe);
+        }
+
+        private static void CreateFireSite(
+            Transform parent, InteractionSystem interactions, FireService fire, string siteId, string nameKey, Vector3 at, Recipe recipe)
+        {
+            at.y = Height(at.x, at.z, recipe);
+
+            var site = new GameObject("Fire Site " + siteId).transform;
+            site.SetParent(parent, false);
+            site.position = at;
+
+            var ring = CreatePropMaterial(new Color(0.18f, 0.17f, 0.16f), "FireRing");
+            for (var i = 0; i < 6; i++)
+            {
+                var angle = i * Mathf.PI * 2f / 6f;
+                Slab(site, ring, "Stone " + (i + 1),
+                    new Vector3(Mathf.Cos(angle) * 0.55f, 0.06f, Mathf.Sin(angle) * 0.55f),
+                    new Vector3(0.22f, 0.12f, 0.18f),
+                    new Vector3(0f, angle * Mathf.Rad2Deg, 0f));
+            }
+
+            // The kit: what is laid. Wood-coloured, low, and only shown while something is laid.
+            var kit = Slab(site, CreatePropMaterial(new Color(0.46f, 0.38f, 0.26f), "FireKit"), "Kit",
+                new Vector3(0f, 0.12f, 0f), new Vector3(0.5f, 0.24f, 0.5f), new Vector3(0f, 30f, 0f));
+            kit.gameObject.SetActive(false);
+
+            // The panel: orange, upright, on the windward side.
+            var panel = Slab(site, CreatePropMaterial(new Color(0.95f, 0.45f, 0.10f), "FirePanel"), "Panel",
+                new Vector3(0f, 0.45f, -0.75f), new Vector3(1.1f, 0.8f, 0.06f), new Vector3(-12f, 0f, 0f));
+            panel.gameObject.SetActive(false);
+
+            // The flame: two warm slabs and the zone's one point light. The lighting budget of
+            // the whole prologue is spent here (§8:00), and this is the placeholder for it.
+            var flame = new GameObject("Flame").transform;
+            flame.SetParent(site, false);
+            flame.localPosition = new Vector3(0f, 0.2f, 0f);
+            Slab(flame, CreateMaterial(new Color(1.0f, 0.55f, 0.15f), "Flame"), "Tongue",
+                new Vector3(0f, 0.25f, 0f), new Vector3(0.28f, 0.5f, 0.28f), new Vector3(0f, 45f, 0f));
+            Slab(flame, CreateMaterial(new Color(1.0f, 0.85f, 0.35f), "FlameCore"), "Core",
+                new Vector3(0f, 0.15f, 0f), new Vector3(0.16f, 0.3f, 0.16f), Vector3.zero);
+            var light = flame.gameObject.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1.0f, 0.62f, 0.28f);
+            light.range = 9f;
+            light.intensity = 2.2f;
+            light.transform.localPosition = new Vector3(0f, 0.6f, 0f);
+            flame.gameObject.SetActive(false);
+
+            var component = site.gameObject.AddComponent<FireSite>();
+            component.Configure(fire, siteId, nameKey);
+            if (interactions != null && fire != null)
+            {
+                interactions.Register(component);
+            }
+        }
 
         // --- The six hulls ---------------------------------------------------------------------
 

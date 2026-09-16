@@ -315,6 +315,57 @@ narration.remark.radio.wrote_down,"Whoever this was, they wrote down the ones th
 narration.remark.radio.reads_list.1,"Two-one-eight-two. Four-one-two-five. Six-two-one-five. Eight-two-nine-one. Twelve-five-ten... and then five, two, four, zero, which they've written like a phone number."
 narration.remark.radio.reads_list.2,"Same units as everything above it, presumably. Kilohertz."
 narration.remark.radio.sweep,"I'm going to leave it on and sweep it."
+item.driftwood_dry,"Driftwood, Dry"
+item.driftwood_wet,"Driftwood, Wet"
+item.dry_grass,Dry Grass
+item.poly_rope,Poly Rope
+item.poly_fibre,Teased Fibre
+item.chert_nodule,Chert Nodule
+item.fibreglass_panel,Fibreglass Panel
+item.kelp,Kelp
+narration.item.driftwood_dry,"An armful from above the tide mark, bleached and light. It clicks when it knocks together. Dry."
+narration.item.driftwood_wet,"An armful from below the mark. Dark, heavy, and it thuds. Wet through."
+narration.item.dry_grass,"A nest of grass caught high in the rocks where the sun got at it. It will flare. It will not last."
+narration.item.poly_rope,"Blue polypropylene, sun-rotted to felt. It crumbles in my fingers. Plastic, though. Plastic catches."
+narration.item.poly_fibre,"Teased apart with the blade into a bird's nest of fibre. It will hold an ember. It will stink."
+narration.item.chert_nodule,"Pale, banded, heavy for its size. Chert. On the spine of the multitool, it will throw sparks."
+narration.item.fibreglass_panel,"Safety orange, a boat's hull panel. Stencilled on the inside face, half abraded: ...ELL HEAD 4. I turn it over, read it, and put it in the bag."
+narration.item.kelp,"Black kelp, wet through. Not food. Not yet."
+interactable.rock,Rock
+interactable.fire_lee,The Hull's Lee
+interactable.fire_open,Open Sand
+narration.fire.lee,"In the lee of the hull. The blown sand breaks around the wreck and lies still here. Out of the wind."
+narration.fire.open_a,"Open sand under the ribs. The wind takes everything laid here, and the sand streams past my boots."
+narration.fire.open_b,"Open sand on the wrack. The wind comes straight up the beach and nothing here stops it."
+narration.remark.fire.holds,"It holds. The hull above me is a ceiling of orange and rust, and the wet sand mirrors it."
+narration.fire.grass_laid,"Grass, laid in a hollow. It will go up like paper."
+narration.fire.fibre_laid,"The fibre, teased into a nest, in a hollow. Tinder."
+narration.fire.wood_stacked,"The dry wood, stacked to let the air in."
+narration.fire.panel_placed,"The panel, wedged upright in the sand on the windward side. A wall. It'll do. It'll do badly."
+narration.fire.panel_pointless,"Out of the wind already. The panel can stay in the bag."
+narration.fire.already_lit,"It's burning. Leave it be."
+narration.fire.wet_wood,"It's wet through. Nothing lights that."
+narration.fire.wood_drying,"The wet wood, laid by the fire where the air shimmers. Warm, not hot. Give it a minute or two."
+narration.fire.wood_dried,"The wood by the fire has dried. It clicks now."
+narration.fire.kelp,"Kelp doesn't burn. Kelp barely does anything."
+narration.fire.no_spine,"Nothing to strike it on."
+narration.fire.sparks_on_sand,"Sparks. Bright, fast, and onto sand. They need something to land in."
+narration.fire.grass_flared,"Sparks, and the grass goes up all at once, a flare, and it's gone. Too quick."
+narration.fire.ember_starved,"An ember, in the fibre. It glows, it holds, eight seconds, and dies for want of anything to give it."
+narration.fire.blew_out,"It lights. It streams sideways, three seconds, and the wind puts it out like a slap."
+narration.fire.lit,"The spark catches the fibre. Two seconds where it might not take, the ember creeping. Then it goes. The first warm colour since the bag. God. That's going to taste like that for a week."
+narration.remark.rock.look,"Rock. Dark, glassy, everywhere. Basalt."
+narration.remark.rock.knock,"A dull knock. Basalt. No chip."
+narration.remark.rock.ring,"That rang. A bright ring, and a chip flies. Pale, banded. That's not basalt. That'll chip."
+narration.remark.rock.not_basalt,"Basalt. Basalt. That's not basalt."
+narration.remark.fire.spine,"Steel spine. So I need something harder than steel and dumber than me."
+narration.remark.fire.chert,"There. Banded. That'll chip."
+narration.remark.fire.grass_too_quick,"Grass is too quick. I need something that'll sulk."
+narration.remark.fire.tears_rope,"The rope, torn apart in my hands into a nest of fibre. That'll sulk."
+narration.remark.fire.wind,"It's the wind. It's not the tinder, it's the wind."
+narration.remark.fire.carries_kit,"Enough. I carry the lot into the lee of the hull and set it down where the sand lies still."
+slate.observed.mechanism.fire,FIRE
+slate.observed.mechanism.fire.body,"Chert on the multitool's spine, sparks into teased rope, dry wood, and the lee of a hull. Ugly, and it holds. The sand mirrors it."
 slate.observed.marker.hull_line.body,"Six wrecks along the beach, wildly different eras, half-buried at different angles. Stand at the near bow and they are on one straight line, forty metres off the break. Wrecks do not queue up. Somebody parked them."
 slate.unresolved.six_hulls_one_line,"SIX HULLS, ONE LINE"
 slate.unresolved.six_hulls_one_line.body,"Deliberate? A breakwater? Or I'm pattern-matching because I'm concussed. Check again when the light changes."

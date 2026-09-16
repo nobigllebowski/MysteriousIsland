@@ -11,6 +11,7 @@ using ForgottenIsle.Game.Localization;
 using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Radio;
+using ForgottenIsle.Game.Fire;
 using ForgottenIsle.Game.Hints;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
@@ -66,6 +67,9 @@ namespace ForgottenIsle.Game.Bootstrap
             var inventory = new InventoryService(signals, log);
             var radio = new RadioService(signals, inventory, log);
 
+            // The fire sites: the dry-fire problem's state. Sixth participant (ADR-0026).
+            var fire = new FireService(signals, inventory, log);
+
             // The recorded-percent figure the pause summary and the save header show. Computed by
             // nothing for two phases; every header said 0%. (Built before the autosave director,
             // though the order is now cosmetic: autosaves write on the next tick, after every
@@ -83,7 +87,7 @@ namespace ForgottenIsle.Game.Bootstrap
             // The hint timers (design §3.5): count play seconds, say each rung through the
             // dispatcher, forget everything on entering the world. Not a participant on purpose
             // (ADR-0025).
-            var hints = new HintDirector(session, states, progress, radio, dispatcher, signals, log);
+            var hints = new HintDirector(session, states, progress, radio, fire, dispatcher, signals, log);
 
             // ADR-0011: every phase adds its participant in the same pull
             // request that adds its system. Registration order is capture and restore order, and the
@@ -95,9 +99,11 @@ namespace ForgottenIsle.Game.Bootstrap
             // meaningful once the run, the position and the progression it was earned against exist.
             // Phase 6 adds the fifth: the radio, after the inventory, because which parts went
             // into the set only means anything once the pockets they came out of exist.
-            var participants = new List<ISaveParticipant>(5)
+            // The fire is sixth: what is laid at a site only means anything once the pockets the
+            // wood came out of exist.
+            var participants = new List<ISaveParticipant>(6)
             {
-                session, session.PlayerParticipant, progress, inventory, radio
+                session, session.PlayerParticipant, progress, inventory, radio, fire
             };
             for (var i = 0; i < participants.Count; i++)
             {
@@ -108,7 +114,7 @@ namespace ForgottenIsle.Game.Bootstrap
             // rather than cosmetic: ResumeSavedRunHandler restores a run by calling SaveSlotService.Load,
             // which walks the participant register. A handler wired before the register was filled would
             // resume into an empty world and report success.
-            dispatcher.Register<StartNewGameCommand>(new StartNewGameHandler(states, session, zones, progress, log, null, inventory, radio));
+            dispatcher.Register<StartNewGameCommand>(new StartNewGameHandler(states, session, zones, progress, log, null, inventory, radio, fire));
             dispatcher.Register<InspectCommand>(new InspectHandler(states, progress, signals));
             dispatcher.Register<CollectCommand>(new CollectHandler(states, progress, signals, inventory));
             dispatcher.Register<ResumeSavedRunCommand>(new ResumeSavedRunHandler(states, slots, session, zones, log));
@@ -126,8 +132,9 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<SqueezeMicCommand>(new SqueezeMicHandler(states, radio, signals));
             dispatcher.Register<BeginSweepCommand>(new BeginSweepHandler(states, radio));
             dispatcher.Register<SweepRadioCommand>(new SweepRadioHandler(states, radio, signals));
+            dispatcher.Register<CarryFireKitCommand>(new CarryFireKitHandler(states, fire));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, slate, hints, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, slate, hints, fire, participants);
         }
 
         /// <summary>

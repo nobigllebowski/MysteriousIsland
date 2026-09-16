@@ -62,6 +62,7 @@ namespace ForgottenIsle.Core.Progress
                     return ContentKind.Discovery;
                 case MechanismSluice:
                 case MechanismTapeDeck:
+                case MechanismFire:
                     return ContentKind.Mechanism;
                 case GateRibcageToFernmaw:
                 case GateFernmawToRibcage:
@@ -73,6 +74,17 @@ namespace ForgottenIsle.Core.Progress
                 case RemarkRadioWroteDown:
                 case RemarkRadioReadsList:
                 case RemarkRadioSweep:
+                case RemarkFireHolds:
+                case RemarkRockLook:
+                case RemarkRockKnock:
+                case RemarkRockRing:
+                case RemarkRockNotBasalt:
+                case RemarkFireSpine:
+                case RemarkFireChert:
+                case RemarkFireGrassTooQuick:
+                case RemarkFireTearsRope:
+                case RemarkFireWind:
+                case RemarkFireCarriesKit:
                     return ContentKind.Remark;
                 default:
                     return ContentKind.Unknown;
@@ -150,6 +162,22 @@ namespace ForgottenIsle.Core.Progress
         /// </summary>
         public const string MechanismTapeDeck = "mechanism.tape_deck";
 
+        /// <summary>
+        /// The fire: the dry-fire problem, solved. One record however many sites were tried.
+        /// </summary>
+        public const string MechanismFire = "mechanism.fire";
+
+        // --- Fire sites (places a fire can be laid; the lee is the answer) ------------------
+
+        /// <summary>In the wind shadow of the near hull: the blown sand breaks around it.</summary>
+        public const string FireSiteLee = "fire.lee";
+
+        /// <summary>Open sand near the ribs. The wind takes everything laid here.</summary>
+        public const string FireSiteOpenA = "fire.open_a";
+
+        /// <summary>Open sand on the wrack. Same wind.</summary>
+        public const string FireSiteOpenB = "fire.open_b";
+
         // --- The radio (one object; the prologue's spine) -------------------------------------
 
         /// <summary>The 1970s marine set on the crate inside the trawler hull.</summary>
@@ -175,6 +203,39 @@ namespace ForgottenIsle.Core.Progress
 
         /// <summary>Radio hint tier 4: she leaves the set on and it sweeps by itself.</summary>
         public const string RemarkRadioSweep = "remark.radio.sweep";
+
+        /// <summary>Examining a burning fire.</summary>
+        public const string RemarkFireHolds = "remark.fire.holds";
+
+        /// <summary>Examining a rock: dark, glassy, everywhere.</summary>
+        public const string RemarkRockLook = "remark.rock.look";
+
+        /// <summary>The multitool on basalt: a dull knock, no chip. The negative half of the lesson.</summary>
+        public const string RemarkRockKnock = "remark.rock.knock";
+
+        /// <summary>The multitool on chert: a bright ring and a chip. The whole clue.</summary>
+        public const string RemarkRockRing = "remark.rock.ring";
+
+        /// <summary>Within three metres of the chert: "Basalt. Basalt. That's not basalt."</summary>
+        public const string RemarkRockNotBasalt = "remark.rock.not_basalt";
+
+        /// <summary>Fire hint, no spark, tier 1: "Steel spine. So I need something harder..."</summary>
+        public const string RemarkFireSpine = "remark.fire.spine";
+
+        /// <summary>Fire hint, no spark, tier 3: she picks up the chert herself.</summary>
+        public const string RemarkFireChert = "remark.fire.chert";
+
+        /// <summary>Fire hint, spark but no tinder, tier 1: "Grass is too quick."</summary>
+        public const string RemarkFireGrassTooQuick = "remark.fire.grass_too_quick";
+
+        /// <summary>Fire hint, spark but no tinder, tier 3: she tears the rope apart herself.</summary>
+        public const string RemarkFireTearsRope = "remark.fire.tears_rope";
+
+        /// <summary>Three blow-outs: "It's the wind."</summary>
+        public const string RemarkFireWind = "remark.fire.wind";
+
+        /// <summary>Seven blow-outs: she carries the kit to the lee and sets it down.</summary>
+        public const string RemarkFireCarriesKit = "remark.fire.carries_kit";
 
         /// <summary>
         /// How many lines a remark is said in. One means the key is "narration." + id; more means

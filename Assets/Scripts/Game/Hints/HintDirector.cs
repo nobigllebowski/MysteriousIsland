@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ForgottenIsle.Core.Commands;
+using ForgottenIsle.Core.Fire;
 using ForgottenIsle.Core.Hints;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.Progress;
@@ -8,6 +9,7 @@ using ForgottenIsle.Core.Radio;
 using ForgottenIsle.Core.Signals;
 using ForgottenIsle.Core.State;
 using ForgottenIsle.Game.Bootstrap;
+using ForgottenIsle.Game.Fire;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Radio;
 using ForgottenIsle.Game.Session;
@@ -45,12 +47,15 @@ namespace ForgottenIsle.Game.Hints
         private readonly GameStateMachine _states;
         private readonly ProgressService _progress;
         private readonly RadioService _radio;
+        private readonly FireService _fire;
         private readonly CommandDispatcher _commands;
         private readonly ICoreLog _log;
         private readonly List<IDisposable> _subscriptions = new List<IDisposable>(4);
 
         private readonly HintLadder _hullLine = HintLadders.HullLine();
         private readonly HintLadder _radioLadder = HintLadders.Radio();
+        private readonly HintLadder _fireSpark = HintLadders.FireSpark();
+        private readonly HintLadder _fireTinder = HintLadders.FireTinder();
 
         private double _lastPlaytime;
         private float _lastMhz;
@@ -61,6 +66,7 @@ namespace ForgottenIsle.Game.Hints
         /// <param name="states">Only a run in the world is hinted.</param>
         /// <param name="progress">Read to know what is already found.</param>
         /// <param name="radio">Read to know whether the set works and the voice is heard.</param>
+        /// <param name="fire">Read to know whether sparks have flown and whether a fire burns.</param>
         /// <param name="commands">Where every rung is dispatched.</param>
         /// <param name="signals">Bus the ticks and actions arrive on. Null makes this inert.</param>
         /// <param name="log">Diagnostics sink. Null tolerated.</param>
@@ -69,6 +75,7 @@ namespace ForgottenIsle.Game.Hints
             GameStateMachine states,
             ProgressService progress,
             RadioService radio,
+            FireService fire,
             CommandDispatcher commands,
             SignalBus signals,
             ICoreLog log)
@@ -77,6 +84,7 @@ namespace ForgottenIsle.Game.Hints
             _states = states ?? throw new ArgumentNullException(nameof(states));
             _progress = progress ?? throw new ArgumentNullException(nameof(progress));
             _radio = radio ?? throw new ArgumentNullException(nameof(radio));
+            _fire = fire ?? throw new ArgumentNullException(nameof(fire));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
             _log = log;
 
@@ -89,7 +97,14 @@ namespace ForgottenIsle.Game.Hints
             _subscriptions.Add(signals.Subscribe<TickCompletedSignal>(_ => OnTick()));
             _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(OnRadioChanged));
             _subscriptions.Add(signals.Subscribe<ProgressChangedSignal>(OnProgressChanged));
+            _subscriptions.Add(signals.Subscribe<FireChangedSignal>(OnFireChanged));
         }
+
+        /// <summary>The fire's no-spark ladder. Exposed for tests.</summary>
+        public HintLadder FireSpark => _fireSpark;
+
+        /// <summary>The fire's no-tinder ladder. Exposed for tests.</summary>
+        public HintLadder FireTinder => _fireTinder;
 
         /// <summary>Rungs dispatched since this director was built. For tests and the overlay.</summary>
         public int Said { get; private set; }
@@ -122,6 +137,8 @@ namespace ForgottenIsle.Game.Hints
             // "hint timers reset to zero on load" -- and start only what still applies.
             _hullLine.Forget();
             _radioLadder.Forget();
+            _fireSpark.Forget();
+            _fireTinder.Forget();
             _haveMhz = false;
             _dialTravel = 0f;
             _lastPlaytime = _session.PlaytimeSeconds;
@@ -134,6 +151,13 @@ namespace ForgottenIsle.Game.Hints
             if (_radio.IsWorking && !_radio.TransmissionReceived)
             {
                 _radioLadder.Start();
+            }
+
+            // The spark ladder waits for the player to engage with a site again; sparks having
+            // flown is in the record, so the tinder ladder can pick up from that.
+            if (_fire.Sparked && !_fire.IsLit && !AnyFibreLaid())
+            {
+                _fireTinder.Start();
             }
         }
 
@@ -166,6 +190,18 @@ namespace ForgottenIsle.Game.Hints
             }
 
             if (_radioLadder.TryAdvance(delta, out due))
+            {
+                Say(due);
+            }
+
+            // The fire is on the Ribcage shore, like the hulls.
+            var onTheShore = string.Equals(_session.ZoneId, ContentIds.ZoneRibcage, StringComparison.Ordinal);
+            if (onTheShore && _fireSpark.TryAdvance(delta, out due))
+            {
+                Say(due);
+            }
+
+            if (onTheShore && _fireTinder.TryAdvance(delta, out due))
             {
                 Say(due);
             }
@@ -230,6 +266,71 @@ namespace ForgottenIsle.Game.Hints
             }
         }
 
+        private void OnFireChanged(FireChangedSignal signal)
+        {
+            switch (signal.Kind)
+            {
+                case FireChangeKind.FirstSparks:
+                    // Spark found. What is missing now is something for it to land in -- unless
+                    // the fibre is already down somewhere, in which case nothing is.
+                    _fireSpark.Stop();
+                    if (!_fire.IsLit && !AnyFibreLaid())
+                    {
+                        _fireTinder.Start();
+                    }
+
+                    return;
+
+                case FireChangeKind.FibreLaid:
+                    // The right tinder is down; the ladder about tinder has nothing to add.
+                    _fireTinder.Stop();
+                    break;
+
+                case FireChangeKind.Lit:
+                    _fireSpark.Stop();
+                    _fireTinder.Stop();
+                    return;
+
+                case FireChangeKind.BlewOut:
+                    // Counted, not timed (§7:10 FAILURE): three and she names the wind; seven and
+                    // she carries the kit into the lee herself. The player still lights it.
+                    if (signal.BlowOuts == FireRules.BlowOutsBeforeTheWindLine)
+                    {
+                        Say(new HintTier(ContentIds.RemarkFireWind, 0d));
+                    }
+                    else if (signal.BlowOuts == FireRules.BlowOutsBeforeSheCarriesIt)
+                    {
+                        var carried = _commands.Dispatch(new CarryFireKitCommand());
+                        if (carried.Success)
+                        {
+                            Say(new HintTier(ContentIds.RemarkFireCarriesKit, 0d));
+                        }
+                    }
+
+                    return;
+            }
+
+            // Anything laid or tried at a site is engagement: the no-spark clock starts on the
+            // first of it, and only if no spark has flown yet.
+            if (!_fire.Sparked && !_fire.IsLit && !_fireSpark.IsRunning && !_fireSpark.IsExhausted)
+            {
+                _fireSpark.Start();
+            }
+        }
+
+        private bool AnyFibreLaid()
+        {
+            for (var i = 0; i < _fire.Sites.Count; i++)
+            {
+                if (_fire.Sites[i].Tinder == Tinder.Fibre)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void OnProgressChanged(ProgressChangedSignal signal)
         {
             if (signal.Kind == ProgressChangeKind.Inspected && signal.ContentId == ContentIds.MarkerHullLine)
@@ -244,6 +345,13 @@ namespace ForgottenIsle.Game.Hints
 
         private void Say(HintTier tier)
         {
+            if (tier.GrantsItemId != null)
+            {
+                // She picks it up herself. Refused only when it is already carried, which means
+                // the words still stand: "there, banded" is true of the one in the bag.
+                _commands.Dispatch(new TakeItemCommand(tier.GrantsItemId));
+            }
+
             var result = tier.RecordsMarkerId != null
                 ? _commands.Dispatch(new InspectCommand(tier.RecordsMarkerId, tier.RemarkId))
                 : _commands.Dispatch(new RemarkCommand(tier.RemarkId));

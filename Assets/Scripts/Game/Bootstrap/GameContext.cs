@@ -16,6 +16,7 @@ using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Radio;
+using ForgottenIsle.Game.Fire;
 using ForgottenIsle.Game.Hints;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
@@ -72,6 +73,7 @@ namespace ForgottenIsle.Game.Bootstrap
             RecordKeeper recordKeeper,
             SlateDirector slate,
             HintDirector hints,
+            FireService fire,
             IReadOnlyList<ISaveParticipant> saveParticipants)
         {
             if (log == null)
@@ -147,6 +149,7 @@ namespace ForgottenIsle.Game.Bootstrap
             RecordKeeper = recordKeeper;
             Slate = slate;
             Hints = hints;
+            Fire = fire ?? throw new ArgumentNullException(nameof(fire));
             Input = input;
 
             // Copied defensively. The participant list is what a save iterates; handing out the
@@ -219,6 +222,9 @@ namespace ForgottenIsle.Game.Bootstrap
 
         /// <summary>The hint ladders' timer: says each rung through the dispatcher. Null tolerated.</summary>
         public HintDirector Hints { get; }
+
+        /// <summary>The fire sites: what is laid, what burns, what is drying. Sixth save participant.</summary>
+        public FireService Fire { get; }
 
         /// <summary>
         /// Player input, already gated on the state machine so it reads as centred outside

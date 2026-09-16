@@ -70,7 +70,8 @@ namespace ForgottenIsle.Game.Interaction
         /// <inheritdoc />
         public override void ApplyRestoredState(IInteractionServices services)
         {
-            if (services != null && services.HasItem(ContentId))
+            // Carried, or carried once and since used up: either way it left the world.
+            if (services != null && (services.HasItem(ContentId) || services.HasEverTaken(ContentId)))
             {
                 gameObject.SetActive(false);
             }

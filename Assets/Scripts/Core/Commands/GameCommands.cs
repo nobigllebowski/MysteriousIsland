@@ -243,6 +243,14 @@ namespace ForgottenIsle.Core.Commands
         }
     }
 
+    /// <summary>
+    /// Nadia carries whatever fire kit is laid in the open into the lee of the hull and sets it
+    /// down there. The fire hints' last rung (§7:10 FAILURE, seven blow-outs). The player lights it.
+    /// </summary>
+    public readonly struct CarryFireKitCommand : ICommand
+    {
+    }
+
     /// <summary>Squeeze the hand-mic and speak.</summary>
     /// <remarks>
     /// A real verb that will matter again. The world will still not give the player what they

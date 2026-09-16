@@ -9,6 +9,39 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the dry-fire problem (ADR-0026)
+
+The design's first real puzzle (§5:00 → §8:00): spark, tinder, shelter, and she is missing all
+three. **The wrack** gives dry driftwood above the tide mark and wet below it, dry grass from a
+crevice, sun-rotted poly rope, the orange fibreglass panel with its half-abraded stencil, and kelp
+that is for nothing. **The rocks:** twelve basalt cobbles and three chert nodules, all looking
+like rocks; the multitool on basalt knocks, on chert rings and chips, and only a chert that has
+rung offers TAKE. Within three metres of the nearest chert, once, *"Basalt. Basalt. That's not
+basalt."* **Three fire sites:** the lee of the near hull, where the blown sand lies still, and two
+patches of open sand. Hold an item and use it on a site: grass or fibre is laid, wood stacked, the
+panel wedged upright as a windbreak; the chert on the multitool's spine throws sparks. Sparks on
+sand cost nothing. Grass flares and is gone. Fibre with no wood holds an ember eight seconds and
+starves, and keeps the fibre. Fibre and wood in the open light, stream, and blow out; in the lee,
+or behind the panel, they hold. Wet wood by a burning fire dries in ninety seconds and comes back
+to the bag dry. FIRE is the notebook's entry and a solved mechanism in the record.
+
+`Core.Fire.FireSiteState` is the whole table of outcomes, engine-free and pinned by tests;
+`Game.Fire.FireService` (sixth save participant) adds the run's facts — sparks ever thrown, blow-
+outs, the warm zone's clock — and announces each change. `FireSite`, `RockNode` and
+`ProximityRemark` are the world half; `ZoneBuilder.BuildWrack` and `BuildFireSites` place it. The
+rope teased with the multitool is a `Combinations` recipe, and a **tool now survives combining**
+(`ItemIds.IsTool`). **Pickups no longer grow back:** `InventoryService.HasEverTaken` is saved with
+the inventory, and a consumed spindle or rope stays gone across zone entries.
+
+**The fire's hints** (§7:10 FAILURE): no spark for 2:30 after the first thing laid, *"Steel
+spine…"*; 6:00, she picks up the chert herself. Sparks but nothing catching, 2:30 *"Grass is too
+quick"*; 6:00 she tears the rope apart and the fibre is in the bag. Three blow-outs, *"It's the
+wind"*; seven, she carries the kit into the lee and sets it down (`CarryFireKitCommand`). She never
+does the last step: the strike is always the player's. Tier 2 of each (staging, animation) is not
+built. Fuel does not burn down: fuel life is the camp system's, in world hours (CONFLICT-6), and
+nothing here waits on it. Tests: `FireTests` (17), five fire cases in `HintTests`, three in
+`InventoryTests`; the record pins fifteen ids. 400 written, none executed.
+
 ### Added — the beachcomber's Ribcage, and the hook
 
 The design's reward for the player who looks (§28:20 FAILURE, item 30): seven optional

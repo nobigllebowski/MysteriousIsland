@@ -9,6 +9,7 @@ using ForgottenIsle.Core.State;
 using ForgottenIsle.Core.Progress;
 using ForgottenIsle.Core.Items;
 using ForgottenIsle.Core.Radio;
+using ForgottenIsle.Game.Fire;
 using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Radio;
 using ForgottenIsle.Game.Progress;
@@ -50,11 +51,13 @@ namespace ForgottenIsle.Game.Bootstrap
         private readonly ProgressService _progress;
         private readonly InventoryService _inventory;
         private readonly RadioService _radio;
+        private readonly FireService _fire;
 
         /// <param name="progress">Progression, wiped so a new run starts with nothing found.</param>
         public StartNewGameHandler(
             GameStateMachine states, SessionService session, ZoneRegistry zones, ProgressService progress,
-            ICoreLog log, Func<int> seedSource = null, InventoryService inventory = null, RadioService radio = null)
+            ICoreLog log, Func<int> seedSource = null, InventoryService inventory = null, RadioService radio = null,
+            FireService fire = null)
         {
             _states = states ?? throw new ArgumentNullException(nameof(states));
             _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -62,6 +65,7 @@ namespace ForgottenIsle.Game.Bootstrap
             _progress = progress;
             _inventory = inventory;
             _radio = radio;
+            _fire = fire;
             _log = log;
             _seedSource = seedSource;
         }
@@ -105,8 +109,13 @@ namespace ForgottenIsle.Game.Bootstrap
         /// its radio already repaired -- a save-shaped bug that no save file was involved in.
         /// Static and public so it can be pinned by a test without a zone registry or a scene.
         /// </remarks>
-        public static void PrepareNewRun(ProgressService progress, InventoryService inventory, RadioService radio)
+        public static void PrepareNewRun(ProgressService progress, InventoryService inventory, RadioService radio, FireService fire = null)
         {
+            if (fire != null)
+            {
+                fire.ResetForNewRun();
+            }
+
             if (progress != null)
             {
                 progress.ResetForNewRun();
@@ -134,7 +143,7 @@ namespace ForgottenIsle.Game.Bootstrap
             _states.TryTransition(GameStateId.Loading);
             // A new run means nothing found. Wiped here rather than by the caller, so there is no
             // path that starts a run and leaves the previous run's discoveries standing.
-            PrepareNewRun(_progress, _inventory, _radio);
+            PrepareNewRun(_progress, _inventory, _radio, _fire);
             
             _session.BeginNewRun(slot, SessionService.DefaultActId, StartZone, _seedSource != null ? _seedSource() : Environment.TickCount);
 
@@ -1249,6 +1258,53 @@ namespace ForgottenIsle.Game.Bootstrap
             var heardBefore = _radio.Heard.Count;
             _radio.Sweep(command.Seconds);
             TuneRadioHandler.AnnounceNewHearing(_radio, _signals, heardBefore);
+        }
+    }
+
+    /// <summary>
+    /// Nadia carries the fire kit from the open into the lee of the hull. The last fire hint.
+    /// </summary>
+    /// <remarks>
+    /// Refused when nothing is laid in the open or a fire already burns: the hint director asks
+    /// for this on the seventh blow-out and the refusal simply means there is nothing to carry.
+    /// The strike is still the player's; this only moves the kit.
+    /// </remarks>
+    public sealed class CarryFireKitHandler : ICommandHandler<CarryFireKitCommand>
+    {
+        private readonly GameStateMachine _states;
+        private readonly FireService _fire;
+
+        /// <param name="states">Mode machine.</param>
+        /// <param name="fire">The fire sites.</param>
+        public CarryFireKitHandler(GameStateMachine states, FireService fire)
+        {
+            _states = states ?? throw new ArgumentNullException(nameof(states));
+            _fire = fire ?? throw new ArgumentNullException(nameof(fire));
+        }
+
+        /// <inheritdoc />
+        public ResultCode Validate(in CarryFireKitCommand command)
+        {
+            if (_states.Current != GameStateId.InGame || _fire.IsLit)
+            {
+                return ResultCode.NotAllowedInState;
+            }
+
+            for (var i = 0; i < _fire.Sites.Count; i++)
+            {
+                if (!_fire.Sites[i].InLee && _fire.Sites[i].HasKit)
+                {
+                    return ResultCode.Ok;
+                }
+            }
+
+            return ResultCode.NotAllowedInState;
+        }
+
+        /// <inheritdoc />
+        public void Execute(in CarryFireKitCommand command)
+        {
+            _fire.CarryKitToLee();
         }
     }
 

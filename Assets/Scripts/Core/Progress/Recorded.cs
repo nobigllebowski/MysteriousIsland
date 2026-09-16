@@ -27,7 +27,8 @@ namespace ForgottenIsle.Core.Progress
             ContentIds.DiscoveryBrassTag,
             ContentIds.DiscoveryWaterloggedReel,
             ContentIds.MechanismSluice,
-            ContentIds.MechanismTapeDeck
+            ContentIds.MechanismTapeDeck,
+            ContentIds.MechanismFire
         };
 
         /// <summary>Percentage of the recordable content the run has recorded, 0..100.</summary>

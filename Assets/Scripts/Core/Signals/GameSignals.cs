@@ -376,4 +376,64 @@ namespace ForgottenIsle.Core.Signals
             Contents = contents;
         }
     }
+
+    /// <summary>What a fire site just did.</summary>
+    public enum FireChangeKind : byte
+    {
+        /// <summary>Grass was laid.</summary>
+        GrassLaid = 0,
+
+        /// <summary>Fibre was laid: the tinder that works.</summary>
+        FibreLaid = 1,
+
+        /// <summary>Wood was stacked.</summary>
+        WoodStacked = 2,
+
+        /// <summary>The panel went up as a windbreak.</summary>
+        PanelPlaced = 3,
+
+        /// <summary>Sparks were thrown for the first time in the run.</summary>
+        FirstSparks = 4,
+
+        /// <summary>Sparks landed in nothing, or grass flared, or an ember starved.</summary>
+        SparksFailed = 5,
+
+        /// <summary>Lit in the open and the wind put it out. <see cref="FireChangedSignal.BlowOuts"/> is the run's count.</summary>
+        BlewOut = 6,
+
+        /// <summary>Fire.</summary>
+        Lit = 7,
+
+        /// <summary>Wet wood went into the warm zone.</summary>
+        WoodDrying = 8,
+
+        /// <summary>The wet wood dried; dry wood is in the player's hands.</summary>
+        WoodDried = 9,
+
+        /// <summary>The kit was carried to the lee.</summary>
+        Carried = 10
+    }
+
+    /// <summary>Raised by the fire service for every change a listener could act on.</summary>
+    public readonly struct FireChangedSignal : ISignal
+    {
+        /// <summary>What happened.</summary>
+        public readonly FireChangeKind Kind;
+
+        /// <summary>The site it happened at.</summary>
+        public readonly string SiteId;
+
+        /// <summary>Blow-outs so far in the run, at every site.</summary>
+        public readonly int BlowOuts;
+
+        /// <param name="kind">What happened.</param>
+        /// <param name="siteId">The site.</param>
+        /// <param name="blowOuts">Blow-outs so far.</param>
+        public FireChangedSignal(FireChangeKind kind, string siteId, int blowOuts)
+        {
+            Kind = kind;
+            SiteId = siteId ?? string.Empty;
+            BlowOuts = blowOuts;
+        }
+    }
 }

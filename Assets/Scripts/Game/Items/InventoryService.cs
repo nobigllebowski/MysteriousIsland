@@ -94,6 +94,7 @@ namespace ForgottenIsle.Game.Items
                 return false;
             }
 
+            _taken.Add(itemId);
             Publish(InventoryChangeKind.Added, itemId);
             return true;
         }
@@ -142,19 +143,50 @@ namespace ForgottenIsle.Game.Items
                 return false;
             }
 
-            Consume(first);
-            Consume(second);
+            // A tool is not an ingredient: the multitool teases the rope and is still a multitool.
+            if (!ItemIds.IsTool(first))
+            {
+                Consume(first);
+            }
+
+            if (!ItemIds.IsTool(second))
+            {
+                Consume(second);
+            }
+
             Take(result);
             return true;
         }
+
+        /// <summary>
+        /// True when the item has ever been in the player's hands this run, carried now or not.
+        /// </summary>
+        /// <remarks>
+        /// The world rebuilds its pickups with the zone (persistence by rebuild). Before this
+        /// the only fact a pickup could ask was "carried?", so a spindle consumed by a
+        /// combination grew back on the shore at the next zone entry, and a rope teased into
+        /// fibre would have too. "Respawning nothing" (§5:00) needs the taking remembered.
+        /// </remarks>
+        public bool HasEverTaken(string itemId)
+        {
+            return !string.IsNullOrEmpty(itemId) && _taken.Contains(itemId);
+        }
+
+        private readonly HashSet<string> _taken = new HashSet<string>(System.StringComparer.Ordinal);
 
         /// <summary>Empties the inventory for a new run.</summary>
         public void ResetForNewRun()
         {
             _held = null;
             _inventory.Clear();
+            _taken.Clear();
             Publish(InventoryChangeKind.Replaced, string.Empty);
         }
+
+        // Between the carried list and the ever-taken list. A save from before the second list
+        // existed has no record separator and reads as "nothing ever taken", which only means
+        // a consumed pickup may grow back once on that older run.
+        private const char ListSeparator = (char)30;
 
         /// <inheritdoc />
         public void Capture(SaveDocument doc)
@@ -164,7 +196,9 @@ namespace ForgottenIsle.Game.Items
                 return;
             }
 
-            doc.PutSection(SectionId, Join(_inventory.Items));
+            var taken = new List<string>(_taken);
+            taken.Sort(System.StringComparer.Ordinal);
+            doc.PutSection(SectionId, Join(_inventory.Items) + ListSeparator + Join(taken));
         }
 
         /// <inheritdoc />
@@ -180,7 +214,23 @@ namespace ForgottenIsle.Game.Items
             }
 
             _held = null;
-            _inventory.RestoreFrom(payload.Split(Separator));
+            _taken.Clear();
+            var lists = payload.Split(ListSeparator);
+            _inventory.RestoreFrom(string.IsNullOrEmpty(lists[0]) ? new string[0] : lists[0].Split(Separator));
+            if (lists.Length > 1 && !string.IsNullOrEmpty(lists[1]))
+            {
+                var taken = lists[1].Split(Separator);
+                for (var t = 0; t < taken.Length; t++)
+                {
+                    _taken.Add(taken[t]);
+                }
+            }
+
+            for (var c = 0; c < _inventory.Items.Count; c++)
+            {
+                _taken.Add(_inventory.Items[c]);
+            }
+
             Publish(InventoryChangeKind.Replaced, string.Empty);
         }
 

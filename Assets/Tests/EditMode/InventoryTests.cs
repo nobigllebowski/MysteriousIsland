@@ -274,5 +274,58 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(result.Success, Is.True, "Take was refused: " + result.Code);
             Assert.That(inventory.Has(ItemIds.SluiceKey), Is.True);
         }
+
+        // --- Tools, and what was ever taken ----------------------------------------------------
+
+        [Test]
+        public void Combine_TheRopeAndTheMultitool_MakesFibre_AndKeepsTheTool()
+        {
+            var service = NewService();
+            service.Take(ItemIds.PolyRope);
+            service.Take(ItemIds.Multitool);
+
+            string result;
+            Assert.That(service.Combine(ItemIds.PolyRope, ItemIds.Multitool, out result), Is.True);
+
+            Assert.That(result, Is.EqualTo(ItemIds.PolyFibre));
+            Assert.That(service.Has(ItemIds.PolyFibre), Is.True);
+            Assert.That(service.Has(ItemIds.PolyRope), Is.False, "The rope is gone.");
+            Assert.That(service.Has(ItemIds.Multitool), Is.True, "A tool is not an ingredient.");
+        }
+
+        [Test]
+        public void WhatWasTaken_IsRemembered_AfterItIsUsedUp_AndAcrossASave()
+        {
+            var service = NewService();
+            service.Take(ItemIds.PolyRope);
+            service.Consume(ItemIds.PolyRope);
+
+            Assert.That(service.Has(ItemIds.PolyRope), Is.False);
+            Assert.That(service.HasEverTaken(ItemIds.PolyRope), Is.True, "Or the wrack would grow a new rope on the next zone entry.");
+            Assert.That(service.HasEverTaken(ItemIds.Kelp), Is.False);
+
+            var doc = new SaveDocument();
+            service.Capture(doc);
+            var restored = NewService();
+            restored.Restore(doc);
+            Assert.That(restored.HasEverTaken(ItemIds.PolyRope), Is.True);
+            Assert.That(restored.Has(ItemIds.PolyRope), Is.False);
+
+            restored.ResetForNewRun();
+            Assert.That(restored.HasEverTaken(ItemIds.PolyRope), Is.False, "A new run starts with a full wrack.");
+        }
+
+        [Test]
+        public void AnInventorySaveWithoutTheTakenList_StillReads()
+        {
+            var doc = new SaveDocument();
+            doc.PutSection(InventoryService.SectionId, ItemIds.Multitool + (char)31 + ItemIds.DrySpindle);
+            var service = NewService();
+            service.Restore(doc);
+
+            Assert.That(service.Has(ItemIds.Multitool), Is.True);
+            Assert.That(service.Has(ItemIds.DrySpindle), Is.True);
+            Assert.That(service.HasEverTaken(ItemIds.DrySpindle), Is.True, "Carried counts as taken.");
+        }
     }
 }
