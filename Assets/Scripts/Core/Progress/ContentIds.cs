@@ -62,6 +62,9 @@ namespace ForgottenIsle.Core.Progress
                 case RadioSet:
                     return ContentKind.Radio;
                 case RemarkHullLinePartial:
+                case RemarkHullLineUnprompted:
+                case RemarkRadioWroteDown:
+                case RemarkRadioReadsList:
                     return ContentKind.Remark;
                 default:
                     return ContentKind.Unknown;
@@ -123,6 +126,32 @@ namespace ForgottenIsle.Core.Progress
         /// The hull line aligned from the wrong hull: three chalk in, and "try the far end".
         /// </summary>
         public const string RemarkHullLinePartial = "remark.hull_line_partial";
+
+        /// <summary>
+        /// The hull line never aligned: at 6:00 Nadia says it anyway, and the entry writes itself.
+        /// </summary>
+        public const string RemarkHullLineUnprompted = "remark.hull_line_unprompted";
+
+        /// <summary>Radio hint tier 1: she thinks aloud about the list existing.</summary>
+        public const string RemarkRadioWroteDown = "remark.radio.wrote_down";
+
+        /// <summary>Radio hint tier 3: she reads the list out, and reasons out loud, incompletely.</summary>
+        public const string RemarkRadioReadsList = "remark.radio.reads_list";
+
+        /// <summary>
+        /// How many lines a remark is said in. One means the key is "narration." + id; more means
+        /// "narration." + id + ".1", ".2" and so on, shown as a sequence.
+        /// </summary>
+        public static int RemarkLines(string id)
+        {
+            switch (id)
+            {
+                case RemarkRadioReadsList:
+                    return 2;
+                default:
+                    return 1;
+            }
+        }
 
         // --- Gates (travel points) ----------------------------------------------------------
 

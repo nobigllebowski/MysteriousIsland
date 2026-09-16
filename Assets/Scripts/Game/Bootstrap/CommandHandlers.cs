@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using ForgottenIsle.Core.Commands;
 using ForgottenIsle.Core.Logging;
 using ForgottenIsle.Core.Primitives;
@@ -647,6 +648,13 @@ namespace ForgottenIsle.Game.Bootstrap
                 return ResultCode.InvalidArgument;
             }
 
+            // Only a remark may stand in for the marker's line. Anything else here is a typo that
+            // would render as #narration.something# on the one occasion it fires.
+            if (!string.IsNullOrEmpty(command.SaidAs) && ContentIds.KindOf(command.SaidAs) != ContentKind.Remark)
+            {
+                return ResultCode.InvalidArgument;
+            }
+
             return _states.Current == GameStateId.InGame
                 ? ResultCode.Ok
                 : ResultCode.NotAllowedInState;
@@ -659,7 +667,8 @@ namespace ForgottenIsle.Game.Bootstrap
 
             if (_signals != null)
             {
-                _signals.Publish(new NarrationSignal(NarrationPrefix + command.MarkerId));
+                var said = string.IsNullOrEmpty(command.SaidAs) ? command.MarkerId : command.SaidAs;
+                _signals.Publish(new NarrationSignal(NarrationPrefix + said));
             }
         }
     }
@@ -1181,10 +1190,27 @@ namespace ForgottenIsle.Game.Bootstrap
         /// <inheritdoc />
         public void Execute(in RemarkCommand command)
         {
-            if (_signals != null)
+            if (_signals == null)
+            {
+                return;
+            }
+
+            var lines = ContentIds.RemarkLines(command.RemarkId);
+            if (lines <= 1)
             {
                 _signals.Publish(new NarrationSignal(InspectHandler.NarrationPrefix + command.RemarkId));
+                return;
             }
+
+            // A remark of several lines is said as a sequence, keyed ".1", ".2" ... so each line
+            // gets its own time on screen rather than one long card.
+            var keys = new string[lines];
+            for (var i = 0; i < lines; i++)
+            {
+                keys[i] = InspectHandler.NarrationPrefix + command.RemarkId + "." + (i + 1).ToString(CultureInfo.InvariantCulture);
+            }
+
+            _signals.Publish(new NarrationSequenceSignal(keys));
         }
     }
 }

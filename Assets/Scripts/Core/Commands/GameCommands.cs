@@ -102,10 +102,19 @@ namespace ForgottenIsle.Core.Commands
         /// <summary>A <c>ContentIds</c> marker id.</summary>
         public readonly string MarkerId;
 
+        /// <summary>
+        /// A <c>ContentIds</c> remark id whose line is said instead of the marker's own, or null.
+        /// The hull line's timed fallback: Nadia says it unprompted, in different words, and the
+        /// notebook entry still writes itself.
+        /// </summary>
+        public readonly string SaidAs;
+
         /// <param name="markerId">A <c>ContentIds</c> marker id.</param>
-        public InspectCommand(string markerId)
+        /// <param name="saidAs">A remark id said instead of the marker's line, or null for the marker's own.</param>
+        public InspectCommand(string markerId, string saidAs = null)
         {
             MarkerId = markerId;
+            SaidAs = saidAs;
         }
     }
 

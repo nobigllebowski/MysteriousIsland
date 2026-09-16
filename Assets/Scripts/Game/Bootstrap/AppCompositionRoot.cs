@@ -11,6 +11,7 @@ using ForgottenIsle.Game.Localization;
 using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Radio;
+using ForgottenIsle.Game.Hints;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
@@ -79,6 +80,11 @@ namespace ForgottenIsle.Game.Bootstrap
             var slate = new SlateDirector(progress, radio, signals);
             var interactions = new InteractionSystem(progress, inventory, dispatcher, signals, log);
 
+            // The hint timers (design §3.5): count play seconds, say each rung through the
+            // dispatcher, forget everything on entering the world. Not a participant on purpose
+            // (ADR-0025).
+            var hints = new HintDirector(session, states, progress, radio, dispatcher, signals, log);
+
             // ADR-0011: every phase adds its participant in the same pull
             // request that adds its system. Registration order is capture and restore order, and the
             // session must precede the player: the player section is meaningless without the run that
@@ -119,7 +125,7 @@ namespace ForgottenIsle.Game.Bootstrap
             dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));
             dispatcher.Register<SqueezeMicCommand>(new SqueezeMicHandler(states, radio, signals));
 
-            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, slate, participants);
+            return new GameContext(log, signals, clock, localization, states, dispatcher, session, sceneLoader, zones, slots, input, progress, interactions, inventory, radio, autosave, recordKeeper, slate, hints, participants);
         }
 
         /// <summary>

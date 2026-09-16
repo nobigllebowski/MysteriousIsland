@@ -16,6 +16,7 @@ using ForgottenIsle.Game.Input;
 using ForgottenIsle.Game.Interaction;
 using ForgottenIsle.Game.Items;
 using ForgottenIsle.Game.Radio;
+using ForgottenIsle.Game.Hints;
 using ForgottenIsle.Game.Progress;
 using ForgottenIsle.Game.Saves;
 using ForgottenIsle.Game.Scenes;
@@ -70,6 +71,7 @@ namespace ForgottenIsle.Game.Bootstrap
             AutosaveDirector autosave,
             RecordKeeper recordKeeper,
             SlateDirector slate,
+            HintDirector hints,
             IReadOnlyList<ISaveParticipant> saveParticipants)
         {
             if (log == null)
@@ -144,6 +146,7 @@ namespace ForgottenIsle.Game.Bootstrap
             Autosave = autosave;
             RecordKeeper = recordKeeper;
             Slate = slate;
+            Hints = hints;
             Input = input;
 
             // Copied defensively. The participant list is what a save iterates; handing out the
@@ -213,6 +216,9 @@ namespace ForgottenIsle.Game.Bootstrap
 
         /// <summary>The Field Slate's director: derives and announces the notebook. Null tolerated.</summary>
         public SlateDirector Slate { get; }
+
+        /// <summary>The hint ladders' timer: says each rung through the dispatcher. Null tolerated.</summary>
+        public HintDirector Hints { get; }
 
         /// <summary>
         /// Player input, already gated on the state machine so it reads as centred outside

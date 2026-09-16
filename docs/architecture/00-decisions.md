@@ -552,6 +552,41 @@ gameplay, and replayable in a test.
 
 ---
 
+## ADR-0025 — Hint timers are forgotten on entering the world, and are not a save participant
+
+**Status.** Accepted. Implemented as `Core.Hints.HintLadder`, `Core.Hints.HintLadders`,
+`Game.Hints.HintDirector`, and `InspectCommand.SaidAs`.
+
+**Decision.** The prologue's hint ladders (design §2:40 FAILURE, §3.5) are timed against the
+session's play seconds — the same figure the save header shows, advanced only while the machine
+is `InGame` — and each rung is said through the dispatcher as a `RemarkCommand`, or an
+`InspectCommand` said as a remark when the design has the notebook entry write itself. The timer
+resets to zero on the actions the design lists. Entering the world, by a new run or a load, forgets
+every ladder: rungs said, seconds counted, running or not. The director therefore holds no state
+that is meaningful across a save and **is not an `ISaveParticipant`**. This is the one deliberate
+exception to ADR-0011 ("every new system implements `ISaveParticipant` in the same PR").
+
+**Why.** The design is explicit: *"The hint timers reset to zero on load. A player must never come
+back to an escalated hint state and be told the answer they were about to get themselves."* A
+participant that captured the ladders would exist only to be ignored on restore. ADR-0011's
+purpose is to stop persistence being retrofitted; a system whose persistence is specified as
+"none" is not retrofitting anything, and saying so here is what keeps the rule honest rather than
+mechanical. The ladders start on entry from what the record already says (the line is inspected;
+the set works; the voice is heard), so nothing about them can be lost.
+
+**Consequence.**
+- Play seconds, not sim hours, not frames: CONFLICT-6 (the world clock's scale) does not touch
+  hint timing.
+- A coarse drag is detected as accumulated needle travel past 100 kHz, because the radio signal
+  reports positions, not gestures. Slow fine tuning back and forth will also reset the ladder
+  eventually, which is acceptable: the player is engaging.
+- A rung already said is not said again after a reset; only a load makes it sayable again.
+- Tiers that need a mechanism the game does not have (tier 2's inspect view, tier 4's auto-sweep)
+  are absent, not approximated with a line.
+- `InspectCommand.SaidAs` accepts only a `ContentKind.Remark` id; the handler refuses anything else.
+
+---
+
 ---
 
 ## Open items — tracked, not resolved

@@ -9,6 +9,29 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — hint escalation: the timers (ADR-0025)
+
+The design's "never hard-block, never nag" rule, as a system. `Core.Hints.HintLadder` is the
+arithmetic: rungs in ascending seconds, each said once in order, the timer reset to zero by any
+meaningful action, one rung per call so a long stall never says three lines at once. Engine-free
+and pinned by tests. `Game.Hints.HintDirector` counts the session's play seconds between ticks
+(a pause or a menu counts nothing) and says each rung through the dispatcher.
+
+Two ladders exist. The hull line's fallback: never aligned, at 6:00 in the Ribcage Nadia says
+*"That trawler's stem is dead on the schooner's. I keep looking at it."* and the Slate entry
+writes itself — an `InspectCommand` said as a remark (`SaidAs`), which only a remark id may be.
+The radio's ladder (§3.5): from power-up, tier 1 at 3:00 (*"Whoever this was, they wrote down the
+ones that worked."*) and tier 3 at 10:00 (she reads the list out, all of it, and stops on the last
+line without tuning it — two lines, said as a sequence). Reset by a coarse drag (needle travel
+past 100 kHz), reading the taped list, taking a brass tag, or locking onto either false positive;
+stopped by the voice. Entering the world — new run or load — forgets everything, which is the
+design's "timers reset to zero on load"; so the director holds nothing worth saving and is not a
+participant, the one deliberate exception to ADR-0011, recorded as ADR-0025.
+
+**Not built:** tier 2 (the set turns itself over in inspect view; no inspect view exists) and
+tier 4 (the dial sweeps on its own; the needle cannot yet move by itself). Neither is faked with
+words. Tests: `HintTests` (16 cases). 360 written, none executed.
+
 ### Added — the partial line: "Three of them. Try the far end."
 
 The design's reward for aligning the hulls from the wrong one (§2:40 FAILURE). Stand at the bow
