@@ -243,7 +243,10 @@ namespace ForgottenIsle.Tests.EditMode
                 }
 
                 Assert.That(w.Said, Does.Contain("narration.fire.blew_out"));
-                Assert.That(w.Said[w.Said.Count - 1], Is.EqualTo("narration." + ContentIds.RemarkFireWind), "Three blow-outs: it's the wind.");
+                // The hint fires inside the use, before the handler narrates the blow-out itself, so
+                // her line lands one before the last. Order is not the point; that it was said is.
+                Assert.That(w.Said, Does.Contain("narration." + ContentIds.RemarkFireWind), "Three blow-outs: it's the wind.");
+                Assert.That(w.Said.IndexOf("narration." + ContentIds.RemarkFireWind), Is.GreaterThan(w.Said.IndexOf("narration.fire.blew_out")));
 
                 // The panel: the other authored solution.
                 w.Do(new UseItemCommand(ItemIds.FibreglassPanel, ContentIds.FireSiteOpenA));

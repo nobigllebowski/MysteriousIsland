@@ -124,7 +124,7 @@ namespace ForgottenIsle.Game.Audio
             var clip = Clip(AmbientPrefix + Suffix(zoneId), "ambient_" + Suffix(zoneId));
             if (clip == null)
             {
-                _ambient.Stop();
+                Silence(_ambient);
                 return;
             }
 
@@ -178,8 +178,10 @@ namespace ForgottenIsle.Game.Audio
 
             if (signal.From == GameStateId.Loading)
             {
-                // Entering the world: what already burns, crackles; a dial is never open on entry.
-                _playSeconds = 0d;
+                // Entering the world -- a new run, a load, or a zone crossing: what already burns,
+                // crackles; a dial is never open on entry. The pressure cycle's clock is not
+                // touched here: it is one continuous breath from the first frame of the run, and a
+                // zone crossing is not a new run (it is reset on Replaced, below).
                 SetFire(_fireService != null && _fireService.IsLit);
                 SetRadio(_radio != null && _radio.IsOpen, _radio != null ? _radio.Mhz : 0f);
                 return;
@@ -243,8 +245,8 @@ namespace ForgottenIsle.Game.Audio
 
             if (!open)
             {
-                _hiss.Stop();
-                _carrier.Stop();
+                Silence(_hiss);
+                Silence(_carrier);
                 return;
             }
 
@@ -320,7 +322,7 @@ namespace ForgottenIsle.Game.Audio
 
             if (!lit)
             {
-                _fire.Stop();
+                Silence(_fire);
                 return;
             }
 
@@ -354,6 +356,11 @@ namespace ForgottenIsle.Game.Audio
         {
             switch (signal.Kind)
             {
+                case ProgressChangeKind.Replaced:
+                    // A new run, or a load: the breath starts again from its first frame.
+                    _playSeconds = 0d;
+                    break;
+
                 case ProgressChangeKind.Inspected:
                     PlayEffect("inspect");
                     break;
@@ -504,6 +511,22 @@ namespace ForgottenIsle.Game.Audio
             {
                 source.Pause();
             }
+        }
+
+        /// <summary>
+        /// Stops a loop on purpose and forgets its clip, so a later <see cref="Start"/> after a
+        /// pause cannot mistake it for a fresh loop and play it: a closed dial must stay silent
+        /// across a pause, and a fire put out in the last run must not crackle in the next.
+        /// </summary>
+        private static void Silence(AudioSource source)
+        {
+            if (source == null)
+            {
+                return;
+            }
+
+            source.Stop();
+            source.clip = null;
         }
 
         /// <summary>Plays a loop, or unpauses it where it stopped. Nothing without a clip.</summary>

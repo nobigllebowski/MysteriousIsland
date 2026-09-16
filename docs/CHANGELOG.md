@@ -9,6 +9,16 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — from a review of the audio and the chalk
+
+- **Loops stopped on purpose stay stopped across a pause.** A closed dial's hiss and a put-out
+  fire's crackle came back on resume, because a stopped source looked like a fresh one. An
+  intentional stop now forgets its clip.
+- **The pressure cycle is one breath from the first frame of a run.** It restarted on every zone
+  crossing; now only a new run or a load restarts it.
+- The walkthrough's wind-line assertion checked order where order is not the point.
+- One dressed-cube helper for every inspectable, the chalk included.
+
 ### Added — 5240 in chalk, by firelight
 
 The radio puzzle's second redundant source (§3.1): on the trawler's plate beside the crate, in

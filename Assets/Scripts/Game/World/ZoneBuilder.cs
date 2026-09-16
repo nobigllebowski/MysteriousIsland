@@ -1106,14 +1106,12 @@ namespace ForgottenIsle.Game.World
             // The chalk on the plate beside the crate (§3.1, redundant source 2): 5240 and a tally
             // of five-bar gates, half rained off. Readable by firelight only, so it is offered only
             // while a fire burns; in flat grey daylight it is not a thing the eye finds.
-            var chalkMark = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            chalkMark.name = "Inspectable " + ContentIds.MarkerChalkFrequency;
-            StripCollider(chalkMark);
-            chalkMark.transform.SetParent(root, false);
-            chalkMark.transform.position = hull.TransformPoint(new Vector3(1.55f, 1.3f, 1.42f));
-            chalkMark.transform.rotation = hull.rotation * Quaternion.Euler(-8f, 0f, 0f);
-            chalkMark.transform.localScale = new Vector3(0.42f, 0.3f, 0.012f);
-            Dress(chalkMark.GetComponent<MeshRenderer>(), CreatePropMaterial(new Color(0.80f, 0.79f, 0.74f), "ChalkFrequency"));
+            var chalkMark = DressedCube(
+                root, "Inspectable " + ContentIds.MarkerChalkFrequency,
+                hull.TransformPoint(new Vector3(1.55f, 1.3f, 1.42f)),
+                hull.rotation * Quaternion.Euler(-8f, 0f, 0f),
+                new Vector3(0.42f, 0.3f, 0.012f),
+                new Color(0.80f, 0.79f, 0.74f));
             var firelit = chalkMark.AddComponent<FirelitMark>();
             firelit.Configure(ContentIds.MarkerChalkFrequency, "interactable.chalk_frequency", fire);
             if (interactions != null)
@@ -1327,15 +1325,7 @@ namespace ForgottenIsle.Game.World
             Transform root, InteractionSystem interactions,
             string contentId, string nameKey, Vector3 position, Quaternion rotation, Vector3 scale, Color color)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "Inspectable " + contentId;
-            StripCollider(go);
-            go.transform.SetParent(root, false);
-            go.transform.position = position;
-            go.transform.rotation = rotation;
-            go.transform.localScale = scale;
-            Dress(go.GetComponent<MeshRenderer>(), CreatePropMaterial(color, "Inspectable " + contentId));
-
+            var go = DressedCube(root, "Inspectable " + contentId, position, rotation, scale, color);
             var marker = go.AddComponent<AncientMarker>();
             marker.Configure(contentId, nameKey, "narration." + contentId);
 
@@ -1343,6 +1333,20 @@ namespace ForgottenIsle.Game.World
             {
                 interactions.Register(marker);
             }
+        }
+
+        /// <summary>A shaped, coloured cube with no collider: the body every inspectable is built on.</summary>
+        private static GameObject DressedCube(Transform root, string name, Vector3 position, Quaternion rotation, Vector3 scale, Color color)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            StripCollider(go);
+            go.transform.SetParent(root, false);
+            go.transform.position = position;
+            go.transform.rotation = rotation;
+            go.transform.localScale = scale;
+            Dress(go.GetComponent<MeshRenderer>(), CreatePropMaterial(color, name));
+            return go;
         }
 
         private static void CreatePickup(
