@@ -65,11 +65,18 @@ namespace ForgottenIsle.Core.Progress
         public readonly IReadOnlyList<SlateLine> People;
         public readonly IReadOnlyList<SlateLine> Unresolved;
 
-        public SlateContents(IReadOnlyList<SlateLine> observed, IReadOnlyList<SlateLine> people, IReadOnlyList<SlateLine> unresolved)
+        /// <summary>
+        /// The "Next:" line at the head of the page: the objective, at puzzle granularity, or
+        /// empty. The design's rule for a player who quit mid-puzzle (§"Quit mid-puzzle").
+        /// </summary>
+        public readonly string NextKey;
+
+        public SlateContents(IReadOnlyList<SlateLine> observed, IReadOnlyList<SlateLine> people, IReadOnlyList<SlateLine> unresolved, string nextKey = null)
         {
             Observed = observed;
             People = people;
             Unresolved = unresolved;
+            NextKey = nextKey ?? string.Empty;
         }
 
         /// <summary>The number on the UNRESOLVED tab. The entire quest system.</summary>
@@ -172,6 +179,14 @@ namespace ForgottenIsle.Core.Progress
 
         public static SlateContents Build(WorldProgress progress, SlateFacts facts)
         {
+            return Build(progress, facts, null);
+        }
+
+        /// <param name="progress">The record.</param>
+        /// <param name="facts">What the radio knows.</param>
+        /// <param name="nextKey">The objective's localization key, written at the head of the page as "Next:".</param>
+        public static SlateContents Build(WorldProgress progress, SlateFacts facts, string nextKey)
+        {
             var observed = new List<SlateLine>(12);
             var people = new List<SlateLine>(3);
             var unresolved = new List<SlateLine>(4);
@@ -271,7 +286,7 @@ namespace ForgottenIsle.Core.Progress
                 unresolved.Add(new SlateLine("slate.unresolved.who_cut_the_vine", false));
             }
 
-            return new SlateContents(observed, people, unresolved);
+            return new SlateContents(observed, people, unresolved, nextKey);
         }
     }
 }

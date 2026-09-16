@@ -9,6 +9,14 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the Slate's "Next:" line
+
+The design's rule for a player who comes back mid-puzzle (§"Quit mid-puzzle"): the notebook says
+what she was about to do, at the puzzle's granularity. `SlateContents.NextKey` carries the
+objective key; `SlateDirector` republishes on `ObjectiveChangedSignal`; `SlateScreen` writes it in
+her hand above the entries, on every tab, hidden when empty. One test, and the walkthrough checks
+the line matches the objective.
+
 ### Fixed — from a review of the audio and the chalk
 
 - **Loops stopped on purpose stay stopped across a pause.** A closed dial's hiss and a put-out

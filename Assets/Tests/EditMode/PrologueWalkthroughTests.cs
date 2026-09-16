@@ -304,6 +304,7 @@ namespace ForgottenIsle.Tests.EditMode
                 Assert.That(w.Objective, Is.EqualTo("objective.enter_fernmaw"));
 
                 var slate = w.Slate.Current();
+                Assert.That(slate.NextKey, Is.EqualTo(w.Objective), "The notebook's Next: line is the objective.");
                 Assert.That(HasTitle(slate, "slate.observed.radio.working_cord"), Is.True, "Which cells and which conductor.");
                 Assert.That(HasTitle(slate, "slate.people.the_voice"), Is.True);
                 Assert.That(slate.OpenQuestions, Is.EqualTo(4), "The line, the lantern, the gates, why won't she answer.");

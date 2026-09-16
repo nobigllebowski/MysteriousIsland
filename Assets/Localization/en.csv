@@ -310,6 +310,7 @@ ui.slate.tab.people,PEOPLE
 ui.slate.tab.unresolved,UNRESOLVED
 ui.slate.empty,Nothing written here yet.
 ui.slate.hint,TAP THE PAGE TO CLOSE
+ui.slate.next,Next:
 interactable.hull_line,Six Hulls
 narration.marker.hull_line,"Six hulls, one line, forty metres off the break. Deliberate? Or I'm pattern-matching because I'm concussed. Check again when the light changes."
 slate.observed.marker.hull_line,"SIX HULLS, ONE LINE"

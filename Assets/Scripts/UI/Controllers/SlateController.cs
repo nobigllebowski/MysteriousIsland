@@ -20,6 +20,8 @@ namespace ForgottenIsle.UI.Controllers
     /// </remarks>
     public sealed class SlateController : IDisposable
     {
+        private static readonly LocKey NextLabelKey = new LocKey("ui.slate.next");
+
         private readonly UIService _ui;
         private readonly SlateScreen _screen;
         private readonly ILocalizedText _loc;
@@ -96,6 +98,10 @@ namespace ForgottenIsle.UI.Controllers
             Feed(SlateScreen.Observed, contents.Observed);
             Feed(SlateScreen.People, contents.People);
             Feed(SlateScreen.Unresolved, contents.Unresolved);
+
+            _screen.SetNext(string.IsNullOrEmpty(contents.NextKey)
+                ? string.Empty
+                : _loc.Get(NextLabelKey) + " " + _loc.Get(new LocKey(contents.NextKey)));
 
             var open = contents.OpenQuestions;
             if (open != _openQuestions)

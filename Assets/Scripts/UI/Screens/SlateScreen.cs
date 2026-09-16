@@ -43,6 +43,9 @@ namespace ForgottenIsle.UI.Screens
 
         private readonly List<Button> _tabs = new List<Button>(3);
         private readonly Label[] _badges = new Label[3];
+        private Label _next;
+        private string _nextText = string.Empty;
+        private static readonly LocKey NextKey = new LocKey("ui.slate.next");
         private readonly List<string>[] _titles = { new List<string>(), new List<string>(), new List<string>() };
         private readonly List<string>[] _bodies = { new List<string>(), new List<string>(), new List<string>() };
         private readonly List<bool>[] _resolved = { new List<bool>(), new List<bool>(), new List<bool>() };
@@ -105,6 +108,24 @@ namespace ForgottenIsle.UI.Screens
         }
 
         /// <inheritdoc />
+        /// <summary>
+        /// Writes the "Next:" line at the head of the page. Already-localized; empty hides it.
+        /// </summary>
+        /// <remarks>
+        /// The design's rule for a player who comes back mid-puzzle: the notebook says what she
+        /// was about to do, at the puzzle's granularity, so the answer she was about to get is
+        /// not handed over and the thread is not lost either.
+        /// </remarks>
+        public void SetNext(string text)
+        {
+            _nextText = text ?? string.Empty;
+            if (_next != null)
+            {
+                _next.text = _nextText;
+                _next.style.display = _nextText.Length == 0 ? DisplayStyle.None : DisplayStyle.Flex;
+            }
+        }
+
         protected override void Build(VisualElement root)
         {
             root.style.flexDirection = FlexDirection.Row;
@@ -141,6 +162,16 @@ namespace ForgottenIsle.UI.Screens
             hint.style.marginBottom = Theme.Space16;
             hint.pickingMode = PickingMode.Ignore;
             page.Add(hint);
+
+            // "Next:" in her hand, above the entries, on every tab.
+            _next = Typography.Body(_nextText);
+            _next.name = "slate-next";
+            _next.style.color = Ink;
+            _next.style.unityFontStyleAndWeight = FontStyle.Italic;
+            _next.style.marginBottom = Theme.Space16;
+            _next.style.display = _nextText.Length == 0 ? DisplayStyle.None : DisplayStyle.Flex;
+            _next.pickingMode = PickingMode.Ignore;
+            page.Add(_next);
 
             _page = new ScrollView(ScrollViewMode.Vertical) { name = "slate-lines" };
             _page.style.flexGrow = 1f;

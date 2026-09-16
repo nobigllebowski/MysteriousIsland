@@ -50,6 +50,14 @@ namespace ForgottenIsle.Tests.EditMode
         }
 
         [Test]
+        public void TheNextLine_IsTheObjective_AndEmptyWhenNoneIsGiven()
+        {
+            var progress = new WorldProgress();
+            Assert.That(Slate.Build(progress, NoRadio).NextKey, Is.Empty);
+            Assert.That(Slate.Build(progress, NoRadio, "objective.fix_the_set").NextKey, Is.EqualTo("objective.fix_the_set"));
+        }
+
+        [Test]
         public void HowTheSetCameToWork_IsFourBodies()
         {
             var progress = new WorldProgress();

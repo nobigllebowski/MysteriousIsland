@@ -20,7 +20,7 @@ namespace ForgottenIsle.Game.Progress
         private readonly ProgressService _progress;
         private readonly RadioService _radio;
         private readonly SignalBus _signals;
-        private readonly List<IDisposable> _subscriptions = new List<IDisposable>(2);
+        private readonly List<IDisposable> _subscriptions = new List<IDisposable>(3);
 
         /// <param name="progress">The record.</param>
         /// <param name="radio">The set. Null reads as a radio never found.</param>
@@ -38,12 +38,16 @@ namespace ForgottenIsle.Game.Progress
 
             _subscriptions.Add(signals.Subscribe<ProgressChangedSignal>(_ => Publish()));
             _subscriptions.Add(signals.Subscribe<RadioChangedSignal>(OnRadioChanged));
+
+            // The "Next:" line is the objective, which the fire and the radio move without a
+            // progress change; its own signal is the cheapest way to keep the page current.
+            _subscriptions.Add(signals.Subscribe<ObjectiveChangedSignal>(_ => Publish()));
         }
 
         /// <summary>The notebook as it stands.</summary>
         public SlateContents Current()
         {
-            return Slate.Build(_progress.Progress, Facts());
+            return Slate.Build(_progress.Progress, Facts(), _progress.ObjectiveKey);
         }
 
         /// <summary>Announces the notebook now. Called on every change, and to prime the HUD.</summary>
