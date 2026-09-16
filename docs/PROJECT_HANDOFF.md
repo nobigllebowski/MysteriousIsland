@@ -115,7 +115,8 @@ survive); tap rocks with the multitool held (knock, then a ring at a pale one; T
 fibre and wood on open sand and strike (it must blow out and the kit stay), then in the lee of
 the near hull (it must light, the point light come on, FIRE appear in the Slate, and an autosave
 write); lay wet wood by it and wait ninety seconds for dry wood to return to the tray. Leave a
-laid kit alone for six minutes and she should pick up the chert herself.
+laid kit alone for six minutes and she should pick up the chert herself. Use the multitool on
+the rope where it lies: it must say "that does nothing here" and the rope must stay.
 
 The things most likely to be wrong, in order: a shader that does not compile (magenta); a UI
 Toolkit API used with the wrong signature in `RadioPanel` or `SlateScreen`; a pointer-capture

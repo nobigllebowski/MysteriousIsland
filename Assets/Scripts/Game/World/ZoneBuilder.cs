@@ -804,12 +804,14 @@ namespace ForgottenIsle.Game.World
                 new Vector3(0f, 0.25f, 0f), new Vector3(0.28f, 0.5f, 0.28f), new Vector3(0f, 45f, 0f));
             Slab(flame, CreateMaterial(new Color(1.0f, 0.85f, 0.35f), "FlameCore"), "Core",
                 new Vector3(0f, 0.15f, 0f), new Vector3(0.16f, 0.3f, 0.16f), Vector3.zero);
-            var light = flame.gameObject.AddComponent<Light>();
+            var lamp = new GameObject("Light");
+            lamp.transform.SetParent(flame, false);
+            lamp.transform.localPosition = new Vector3(0f, 0.6f, 0f);
+            var light = lamp.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = new Color(1.0f, 0.62f, 0.28f);
             light.range = 9f;
             light.intensity = 2.2f;
-            light.transform.localPosition = new Vector3(0f, 0.6f, 0f);
             flame.gameObject.SetActive(false);
 
             var component = site.gameObject.AddComponent<FireSite>();

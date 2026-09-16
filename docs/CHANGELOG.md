@@ -9,6 +9,23 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the decision that isn't flagged (§27:00)
+
+The transmission sequence now ends on the consequence of the repair: with the torch's cells in
+the set she holds the recorder to the speaker and *"Record it. Record it properly this time."*;
+with the recorder's cells in the set, *"I heard it. I didn't capture it. I've done that before."*
+and she writes it down by hand. Neither is announced. The Slate already carried the scar; this is
+the moment it is made. Two tests.
+
+### Fixed — a use on a pickup no longer takes it off the shore
+
+`InteractionSystem.Activate` called the target's `OnInteracted` after any successful command,
+including an aimed use the target refused ("that does nothing here" is a success as a command).
+Using the multitool on the rope lying on the sand would have hidden the rope as if taken. Now the
+target's own verb completing is the only thing that calls it; a target that changes under a use
+does so inside `Use`. No EditMode test: interactables are MonoBehaviours and the suite builds no
+GameObjects; the editor checklist covers it.
+
 ### Added — the dry-fire problem (ADR-0026)
 
 The design's first real puzzle (§5:00 → §8:00): spark, tinder, shelter, and she is missing all

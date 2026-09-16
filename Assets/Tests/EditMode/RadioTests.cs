@@ -619,5 +619,44 @@ namespace ForgottenIsle.Tests.EditMode
             Assert.That(restored.IsSweeping, Is.False, "A run resumes with the set put down (ADR-0025).");
             Assert.That(restored.IsWorking, Is.True);
         }
+
+        // --- the decision that isn't flagged (§27:00) ------------------------------------------
+
+        private static string LastLineOfTheTransmission(string powerItem)
+        {
+            var signals = new SignalBus();
+            var inventory = new InventoryService(signals, null);
+            var radio = new RadioService(signals, inventory, null);
+            RadioFault cleared;
+            radio.Repair.TryApply(powerItem, out cleared);
+            radio.Repair.TryApply(ItemIds.CopperSpring, out cleared);
+            radio.Repair.TryApply(ItemIds.Multitool, out cleared);
+            Assert.That(radio.IsWorking, Is.True, "Test setup.");
+
+            var states = new GameStateMachine(null, signals);
+            states.TryTransition(GameStateId.MainMenu);
+            states.TryTransition(GameStateId.Loading);
+            states.TryTransition(GameStateId.InGame);
+            var dispatcher = new CommandDispatcher(null);
+            dispatcher.Register<TuneRadioCommand>(new TuneRadioHandler(states, radio, signals));
+
+            string last = null;
+            signals.Subscribe<NarrationSequenceSignal>(s => last = s.LineKeys[s.LineKeys.Count - 1]);
+            radio.Open();
+            Assert.That(dispatcher.Dispatch(new TuneRadioCommand(5.24f)).Success, Is.True);
+            return last;
+        }
+
+        [Test]
+        public void TheTorchsCells_LetHerRecordItProperly()
+        {
+            Assert.That(LastLineOfTheTransmission(ItemIds.DeadTorch), Is.EqualTo(TuneRadioHandler.DecisionRecordedKey));
+        }
+
+        [Test]
+        public void TheRecordersCells_LeaveHerATranscript()
+        {
+            Assert.That(LastLineOfTheTransmission(ItemIds.FieldRecorder), Is.EqualTo(TuneRadioHandler.DecisionTranscriptKey));
+        }
     }
 }

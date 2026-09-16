@@ -395,7 +395,15 @@ namespace ForgottenIsle.Game.Interaction
                 return false;
             }
 
-            target.OnInteracted(this);
+            // OnInteracted is the target's own verb completing -- a pickup leaving the world, a
+            // discovery taken. An aimed use is not that verb: using the multitool on a rope on the
+            // sand "succeeded" as a command (the handler answered "that does nothing") and would
+            // have hidden the rope as if it had been taken. A target that changes under a use
+            // does so inside Use, where it knows what happened.
+            if (string.IsNullOrEmpty(held))
+            {
+                target.OnInteracted(this);
+            }
 
             // The world may have changed under the prompt -- a taken discovery is gone, a gate now
             // leads somewhere. Re-pick next frame rather than leaving a stale offer on screen.

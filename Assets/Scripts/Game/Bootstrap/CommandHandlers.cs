@@ -1074,8 +1074,21 @@ namespace ForgottenIsle.Game.Bootstrap
             // THE TRANSMISSION. The first hearing, the forty-four seconds of her reading the list,
             // and Nadia working it out -- composed here, in the game, because a story beat is
             // content and content is not the HUD's to assemble. The HUD only paces it.
-            signals.Publish(new NarrationSequenceSignal(TransmissionKeys));
+            //
+            // And then the decision that isn't flagged (§27:00): whose cells went into the set at
+            // the repair decides whether she can record this properly or only write it down. The
+            // Slate already carries the scar; this is the moment it is made, in her words.
+            var keys = new string[TransmissionKeys.Length + 1];
+            System.Array.Copy(TransmissionKeys, keys, TransmissionKeys.Length);
+            keys[TransmissionKeys.Length] = radio.Repair.UsedRecorderCells ? DecisionTranscriptKey : DecisionRecordedKey;
+            signals.Publish(new NarrationSequenceSignal(keys));
         }
+
+        /// <summary>She re-records the transmission: the recorder still has its cells.</summary>
+        public const string DecisionRecordedKey = "narration.radio.decision.recorded";
+
+        /// <summary>She writes it down by hand: the recorder's cells are in the set.</summary>
+        public const string DecisionTranscriptKey = "narration.radio.decision.transcript";
 
         /// <summary>The voice, in order: first hearing, five lines of transmission, four of deduction.</summary>
         private static readonly string[] TransmissionKeys =
