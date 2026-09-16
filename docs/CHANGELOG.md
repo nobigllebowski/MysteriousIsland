@@ -9,6 +9,12 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — the recorder and the flame: "No."
+
+§8:00's un-failable guard: the recorder held to a burning fire is refused with one word, and
+stays in hand. On cold sand it means nothing. Its drying beside the fire is still not built (it
+ships dry). One test.
+
 ### Added — the hook: "That's not the sea."
 
 The final sixty seconds (§2), as far as they can be built without a cut to black. Reading the cut

@@ -56,7 +56,10 @@ namespace ForgottenIsle.Core.Fire
         Lit = 15,
 
         /// <summary>Grass offered where fibre is already laid: the better tinder stays.</summary>
-        GrassPointless = 16
+        GrassPointless = 16,
+
+        /// <summary>The recorder held to a burning fire: she stops her own hand. "No." Un-failable.</summary>
+        RecorderRefused = 17
     }
 
     /// <summary>
@@ -169,6 +172,12 @@ namespace ForgottenIsle.Core.Fire
 
                 case ItemIds.Kelp:
                     return FireAct.KelpRefused;
+
+                case ItemIds.FieldRecorder:
+                    // §8:00: drop it in the flame and Nadia stops her own hand. The mistake is
+                    // impossible, and the player gets to feel they avoided it. Its drying beside
+                    // the fire is not built: the recorder ships dry (ADR-0026).
+                    return IsLit ? FireAct.RecorderRefused : FireAct.Nothing;
 
                 case ItemIds.ChertNodule:
                     return Strike(hasMultitool);
@@ -302,6 +311,7 @@ namespace ForgottenIsle.Core.Fire
             {
                 case FireAct.PanelPointless:
                 case FireAct.GrassPointless:
+                case FireAct.RecorderRefused:
                 case FireAct.AlreadyLit:
                 case FireAct.WetWoodRefused:
                 case FireAct.KelpRefused:
@@ -349,6 +359,7 @@ namespace ForgottenIsle.Core.Fire
                 case FireAct.BlewOut: return "narration.fire.blew_out";
                 case FireAct.Lit: return "narration.fire.lit";
                 case FireAct.GrassPointless: return "narration.fire.grass_pointless";
+                case FireAct.RecorderRefused: return "narration.fire.recorder_no";
                 default: return null;
             }
         }

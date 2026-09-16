@@ -122,6 +122,22 @@ namespace ForgottenIsle.Tests.EditMode
         }
 
         [Test]
+        public void TheRecorder_HeldToTheFlame_SheStopsHerOwnHand()
+        {
+            var site = new FireSiteState("lee", true);
+            Assert.That(site.Apply(ItemIds.FieldRecorder, true), Is.EqualTo(FireAct.Nothing), "Cold sand: nothing to refuse.");
+
+            site.Apply(ItemIds.PolyFibre, true);
+            site.Apply(ItemIds.DriftwoodDry, true);
+            site.Apply(ItemIds.ChertNodule, true);
+
+            Assert.That(site.Apply(ItemIds.FieldRecorder, true), Is.EqualTo(FireAct.RecorderRefused));
+            Assert.That(FireRules.IsRefusal(FireAct.RecorderRefused), Is.True, "Un-failable: the recorder stays in hand.");
+            Assert.That(FireRules.Consumes(FireAct.RecorderRefused), Is.False);
+            Assert.That(FireRules.NarrationKey(FireAct.RecorderRefused), Is.EqualTo("narration.fire.recorder_no"));
+        }
+
+        [Test]
         public void WhatIsConsumed_IsWhatWasLaid()
         {
             Assert.That(FireRules.Consumes(FireAct.FibreLaid), Is.True);
