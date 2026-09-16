@@ -9,6 +9,16 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Added — PlayMode tests for the world half of the puzzles
+
+`WorldPuzzleTests`: the Ribcage builds three fire sites, fifteen rocks (three chert), the
+proximity remark and the sightline; a fire lit in the lee through the command layer reaches the
+real `FireSite`, shows its flame, marks the record, and still burns after leaving and returning
+(and the fibre does not grow back); basalt knocks and chert rings, offers TAKE and is remembered;
+walking up to the chert says the line once; standing at the bow and looking down the beach within
+four degrees records the line and draws the chalk. Five cases; self-skip without the scenes.
+`Sightline` exposes `AxisYaw` and `StandAt` for them. 422 written, none executed.
+
 ### Added — the prologue walked end to end, as a test
 
 `PrologueWalkthroughTests`: the stone, the line, the wrack, the fire the wrong way and then

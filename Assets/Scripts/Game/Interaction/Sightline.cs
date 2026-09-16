@@ -102,6 +102,12 @@ namespace ForgottenIsle.Game.Interaction
         /// <summary>True while the player is standing right and looking right.</summary>
         public bool IsAligned => _aligned;
 
+        /// <summary>The heading that aligns, in the rig's compass degrees. For tests and the overlay.</summary>
+        public float AxisYaw => _axisYaw;
+
+        /// <summary>Where the player must stand. For tests and the overlay.</summary>
+        public Vector3 StandAt => _standAt;
+
         /// <inheritdoc />
         public override bool CanInteract(IInteractionServices services)
         {
