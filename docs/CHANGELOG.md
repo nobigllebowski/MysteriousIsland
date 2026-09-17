@@ -9,6 +9,15 @@ reading order. For what is true *right now* rather than what changed, see
 
 ## [Unreleased]
 
+### Fixed — the first real compile: CS0171 in a signal struct
+
+Unity opened in Safe Mode on one error: the four-argument constructor of
+`InteractionTargetChangedSignal` never assigned `HeldItemId`, a field added later with its own
+five-argument constructor. It now chains to the five-argument one. Core had no other errors; the
+dependent assemblies (Game, UI, Editor, Tests) had not yet been compiled when the screenshot was
+taken. The validator gains a seventeenth check, `STRUCT`: every struct constructor assigns every
+field and auto-property or chains, proven against the original error.
+
 ### Changed — the validator checks command routing
 
 A sixteenth check, `ROUTE`: every command struct has a `Register<…>` in the composition root, and

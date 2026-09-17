@@ -11,6 +11,8 @@ Accounts: [`PHASE_2_REPORT.md`](PHASE_2_REPORT.md) · [`PHASE_3_REPORT.md`](PHAS
 
 **The project now compiles and runs.** It reached Play Mode, loaded `ZoneRibcage`, furnished it and
 drove the HUD and interaction prompt — the first time anything in this repository has executed.
+The Phase 6 slice's first compile (2026-09-17) stopped in Safe Mode on one CS0171 in Core, fixed;
+the dependent assemblies have not been compiled yet.
 
 This file records what is *actually true right now*, verified against the repository — not what
 was planned. When it disagrees with a design document, this file and the shipped code win.

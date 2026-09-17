@@ -1910,6 +1910,117 @@ def check_command_routing(report, files):
                              "'%s' is built by an interactable but InteractionSystem.Dispatch does not route it; the prompt's button would do nothing" % name)
 
 
+# ---------------------------------------------------------------------------
+# Struct definite assignment: every constructor of a struct assigns every
+# field and auto-property, or chains to one that does (CS0171). The first
+# real compile of this project failed on exactly this, in a signal struct
+# that had grown a field and a constructor separately. Line-based on
+# purpose: a backtracking regex over a struct body took seconds per file.
+# ---------------------------------------------------------------------------
+
+STRUCT_DECL_RE = re.compile(r"\bstruct\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b")
+MODIFIERS = ("public", "private", "internal", "protected", "readonly", "static", "const", "new", "volatile")
+
+
+def _matching_brace(code, open_index):
+    depth = 0
+    for index in range(open_index, len(code)):
+        ch = code[index]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return len(code) - 1
+
+
+def _top_level_lines(body):
+    """Lines of a type body with nested brace blocks blanked out, so only member declarations remain."""
+    out = []
+    depth = 0
+    for ch in body:
+        if ch == "{":
+            depth += 1
+            out.append(" ")
+        elif ch == "}":
+            depth -= 1
+            out.append(" ")
+        elif depth == 0 or ch == "\n":
+            out.append(ch)
+        else:
+            out.append(" ")
+    return "".join(out).split("\n")
+
+
+def _struct_members(top_lines):
+    members = []
+    for line in top_lines:
+        stripped = line.strip()
+        if not stripped or "(" in stripped or "=>" in stripped:
+            continue
+        words = stripped.replace(";", " ; ").replace("=", " = ").split()
+        if not words or words[0] not in ("public", "private", "internal", "protected"):
+            continue
+        if "static" in words or "const" in words or "event" in words:
+            continue
+        # Auto-property: "public T Name" followed by the blanked { get; } block -> line ends after Name.
+        # Field: "public readonly T Name ;" or "... Name = ...".
+        core = [w for w in words if w not in MODIFIERS]
+        if ";" in core:
+            core = core[:core.index(";")]
+        if "=" in core:
+            core = core[:core.index("=")]
+        if len(core) >= 2:
+            name = core[-1]
+            if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", name):
+                members.append(name)
+    return members
+
+
+def check_struct_assignment(report, files):
+    for rel_path, scan, _namespaces, _declarations in files:
+        code = scan.code
+        for match in STRUCT_DECL_RE.finditer(code):
+            name = match.group("name")
+            open_index = code.find("{", match.end())
+            if open_index < 0:
+                continue
+            # A generic constraint or an interface list can sit between the name and the brace;
+            # a semicolon means this was not a declaration at all.
+            if ";" in code[match.end():open_index]:
+                continue
+            close_index = _matching_brace(code, open_index)
+            body = code[open_index + 1:close_index]
+            members = _struct_members(_top_level_lines(body))
+            if not members:
+                continue
+
+            for ctor in re.finditer(r"(?<![\w.])%s\s*\(" % re.escape(name), body):
+                before = body[max(0, ctor.start() - 12):ctor.start()]
+                if "new" in before.split():
+                    continue
+                close_paren = body.find(")", ctor.end())
+                if close_paren < 0:
+                    continue
+                brace = body.find("{", close_paren)
+                semicolon = body.find(";", close_paren)
+                if brace < 0 or (0 <= semicolon < brace):
+                    continue
+                between = body[close_paren + 1:brace]
+                if "this" in between and ":" in between:
+                    continue
+                ctor_body = body[brace + 1:_matching_brace(body, brace)]
+                missing = [m for m in members
+                           if not re.search(r"(?<![\w.])%s\s*=(?!=)" % re.escape(m), ctor_body)
+                           and not re.search(r"\bthis\.%s\s*=(?!=)" % re.escape(m), ctor_body)]
+                if missing:
+                    line = code.count("\n", 0, open_index + 1 + ctor.start()) + 1
+                    report.error("STRUCT", rel_path, line,
+                                 "constructor of struct '%s' does not assign %s on every path (CS0171); assign them or chain with ': this(...)'"
+                                 % (name, ", ".join("'%s'" % m for m in missing)))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Structural validator for the Vardholm C# sources. Substitutes for a compiler.")
@@ -2015,6 +2126,9 @@ def main(argv=None):
     report.checks_run += 1
 
     check_command_routing(report, files)
+    report.checks_run += 1
+
+    check_struct_assignment(report, files)
 
     # --- Output ------------------------------------------------------------
     report.emit()
@@ -2035,7 +2149,7 @@ def main(argv=None):
     print("                                 missing usings, member/type collisions,")
     print("                                 deprecated Unity APIs, accidental nesting,")
     print("                                 phantom usings, shadowed locals, called members,")
-    print("                                 content ids, command routing)")
+    print("                                 content ids, command routing, struct assignment)")
     print("  errors .................... %d" % len(report.errors))
     print("  warnings .................. %d%s" % (len(report.warnings), " (hidden by --quiet)" if args.quiet and report.warnings else ""))
     print("")

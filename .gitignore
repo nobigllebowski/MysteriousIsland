@@ -82,3 +82,4 @@ desktop.ini
 # should not be able to commit a save by accident.
 *.vardsave
 *.vardsave.bak
+__pycache__/
